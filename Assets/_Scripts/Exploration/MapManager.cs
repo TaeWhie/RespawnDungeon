@@ -97,6 +97,7 @@ public class MapManager : MonoBehaviour
                 WalkableCount++;
             }
         }
+        OnMapInitialized?.Invoke();
     }
 
     /// <summary>셀 좌표를 배열 인덱스로 변환. 범위 밖이면 false.</summary>
@@ -152,6 +153,7 @@ public class MapManager : MonoBehaviour
         if (_visited[i, j]) return;
         _visited[i, j] = true;
         VisitedCount++;
+        OnCellVisited?.Invoke(cell);
     }
 
     public void MarkUnreachable(Vector2Int cell)
@@ -165,6 +167,11 @@ public class MapManager : MonoBehaviour
     {
         _globalTargetCell = cell;
     }
+
+    /// <summary>맵 초기화 직후 한 번 호출됩니다. (폭/블러 뷰에서 미탐색 타일을 그릴 때 사용)</summary>
+    public event System.Action OnMapInitialized;
+    /// <summary>해당 셀이 방문 처리될 때마다 호출됩니다. (폭 타일 제거 등)</summary>
+    public event System.Action<Vector2Int> OnCellVisited;
 
     /// <summary>인접 4방향 중 방문하지 않은 이동 가능 타일 목록</summary>
     public List<Vector2Int> GetUnvisitedNeighbors(Vector2Int cell)

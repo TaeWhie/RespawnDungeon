@@ -80,7 +80,9 @@ public class CorridorFirstDungeonGenerator : SimpleRandomWalkDungeonGenerator
         HashSet<Vector2Int> roomPositions = new HashSet<Vector2Int>();
         int roomToCreateCount = Mathf.RoundToInt(potentialRoomPositions.Count * roomPercent);
 
-        List<Vector2Int> roomsToCreate = potentialRoomPositions.OrderBy(x => Guid.NewGuid()).Take(roomToCreateCount).ToList();
+        List<Vector2Int> roomsToCreate = potentialRoomPositions.ToList();
+        ProceduralGenerationAlgorithms.Shuffle(roomsToCreate);
+        roomsToCreate = roomsToCreate.GetRange(0, Mathf.Min(roomToCreateCount, roomsToCreate.Count));
 
         foreach (var roomPosition in roomsToCreate)
         {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,6 +22,16 @@ public static class ProceduralGenerationAlgorithms
             previousPosition = newPosition;
         }
         return path;
+    }
+
+    /// <summary>리스트를 시드된 Random으로 섞습니다. 맵 시드와 함께 사용하세요.</summary>
+    public static void Shuffle<T>(List<T> list)
+    {
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = UnityEngine.Random.Range(0, i + 1);
+            (list[i], list[j]) = (list[j], list[i]);
+        }
     }
 
     public static List<Vector2Int> RandomWalkCorridor(Vector2Int startPosition, int corridorLength)
