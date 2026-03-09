@@ -179,6 +179,21 @@ public class MapManager : MonoBehaviour
         return list;
     }
 
+    /// <summary>해당 셀을 중심으로 시야 반경 내 미방문·이동가능 타일 개수 (방문 처리 없음). 탐험 방향 선택용.</summary>
+    public int GetUnvisitedCountInRadius(Vector2Int center, int viewRadius)
+    {
+        if (!IsInitialized) return 0;
+        int count = 0;
+        for (int dx = -viewRadius; dx <= viewRadius; dx++)
+        for (int dy = -viewRadius; dy <= viewRadius; dy++)
+        {
+            var cell = new Vector2Int(center.x + dx, center.y + dy);
+            if (IsWalkable(cell) && !IsVisited(cell) && !IsUnreachable(cell))
+                count++;
+        }
+        return count;
+    }
+
     /// <summary>접근 가능한 모든 타일을 방문했는지</summary>
     public bool IsExplorationComplete()
     {

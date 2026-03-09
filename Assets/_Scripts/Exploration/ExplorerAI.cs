@@ -35,8 +35,11 @@ public class ExplorerAI : MonoBehaviour
     [SerializeField] private float _speed = 5f;
     [Tooltip("웨이포인트 도착 판정 반경")]
     [SerializeField] private float _waypointReachRadius = 0.35f;
-    [Tooltip("인접 탐색 시 여러 방향이 있을 때 무작위 선택 (false면 첫 번째 방향 우선)")]
+    [Tooltip("인접 탐색 시 여러 방향이 있을 때: true=시야를 가장 많이 밝힐 수 있는 방향 우선, 동점일 때 랜덤 / false=동점일 때만 첫 번째 우선")]
     [SerializeField] private bool _randomizeLocalChoice = true;
+    [Tooltip("모험심 (0~1). 높을수록 확률적으로 '최선의 방향'이 아닌 다른 방향을 선택. 0=항상 최선, 1=매번 랜덤")]
+    [Range(0f, 1f)]
+    [SerializeField] private float _adventurousness = 0f;
     [Tooltip("재타겟팅 시 A*를 돌릴 프론티어 후보 수 상한. 낮을수록 프레임 유리")]
     [SerializeField] private int _maxFrontierCandidatesForPath = 5;
     [Tooltip("경로 복귀(뛰기) 시 속도 배율. 탐험(걷기)=1배, 복귀=이 배율")]
@@ -205,9 +208,7 @@ public class ExplorerAI : MonoBehaviour
 
         if (unvisitedNeighbors.Count > 0)
         {
-            Vector2Int nextCell = _randomizeLocalChoice
-                ? unvisitedNeighbors[Random.Range(0, unvisitedNeighbors.Count)]
-                : unvisitedNeighbors[0];
+            Vector2Int nextCell = ChooseBestExplorationDirection(unvisitedNeighbors);
 
             Vector3 targetWorld = _mapManager.CellToWorld(nextCell);
             Vector2 toTarget = (Vector2)(targetWorld - transform.position);
@@ -219,9 +220,7 @@ public class ExplorerAI : MonoBehaviour
                 var nextUnvisited = _mapManager.GetUnvisitedNeighbors(nextCell);
                 if (nextUnvisited.Count > 0)
                 {
-                    nextCell = _randomizeLocalChoice
-                        ? nextUnvisited[Random.Range(0, nextUnvisited.Count)]
-                        : nextUnvisited[0];
+                    nextCell = ChooseBestExplorationDirection(nextUnvisited);
                     targetWorld = _mapManager.CellToWorld(nextCell);
                     toTarget = (Vector2)(targetWorld - transform.position);
                 }
@@ -240,6 +239,47 @@ public class ExplorerAI : MonoBehaviour
         // 막다른 길: 글로벌 재타겟팅은 코루틴으로 한 번만 실행 (성능 최적화)
         if (!_isReTargeting)
             StartCoroutine(ReTargetingCoroutine(myCell));
+    }
+
+    /// <summary>후보 셀 중 시야를 가장 많이 밝힐 수 있는 셀 선택. 모험심이 높으면 확률적으로 비최선 방향 선택.</summary>
+    private Vector2Int ChooseBestExplorationDirection(List<Vector2Int> candidates)
+    {
+        if (candidates == null || candidates.Count == 0) return default;
+        if (candidates.Count == 1) return candidates[0];
+
+        int bestCount = -1;
+        var bestCandidates = new List<Vector2Int>(candidates.Count);
+        var nonBestCandidates = new List<Vector2Int>(candidates.Count);
+
+        foreach (var cell in candidates)
+        {
+            int unvisitedInView = _mapManager.GetUnvisitedCountInRadius(cell, _viewRadius);
+            if (unvisitedInView > bestCount)
+            {
+                bestCount = unvisitedInView;
+                nonBestCandidates.Clear();
+                nonBestCandidates.AddRange(bestCandidates);
+                bestCandidates.Clear();
+                bestCandidates.Add(cell);
+            }
+            else if (unvisitedInView == bestCount)
+            {
+                bestCandidates.Add(cell);
+            }
+            else
+            {
+                nonBestCandidates.Add(cell);
+            }
+        }
+
+        if (nonBestCandidates.Count > 0 && Random.value < _adventurousness)
+            return nonBestCandidates[Random.Range(0, nonBestCandidates.Count)];
+
+        if (bestCandidates.Count == 1)
+            return bestCandidates[0];
+        return _randomizeLocalChoice
+            ? bestCandidates[Random.Range(0, bestCandidates.Count)]
+            : bestCandidates[0];
     }
 
     /// <summary>목표를 잃었거나 막다른 길에 도달했을 때만 실행. 프론티어 검색 → 최근접 목표 선정 → 도달 가능 검증</summary>
