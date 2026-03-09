@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 502c9e6eca0db7d4ea4d57c38d9d8bfd
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 157252
+  packageName: Visual State Machine
+  packageVersion: 1.48
+  assetPath: Assets/Plugins/Ilumisoft/VisualStateMachine/Scripts/Runtime/Preferences/ZoomSettings.cs
+  uploadId: 861896

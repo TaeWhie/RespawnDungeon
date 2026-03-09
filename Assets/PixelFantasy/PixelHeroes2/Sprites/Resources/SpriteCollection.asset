@@ -1,0 +1,95 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 775082ef113341029c44f18b6b83558b, type: 3}
+  m_Name: SpriteCollection
+  m_EditorClassIdentifier: 
+  Type: PixelHeroes2
+  Layers:
+  - Name: Head
+    SpriteFolder: {fileID: 102900000, guid: e59c9cf47b5c22a4f814388caae5c009, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 44f675d464e896943970f4623b8d1e67, type: 3}
+    - {fileID: 2800000, guid: dda45c7c62aff1841a4e5738b2c4b0a9, type: 3}
+  - Name: Hair
+    SpriteFolder: {fileID: 102900000, guid: 6c350e47eb33b8644a6cfb56b9a36cae, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: df92a3e3d28bade4fbdf52b34bdffe30, type: 3}
+    - {fileID: 2800000, guid: 846b43fafd71e5c42a6066de29acd590, type: 3}
+  - Name: Eyes
+    SpriteFolder: {fileID: 102900000, guid: ebef5b49cd3d97849a96f910568ace59, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 4cdac487d30b02245acdb0add6aae849, type: 3}
+    - {fileID: 2800000, guid: 8bb74d9271e12a1409ae78ad85594961, type: 3}
+  - Name: Ears
+    SpriteFolder: {fileID: 102900000, guid: 066d7260b8b38f842af9363d31e69119, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 4b7dc9b4ab85a6248a6a5c8e1f796f94, type: 3}
+  - Name: Body
+    SpriteFolder: {fileID: 102900000, guid: 33e63bee0561bd943bbf2897233db5a9, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 0802ebca9afdc9e40b04f5a8706074c6, type: 3}
+  - Name: Arm
+    SpriteFolder: {fileID: 102900000, guid: 82cc244bb7e3ae445a6b1ac4fafd681b, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 31537d379371ae64a923024831959df1, type: 3}
+    - {fileID: 2800000, guid: b6103719b328cee44a170273f13d5a74, type: 3}
+    - {fileID: 2800000, guid: 9f94f2de7247d57408ef2d3eb36b601b, type: 3}
+  - Name: Leg
+    SpriteFolder: {fileID: 102900000, guid: 444970ee6c00b0945a178df596080a82, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 168bca7abfda52846842377ef244c0d0, type: 3}
+  - Name: Weapon
+    SpriteFolder: {fileID: 102900000, guid: 26e53e1125c3a8c49a0d51dd7f43dc8f, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 61d5284ba7c489646a7fb56941eb9eeb, type: 3}
+  - Name: Helmet
+    SpriteFolder: {fileID: 102900000, guid: 7b2ab4fd8455f2045a0aa3bd272a8eea, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: e43e75e99d95dac4faeb9b34d0eda502, type: 3}
+    - {fileID: 2800000, guid: aa93afcdeeddd3f4593edc193a3d19b6, type: 3}
+  - Name: Armor
+    SpriteFolder: {fileID: 102900000, guid: d58084d74d2de8142b0ee1569e9efaea, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: c2e65320ed6ec6e46823156405ef1712, type: 3}
+    - {fileID: 2800000, guid: 3bfdea4095454164bb68ddc4e8aaa1f4, type: 3}
+  - Name: Bracer
+    SpriteFolder: {fileID: 102900000, guid: 1011cd07894a02349940d9ae59952700, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: bb57a356f1ba10449af9b64d3340e965, type: 3}
+    - {fileID: 2800000, guid: 33d8e21ec56b9294c8579adea9199d03, type: 3}
+  - Name: Legging
+    SpriteFolder: {fileID: 102900000, guid: 23f0b9224e11c0f448859e43d7e78df6, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 34d659c6fca3de54db5692aa5db4edcd, type: 3}
+    - {fileID: 2800000, guid: e2b190fafcf69e24884d6a25a54fee71, type: 3}
+  - Name: Cape
+    SpriteFolder: {fileID: 102900000, guid: 973a5fdbf5abde24bbf1523cefbdc3cf, type: 3}
+    Textures: []
+  - Name: Back
+    SpriteFolder: {fileID: 102900000, guid: af1fcfabb085b6240a9a34dfe0195085, type: 3}
+    Textures: []
+  - Name: Mask
+    SpriteFolder: {fileID: 102900000, guid: 80275e852d7168c4cadf45693fa42afa, type: 3}
+    Textures: []
+  - Name: Horns
+    SpriteFolder: {fileID: 102900000, guid: fd527b5a75f343b43aadfa485e1905e4, type: 3}
+    Textures: []
+  - Name: Shield
+    SpriteFolder: {fileID: 102900000, guid: cc1beb152ddf3b7478b4014cb50a4083, type: 3}
+    Textures: []
+  - Name: Firearm
+    SpriteFolder: {fileID: 102900000, guid: 1b99b75eb5e54624480c62d8c1328d65, type: 3}
+    Textures: []
+  - Name: Mouth
+    SpriteFolder: {fileID: 102900000, guid: 9e6cd21acacb4574d95b24144b01e6ee, type: 3}
+    Textures: []
+  PaletteTexture: {fileID: 2800000, guid: 2a6e5d2d9f284512963a17b0ae004c3f, type: 3}

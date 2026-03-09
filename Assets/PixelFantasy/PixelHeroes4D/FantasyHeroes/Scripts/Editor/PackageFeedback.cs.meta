@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: f4370eeb86456c949974e33ba71a90e4
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 271664
+  packageName: 'Pixel Hero Maker [Megapack]'
+  packageVersion: 3.9
+  assetPath: Assets/PixelFantasy/PixelHeroes4D/FantasyHeroes/Scripts/Editor/PackageFeedback.cs
+  uploadId: 855568

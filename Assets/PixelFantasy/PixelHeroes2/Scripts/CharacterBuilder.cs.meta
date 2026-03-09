@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: ba2c036b610636041986aef270601d1c
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 271664
+  packageName: 'Pixel Hero Maker [Megapack]'
+  packageVersion: 3.9
+  assetPath: Assets/PixelFantasy/PixelHeroes2/Scripts/CharacterBuilder.cs
+  uploadId: 855568

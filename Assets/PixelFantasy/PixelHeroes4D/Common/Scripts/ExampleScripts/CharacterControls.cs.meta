@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 1dea04121a52ceb47b735ac6ea90f98b
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 271664
+  packageName: 'Pixel Hero Maker [Megapack]'
+  packageVersion: 3.9
+  assetPath: Assets/PixelFantasy/PixelHeroes4D/Common/Scripts/ExampleScripts/CharacterControls.cs
+  uploadId: 855568

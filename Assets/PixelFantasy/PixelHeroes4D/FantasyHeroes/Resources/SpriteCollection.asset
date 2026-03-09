@@ -1,0 +1,326 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 775082ef113341029c44f18b6b83558b, type: 3}
+  m_Name: SpriteCollection
+  m_EditorClassIdentifier: 
+  Type: PixelHeroes4D
+  Layers:
+  - Name: Cape
+    SpriteFolder: {fileID: 102900000, guid: 6916a05f9e382c74ebd234104a37b29b, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: c01dd957ab7ecf04a803dc5c399b653d, type: 3}
+  - Name: Back
+    SpriteFolder: {fileID: 102900000, guid: 1e424e85348ee914ab692f12d360bef2, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: d5e0e8c2080225e44b9132a7de9f959f, type: 3}
+    - {fileID: 2800000, guid: 8a7f7684d676e7a4b83aa46aa50c48f8, type: 3}
+  - Name: Shield
+    SpriteFolder: {fileID: 102900000, guid: 9f25f3ca1549ec44bbe3bb7511fb4c53, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 24bce6205d9fbe64a893714ac36888b4, type: 3}
+    - {fileID: 2800000, guid: 987751da73a88d447ae7e02b49e2be27, type: 3}
+    - {fileID: 2800000, guid: 38d0d4ad555aeea4ab728f6ffe367e50, type: 3}
+    - {fileID: 2800000, guid: 46888b93eaf1e654a874a6bdacdd965d, type: 3}
+    - {fileID: 2800000, guid: 83897845b2afc02438a3084706c750fc, type: 3}
+    - {fileID: 2800000, guid: 639ed3cca30a94744ace825b8b74e110, type: 3}
+    - {fileID: 2800000, guid: 65873258763ad7543b753d609a058819, type: 3}
+    - {fileID: 2800000, guid: 8096709eb42f8114287b872e0766891b, type: 3}
+    - {fileID: 2800000, guid: b9896f313a30acd42bf1f7e9d958bff5, type: 3}
+    - {fileID: 2800000, guid: d983c6b96ed76fe4ca1afe90e8c66713, type: 3}
+  - Name: Body
+    SpriteFolder: {fileID: 102900000, guid: 67747de94b8998f44ad1f71342cbda00, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: d45a20ec9abead343a4cbf5326f0992d, type: 3}
+    - {fileID: 2800000, guid: 172b80f7da1d9aa42ae80d472f5410e5, type: 3}
+    - {fileID: 2800000, guid: 55af867d6a5779d4e8d614848dd1372c, type: 3}
+    - {fileID: 2800000, guid: 7f088d906bd2c484ba4b0999fe3d8349, type: 3}
+    - {fileID: 2800000, guid: 7f0e139d7846de3448a2800f6178403f, type: 3}
+  - Name: Armor
+    SpriteFolder: {fileID: 102900000, guid: 6c80c0dcc2d9b634ba2c7b5dc9e9946a, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: e5cbe72e04f2d6c41bca6a3a9ff42b35, type: 3}
+    - {fileID: 2800000, guid: 31608cf94ee8c64478db3de9ac2f6481, type: 3}
+    - {fileID: 2800000, guid: 97440c739de21144ebda42b62684c88e, type: 3}
+    - {fileID: 2800000, guid: 1a60fccf91829714aaa5893a1d670a01, type: 3}
+    - {fileID: 2800000, guid: 7e3ab0f080a0ff8439ee3526d7ad755e, type: 3}
+    - {fileID: 2800000, guid: 5d47f49d808d47f418d9b2a7ee1ebdaa, type: 3}
+    - {fileID: 2800000, guid: 3bba976728fcbac42a7244c8789fa7a3, type: 3}
+    - {fileID: 2800000, guid: 22be7c3d36c1b474db92f4b027d888cc, type: 3}
+    - {fileID: 2800000, guid: 850859adb7663764793e725867562dae, type: 3}
+    - {fileID: 2800000, guid: 1333ea5c2fdc92244a3b7320fb165baf, type: 3}
+    - {fileID: 2800000, guid: 704777d86da4e9c4f9d85fdb7378592e, type: 3}
+    - {fileID: 2800000, guid: 14e6f1e43e1e8d148839202c80c897e4, type: 3}
+    - {fileID: 2800000, guid: 5999918a216482840a4785777c59cfef, type: 3}
+    - {fileID: 2800000, guid: 27cbe9277ffc5744f9d856bb098ba6c1, type: 3}
+    - {fileID: 2800000, guid: 5a8327a2d528e1340bbd04ead4361bfa, type: 3}
+    - {fileID: 2800000, guid: 8feaf88f87f46ff4f99b801f5b917266, type: 3}
+    - {fileID: 2800000, guid: 29ca8727abd80734c8013b47799e9e7b, type: 3}
+    - {fileID: 2800000, guid: 03f4559c79c2d254ab9209d003914ca6, type: 3}
+    - {fileID: 2800000, guid: aefcb7d29493bbe47b202e819ef1f3ec, type: 3}
+    - {fileID: 2800000, guid: 71468f632a46b604db209e8c84e00572, type: 3}
+    - {fileID: 2800000, guid: 9ced21ccda3d8e4458895cb3371a0a17, type: 3}
+    - {fileID: 2800000, guid: d583a05abb554a14e9685306077f587e, type: 3}
+    - {fileID: 2800000, guid: 724e9d3ed4e801b408008e9630745aea, type: 3}
+    - {fileID: 2800000, guid: 514f3a4cac6e0d6468b89f932c98c8dd, type: 3}
+    - {fileID: 2800000, guid: ab50718d5736250459f1bacee135de38, type: 3}
+    - {fileID: 2800000, guid: 6a05866fcaf51c542b79413eb134895d, type: 3}
+    - {fileID: 2800000, guid: d164ad96c2796244abb634417400a0c7, type: 3}
+    - {fileID: 2800000, guid: 34a17f15dddfba740a9ad40ade6d1ddb, type: 3}
+    - {fileID: 2800000, guid: f93c32c4ddd84cd4e926f7e9c7dcb211, type: 3}
+    - {fileID: 2800000, guid: 6f17f89dafa121547971336733528b61, type: 3}
+    - {fileID: 2800000, guid: e4a7ce434c84a244e85f5b09ddf78939, type: 3}
+    - {fileID: 2800000, guid: 65706e2d258a769469b03de814231700, type: 3}
+    - {fileID: 2800000, guid: 51fc50047973ae543a9e41ea2e87ce68, type: 3}
+    - {fileID: 2800000, guid: 3f966d8a43e3a9d42b58fadf048ded4f, type: 3}
+    - {fileID: 2800000, guid: 836ca835966364b449580b6acbfa88ce, type: 3}
+    - {fileID: 2800000, guid: 545172c084b4e724e8933636661cffa4, type: 3}
+  - Name: Head
+    SpriteFolder: {fileID: 102900000, guid: d6f599f1b4fa507439fefb44ae8005ca, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 1855628d52340fb498dfd380117284c8, type: 3}
+    - {fileID: 2800000, guid: 80b3965c8a6c4be47b3cf80d5ff1d8d9, type: 3}
+    - {fileID: 2800000, guid: f0a0fb7b7e88a3b429f7d6b9cc453b13, type: 3}
+    - {fileID: 2800000, guid: b7f11482c3fa5344fa363623d40a3297, type: 3}
+    - {fileID: 2800000, guid: 2c69c594474bcbf4aa286835142c70b8, type: 3}
+    - {fileID: 2800000, guid: 0f351cad0c454394099d873a3b8b8437, type: 3}
+    - {fileID: 2800000, guid: 3619ba99a2dfc2640bd56108b1f0746c, type: 3}
+    - {fileID: 2800000, guid: 6fd5c39a133445c448ff075d7ddb734f, type: 3}
+    - {fileID: 2800000, guid: 4ecba01643930294a921869cf51ac1f7, type: 3}
+    - {fileID: 2800000, guid: db962e17a96a3ef40850e268fa8cbe24, type: 3}
+    - {fileID: 2800000, guid: 103476610bbbe1749b329dbbc32cf17f, type: 3}
+    - {fileID: 2800000, guid: 3b6baccee94456046b4aa286e36babd2, type: 3}
+    - {fileID: 2800000, guid: 1991a2e3f3e75cb4d93bd95cbc25229c, type: 3}
+    - {fileID: 2800000, guid: bb541dc573bb23d4ab036a3abd9e4956, type: 3}
+    - {fileID: 2800000, guid: 259eaa9d70978ec47a23fe5856482a1a, type: 3}
+    - {fileID: 2800000, guid: 7741890ab0f939f47a5927545d9d9525, type: 3}
+    - {fileID: 2800000, guid: 296b470cdcd67a14ca1115bfc8a87699, type: 3}
+    - {fileID: 2800000, guid: c58a221c871db994e9b617f8ad28c01a, type: 3}
+    - {fileID: 2800000, guid: 358bfc61c0d77574fb76e781f868bfb0, type: 3}
+    - {fileID: 2800000, guid: af7ece4ee72f49546b0168ce4c2ee04c, type: 3}
+    - {fileID: 2800000, guid: 242b661960fe3324f9c796633ab08a8f, type: 3}
+    - {fileID: 2800000, guid: b3bdf9fbb9d89d140b88b08cc3695088, type: 3}
+    - {fileID: 2800000, guid: bf9acb8eb5fef814d81eb276b0c5b425, type: 3}
+    - {fileID: 2800000, guid: f812a44e1d7713d42af31b418a61ff07, type: 3}
+    - {fileID: 2800000, guid: 425e98d2a58651c4fb93b516145956aa, type: 3}
+  - Name: Horns
+    SpriteFolder: {fileID: 102900000, guid: ece63a6e5ead15f41aaa360ffa4ce6fe, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: f1120163e879fcf4793d2d6a5650ea34, type: 3}
+  - Name: Eyes
+    SpriteFolder: {fileID: 102900000, guid: 2bc3810bcd761e54b9e6b1a08214ab9a, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 367beca59e89f334f905838254817fba, type: 3}
+    - {fileID: 2800000, guid: d63dfad14d24994498f6640e08810206, type: 3}
+    - {fileID: 2800000, guid: d25fe585edc5c3443b6df337b3a9a38d, type: 3}
+    - {fileID: 2800000, guid: 31ffb9bfd83edef4ea7a71a76369146d, type: 3}
+    - {fileID: 2800000, guid: 355c8d673bbfed746bdaa092b42b42b4, type: 3}
+    - {fileID: 2800000, guid: 9e68aedce31689742b34910f1b260370, type: 3}
+    - {fileID: 2800000, guid: 468f89ef98f0b5a42be186f01537d5c2, type: 3}
+    - {fileID: 2800000, guid: ce9bac1b7b6c7de41b9c112e83a74d38, type: 3}
+    - {fileID: 2800000, guid: 7d31d448d76e2db42b3e1af11475f2c2, type: 3}
+    - {fileID: 2800000, guid: 4860dd5db6ec9a44593be856e2701c9e, type: 3}
+    - {fileID: 2800000, guid: 628433b7e245d1b41a0d4b3a64a325bf, type: 3}
+    - {fileID: 2800000, guid: b596dbab05c27ad488f32f0001ed1188, type: 3}
+    - {fileID: 2800000, guid: 9bcc11e0873801b44947301983e7008d, type: 3}
+    - {fileID: 2800000, guid: 37164181db674ab41a9f90abdeaa3421, type: 3}
+    - {fileID: 2800000, guid: 9b4ea890280b4844f8f53bbd9bab1129, type: 3}
+    - {fileID: 2800000, guid: b0ba18508f0f20143adf8f086c7d4280, type: 3}
+    - {fileID: 2800000, guid: c6435b26b9b1de84f9f096180e86b31f, type: 3}
+  - Name: Mask
+    SpriteFolder: {fileID: 102900000, guid: 5ab84a6e12c5d0b42bd4014eb33f8ee4, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: fb65f84c097fca84eb4bdca16b778113, type: 3}
+    - {fileID: 2800000, guid: 776b428a7db3fec4e9e13a8b5f649138, type: 3}
+  - Name: Hair
+    SpriteFolder: {fileID: 102900000, guid: c216c3d7a25a26241a1d2ef6b44246be, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 680cd5ecdb9fdbb4a9321dfa0af49f32, type: 3}
+    - {fileID: 2800000, guid: 86a48c474af5aa44dabbad29474f0af4, type: 3}
+    - {fileID: 2800000, guid: d8ba39e36e36d5240ab412fefaeb19a2, type: 3}
+    - {fileID: 2800000, guid: 1fa4165c875ea2a4ca994fdb77c66117, type: 3}
+    - {fileID: 2800000, guid: 53379cf8b684fb54c94e82561b83adaf, type: 3}
+    - {fileID: 2800000, guid: 7a59d8b7bd9fe6544acec8ef90aad23c, type: 3}
+    - {fileID: 2800000, guid: e810d261f6391c84aa34f7106c8820ac, type: 3}
+    - {fileID: 2800000, guid: 7c8d52d8cf3ebfc4fafee0810b09e6a6, type: 3}
+    - {fileID: 2800000, guid: 558edbef53aedc740be4cf5ca9abdb6f, type: 3}
+    - {fileID: 2800000, guid: 2f85558caf3983f4e89140cf441cb8e2, type: 3}
+    - {fileID: 2800000, guid: 6a04c67b41de1234a90109ab380d8e66, type: 3}
+    - {fileID: 2800000, guid: 8f9b8b582e1e870489ee4e2828ea94a4, type: 3}
+    - {fileID: 2800000, guid: 5a27afc41e0907447ab305d3c92fee62, type: 3}
+    - {fileID: 2800000, guid: f262a6c6906bbd640b5a3f8f650a68c4, type: 3}
+    - {fileID: 2800000, guid: d5644771293a7de44a222a30f4ff1d20, type: 3}
+    - {fileID: 2800000, guid: f6fe95f97d82d87489794d9a83679dd1, type: 3}
+    - {fileID: 2800000, guid: 5f46c462f8dd67e469640ba2dadfc14f, type: 3}
+    - {fileID: 2800000, guid: 4a69afbeed9ae754eab895669eaaffb2, type: 3}
+    - {fileID: 2800000, guid: 19126360155c73246bb3c4e27bf33449, type: 3}
+    - {fileID: 2800000, guid: ad62944617a83f749bdd5075b4296694, type: 3}
+  - Name: Ears
+    SpriteFolder: {fileID: 102900000, guid: 22ae3d42b9f9eda449e900f9896dfd88, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: bea3c40e6ad5a1248b2179ed07810049, type: 3}
+    - {fileID: 2800000, guid: 804376a8dea2d4e4c8718c202b488c13, type: 3}
+    - {fileID: 2800000, guid: ef12a4d2bd74dc948b04b99758b275d6, type: 3}
+    - {fileID: 2800000, guid: 13bffba6d22ea9b488e23aae296828d9, type: 3}
+    - {fileID: 2800000, guid: d5efc01172156724ca6e7c3c2ee9a506, type: 3}
+  - Name: Helmet
+    SpriteFolder: {fileID: 102900000, guid: 93ac0834482cc9646866049de6b6f399, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 5961b8c1a8caa7f418268fcff575d257, type: 3}
+    - {fileID: 2800000, guid: e849ad1a0b83ce248bc1f9637d8b1988, type: 3}
+    - {fileID: 2800000, guid: 8bea9782e5c26804a9f47c3f820f9de4, type: 3}
+    - {fileID: 2800000, guid: 68f6560370bd2c746bfd60bd755667ca, type: 3}
+    - {fileID: 2800000, guid: f5666af7a6fb8d64580477d0b3ffdc5d, type: 3}
+    - {fileID: 2800000, guid: a787cb002c9cd864ab94d28ce7d36872, type: 3}
+    - {fileID: 2800000, guid: 5749c4f20d2613e4e87590a9c2dd588f, type: 3}
+    - {fileID: 2800000, guid: b17e77cf19c50dd4f96effa8a09c6315, type: 3}
+    - {fileID: 2800000, guid: d83c55e176504d447b142bc280966fee, type: 3}
+    - {fileID: 2800000, guid: 39fb4b109395dd04ba17c77f60dc3c3b, type: 3}
+    - {fileID: 2800000, guid: b0969bd27ea95284f9a9f4cd7f5951e6, type: 3}
+    - {fileID: 2800000, guid: 1e4a172c37988a34eb874f7565b60540, type: 3}
+    - {fileID: 2800000, guid: 395f6624077a5ec40a83396d1c3ae968, type: 3}
+    - {fileID: 2800000, guid: 8f6fc2c0ddd08ef42aa53933a1e7e1fa, type: 3}
+    - {fileID: 2800000, guid: 218f59160fad7b5438c69960d3f1804e, type: 3}
+    - {fileID: 2800000, guid: 3e1a3e66d5f0e5149885ec1d8d46b086, type: 3}
+    - {fileID: 2800000, guid: f5597356fd2095841a8f88e8e502f5fb, type: 3}
+    - {fileID: 2800000, guid: b0bfbd1a360c80e4a844168f0f015220, type: 3}
+    - {fileID: 2800000, guid: 760d369c1ce2d1447b399b9aaea66423, type: 3}
+    - {fileID: 2800000, guid: d9b7014e5e74f524f86cac32437dc1cd, type: 3}
+    - {fileID: 2800000, guid: 5ab184f6fb99f904ba2740cfdc843856, type: 3}
+    - {fileID: 2800000, guid: c3b23d1f85436554da723bd9cfd3b5bf, type: 3}
+    - {fileID: 2800000, guid: 4a3358a175c094243a187bcc09782fca, type: 3}
+    - {fileID: 2800000, guid: a22f419fce500b04c8d4e6662961a128, type: 3}
+    - {fileID: 2800000, guid: 88b159ad72cb3ff438e7c8067bbdb900, type: 3}
+    - {fileID: 2800000, guid: 292310c0c04bbc4498b96adcd7ad405f, type: 3}
+    - {fileID: 2800000, guid: aae9a528c07dd054bbe022e40f67dc51, type: 3}
+    - {fileID: 2800000, guid: 501cee3126de74d49bd60cd497e7c275, type: 3}
+    - {fileID: 2800000, guid: 626ccc609df020d448d1fbbf41d95947, type: 3}
+    - {fileID: 2800000, guid: 5892081042dd9ce4fb47ecfbd61067ad, type: 3}
+    - {fileID: 2800000, guid: f52257147f15e9a40a4c432f21149b87, type: 3}
+    - {fileID: 2800000, guid: 092f00e74e4914744b65ced98164f8a9, type: 3}
+    - {fileID: 2800000, guid: f14f41c77b0980d4bb5bcbaf34513066, type: 3}
+    - {fileID: 2800000, guid: 9defd449f51cba24b9e693113c6d3333, type: 3}
+    - {fileID: 2800000, guid: 7ac2cefe09a63ca4e935e2ec8d8bf48e, type: 3}
+    - {fileID: 2800000, guid: 9fe455f6bcf132942a7e288d15822275, type: 3}
+    - {fileID: 2800000, guid: eaac464056a1b154d9a12ba47dc64917, type: 3}
+    - {fileID: 2800000, guid: 62913c6da96270540b2a16797349f20d, type: 3}
+    - {fileID: 2800000, guid: 5475df23fb7547d46bc26b399879735b, type: 3}
+    - {fileID: 2800000, guid: dd5169603785e03498fa335c9e31679e, type: 3}
+    - {fileID: 2800000, guid: 1a5b776028351374bbf90e0d36f15168, type: 3}
+    - {fileID: 2800000, guid: 4700b8a81ba050e4f818013785dd5dcf, type: 3}
+  - Name: Arms
+    SpriteFolder: {fileID: 102900000, guid: 82455f8dc71273d49999134bdbc583e2, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 281e2c0505175184aaa00522cda1fc06, type: 3}
+    - {fileID: 2800000, guid: ce9ca6b70605c724da85899ced63d18e, type: 3}
+    - {fileID: 2800000, guid: 79a8e7bf3830e5147a2c6c65f895cb31, type: 3}
+    - {fileID: 2800000, guid: fda56c18faa7c844ea092fe06496c227, type: 3}
+    - {fileID: 2800000, guid: 02714d323b205aa42832a4d82f749238, type: 3}
+  - Name: Bracers
+    SpriteFolder: {fileID: 102900000, guid: fbb0380e4fb1c49429cdd82106030530, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: dc49958702f363545bda0308c7f0c7a3, type: 3}
+    - {fileID: 2800000, guid: 15c53efca81796b4f92a5a3738d41458, type: 3}
+    - {fileID: 2800000, guid: 6a68995b5baf09440bdb97beda022452, type: 3}
+    - {fileID: 2800000, guid: 5f1ee1188ecd6cc4fa9e1b21be34cdfb, type: 3}
+    - {fileID: 2800000, guid: 50b168381ac537845af85e9eabecfae8, type: 3}
+    - {fileID: 2800000, guid: 76d40f0311ae8b54fb1e12f99e0c822b, type: 3}
+    - {fileID: 2800000, guid: bfb1c96c1be700c4ca675afd0bca9df5, type: 3}
+    - {fileID: 2800000, guid: c5ff4d53390419f44bf03598f604fa8e, type: 3}
+    - {fileID: 2800000, guid: 6606c79730959b44480f22190c2e58e1, type: 3}
+    - {fileID: 2800000, guid: 92acab4b29b07f64ab373e72284d0b3b, type: 3}
+    - {fileID: 2800000, guid: 3d35ff9b1532dbe4584a7a06fbe3e977, type: 3}
+    - {fileID: 2800000, guid: 2bf6685cd8c5fe947ae5daaa0a509a98, type: 3}
+    - {fileID: 2800000, guid: d239a75f6e133af4faa932f4bd3d2e75, type: 3}
+    - {fileID: 2800000, guid: f5abecf8ab6d5df4dab26eeb41b3638e, type: 3}
+    - {fileID: 2800000, guid: b54f3baa8b7d96f4b83936f7daa3492c, type: 3}
+    - {fileID: 2800000, guid: 90fe56a347840d7478a7730827258a61, type: 3}
+    - {fileID: 2800000, guid: c2075d9c60a0fe34485954b25e10185d, type: 3}
+    - {fileID: 2800000, guid: 727ba0c6fd5329748a810b90cf6b0390, type: 3}
+    - {fileID: 2800000, guid: 995f6004fbbcede42b1b4851a535463b, type: 3}
+    - {fileID: 2800000, guid: 816d690d1782b8b49ab5fb7e7ae29d35, type: 3}
+    - {fileID: 2800000, guid: 8b17d7d0faec6a64ebf9ff0c35187990, type: 3}
+    - {fileID: 2800000, guid: caa2399a9bcfa4245a92191782701c67, type: 3}
+    - {fileID: 2800000, guid: 3e546da6e7ba95b4ebb663fcd19f6f0a, type: 3}
+    - {fileID: 2800000, guid: e6df077a302f2b042b5b28d0199f5365, type: 3}
+    - {fileID: 2800000, guid: 38f9a7f15dca4834f9212a908e190ef3, type: 3}
+    - {fileID: 2800000, guid: 20a8f244f337fc548b8d9bef14df8343, type: 3}
+    - {fileID: 2800000, guid: 9a55dc9bd13bc5e4eafa63611847f9fd, type: 3}
+    - {fileID: 2800000, guid: 1c29e3ccd73c4cb4695097c15edd13cd, type: 3}
+    - {fileID: 2800000, guid: 1ff42d5a4c843dc4f8cb82b115e70d76, type: 3}
+    - {fileID: 2800000, guid: 4d382025f5b30494caafa3e61a80da9a, type: 3}
+    - {fileID: 2800000, guid: 1cce43400426ded43b92143ff6b4c234, type: 3}
+    - {fileID: 2800000, guid: 8f5640327a0f6444cba713bffe80b9d0, type: 3}
+    - {fileID: 2800000, guid: ffd259d6664008f4898120ba0d48c1db, type: 3}
+    - {fileID: 2800000, guid: 318369c766be33647b1646f90bb5c9c7, type: 3}
+    - {fileID: 2800000, guid: c5ca1f2e8f67c2c438c2286749af3b93, type: 3}
+    - {fileID: 2800000, guid: baff2360e749de74ba996a5594269410, type: 3}
+  - Name: Weapon
+    SpriteFolder: {fileID: 102900000, guid: 5e90870d607dc9542985fd69107a3070, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 06eab163b3df0ef489797b8b32396832, type: 3}
+    - {fileID: 2800000, guid: a87a17417dce7b54cb1c5ad60cb843f2, type: 3}
+    - {fileID: 2800000, guid: 0bb3e135ef383574590c624aea4fff69, type: 3}
+    - {fileID: 2800000, guid: 57f349116fda85445a89bb94cf82fa24, type: 3}
+    - {fileID: 2800000, guid: 6ba077fc44c70774291f77a9e944213f, type: 3}
+    - {fileID: 2800000, guid: b16bd5a37d3f0674085beb5c1d0ac07c, type: 3}
+    - {fileID: 2800000, guid: 991d3b9d89ec41d4ea60f4fe79a4ecb7, type: 3}
+    - {fileID: 2800000, guid: 401f9bfa356270a489f8147003ab7a32, type: 3}
+    - {fileID: 2800000, guid: 3fff0058f0de76044affe4e8f30cea92, type: 3}
+    - {fileID: 2800000, guid: 612fbb3a0625b6a48bf490db3b5f1115, type: 3}
+    - {fileID: 2800000, guid: ce7bffea9073dec4a8841c4ee72d70cd, type: 3}
+    - {fileID: 2800000, guid: 41db76e22bcfb754d9b3e0f6990b9897, type: 3}
+    - {fileID: 2800000, guid: d5aa5dbc879b8884ab105df39f227baa, type: 3}
+    - {fileID: 2800000, guid: 69f0e6a2d4356744ab0e373f30d750f0, type: 3}
+    - {fileID: 2800000, guid: 45e28a9d98544634c9e7da19bc4a9344, type: 3}
+    - {fileID: 2800000, guid: c12fd55bf6006da4faf6cf57b0bd67cf, type: 3}
+    - {fileID: 2800000, guid: 303d237d52ab33e4b8d54f0ac202c85b, type: 3}
+    - {fileID: 2800000, guid: 5e9a2f76bbabe894880a1fe24322f22f, type: 3}
+    - {fileID: 2800000, guid: 4c2ebfef26e13104db5ba1dfe53c67d3, type: 3}
+    - {fileID: 2800000, guid: d89fc34a6cf70ac4b930aa7acbf1bb1f, type: 3}
+    - {fileID: 2800000, guid: 277057e8628ca9e4da6bc2d950f27584, type: 3}
+    - {fileID: 2800000, guid: f469147f6b1c59045926bf84c3e5c8ed, type: 3}
+    - {fileID: 2800000, guid: 7b5dc74332748e44ca43addfe61dc18d, type: 3}
+    - {fileID: 2800000, guid: db1979862977fc8418e0e6088e5c8142, type: 3}
+    - {fileID: 2800000, guid: 650fdd589de9adb40b4c757a82431e4f, type: 3}
+    - {fileID: 2800000, guid: f09455f533f2a054c9f04d118a141386, type: 3}
+    - {fileID: 2800000, guid: cd41ac79ffe7e654bbd50c7ab532d719, type: 3}
+    - {fileID: 2800000, guid: 23538802fa189c2468f5f4fb0f9aa249, type: 3}
+    - {fileID: 2800000, guid: e3c95c239015682479b911ca2baf5677, type: 3}
+    - {fileID: 2800000, guid: 9f1c1a31074b7a44880131aa2e6ef499, type: 3}
+    - {fileID: 2800000, guid: 67f51b8cf3b76864696f316e541b2800, type: 3}
+    - {fileID: 2800000, guid: 029c52b4c121e5b4fbbac81a6d9cfdcb, type: 3}
+    - {fileID: 2800000, guid: 338e1e74c35010247ab7eb835009941d, type: 3}
+    - {fileID: 2800000, guid: 799d4668b7dc5254fb9883da8215e55b, type: 3}
+    - {fileID: 2800000, guid: 1b4b416e12b1ca24bb9883501eaba0b6, type: 3}
+    - {fileID: 2800000, guid: c56c3ea595990994ba81d95677cecadf, type: 3}
+    - {fileID: 2800000, guid: 9c99520fa1e04244f8f56bdbda210ec6, type: 3}
+    - {fileID: 2800000, guid: 780c847f2309229478e02e45a6f705e0, type: 3}
+    - {fileID: 2800000, guid: 0a90467195e686b43b9d3374caa3fa8f, type: 3}
+    - {fileID: 2800000, guid: efe3dbedf2e7ea64b9d29546dacb2a3d, type: 3}
+    - {fileID: 2800000, guid: 6fbd5bb2fa0285a44b78ff46b96c745a, type: 3}
+    - {fileID: 2800000, guid: 865b63b67dbf075499dff435aec0f4a1, type: 3}
+    - {fileID: 2800000, guid: e73c501d4dc0a574baf93fa93e39125b, type: 3}
+    - {fileID: 2800000, guid: 71d17ce500c5aa642ae564c8754e7eab, type: 3}
+    - {fileID: 2800000, guid: 2c5b1d412fdb3f842ae6a123438762a9, type: 3}
+  - Name: Firearm
+    SpriteFolder: {fileID: 102900000, guid: 93f7755a305bc4b4c9974ad704d8d57b, type: 3}
+    Textures: []
+  - Name: Mouth
+    SpriteFolder: {fileID: 102900000, guid: 65936cf95d2a24946bb3dec4c1d9133d, type: 3}
+    Textures:
+    - {fileID: 2800000, guid: 23e1c4d6b3a896f46959c1bf4996be81, type: 3}
+    - {fileID: 2800000, guid: d1ab650a5155a5c498291bb779ee8535, type: 3}
+    - {fileID: 2800000, guid: 2a2aa2b046c7e4446a09377d4a9cb1c4, type: 3}
+    - {fileID: 2800000, guid: dc0e89bb826d165488f27db404119bad, type: 3}
+    - {fileID: 2800000, guid: 92e2d7a9ce32afa448323cd46ca1da17, type: 3}
+    - {fileID: 2800000, guid: e45eebebb70bbf14f909e605ed4f7c3c, type: 3}
+  PaletteTexture: {fileID: 2800000, guid: 2a6e5d2d9f284512963a17b0ae004c3f, type: 3}

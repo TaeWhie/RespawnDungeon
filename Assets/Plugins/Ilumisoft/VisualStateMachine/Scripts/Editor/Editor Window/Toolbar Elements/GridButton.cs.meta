@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: c01fdac5d41cae04a8bbe36494e54bc1
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 157252
+  packageName: Visual State Machine
+  packageVersion: 1.48
+  assetPath: Assets/Plugins/Ilumisoft/VisualStateMachine/Scripts/Editor/Editor Window/Toolbar
+    Elements/GridButton.cs
+  uploadId: 861896

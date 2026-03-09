@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 3b921505e8d1091429416ba86e9ac404
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {fileID: 2800000, guid: a69c32f34692e9a4388ffe3075d4bfd5, type: 3}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 248290
+  packageName: Game Action System - Gameplay Interaction Framework
+  packageVersion: 1.0
+  assetPath: Assets/Game Action System/Scripts/GameAction.cs
+  uploadId: 753397

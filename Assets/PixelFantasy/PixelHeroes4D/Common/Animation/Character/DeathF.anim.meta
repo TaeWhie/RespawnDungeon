@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c35778e263245b34a8be6f0d2ade35ee
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 271664
+  packageName: 'Pixel Hero Maker [Megapack]'
+  packageVersion: 3.9
+  assetPath: Assets/PixelFantasy/PixelHeroes4D/Common/Animation/Character/DeathF.anim
+  uploadId: 855568

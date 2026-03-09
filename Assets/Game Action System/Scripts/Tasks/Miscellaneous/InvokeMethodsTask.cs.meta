@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 12a7f606b2579ed4f9bad5fd6f1228dd
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {fileID: 2800000, guid: 0a737cbe3eb298c479b4a02006fb14e0, type: 3}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 248290
+  packageName: Game Action System - Gameplay Interaction Framework
+  packageVersion: 1.0
+  assetPath: Assets/Game Action System/Scripts/Tasks/Miscellaneous/InvokeMethodsTask.cs
+  uploadId: 753397

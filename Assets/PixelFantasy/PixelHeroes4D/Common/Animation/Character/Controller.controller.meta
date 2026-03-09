@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 20d29d8da64372c48bcaa8f3a35abf2d
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 9100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 271664
+  packageName: 'Pixel Hero Maker [Megapack]'
+  packageVersion: 3.9
+  assetPath: Assets/PixelFantasy/PixelHeroes4D/Common/Animation/Character/Controller.controller
+  uploadId: 855568

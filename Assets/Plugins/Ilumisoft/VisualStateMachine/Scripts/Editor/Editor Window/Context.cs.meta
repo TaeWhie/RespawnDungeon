@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 2485eb9e70c23bf4993c57c80396eaf8
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 157252
+  packageName: Visual State Machine
+  packageVersion: 1.48
+  assetPath: Assets/Plugins/Ilumisoft/VisualStateMachine/Scripts/Editor/Editor Window/Context.cs
+  uploadId: 861896

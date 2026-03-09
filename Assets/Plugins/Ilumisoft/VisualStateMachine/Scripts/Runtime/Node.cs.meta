@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 17a388c586dee1540b866dbb6a1ebdb1
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 157252
+  packageName: Visual State Machine
+  packageVersion: 1.48
+  assetPath: Assets/Plugins/Ilumisoft/VisualStateMachine/Scripts/Runtime/Node.cs
+  uploadId: 861896

@@ -1,0 +1,5 @@
+Asset is governed by the Asset Store EULA; however, the following components are governed by the licenses indicated below:
+
+A. Material Icons
+Apache 2.0
+January 2004

@@ -1,0 +1,19 @@
+fileFormatVersion: 2
+guid: 37c289230f9f6a44a8c6cc0bca2c6a32
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 157252
+  packageName: Visual State Machine
+  packageVersion: 1.48
+  assetPath: Assets/Plugins/Ilumisoft/VisualStateMachine/Scripts/Editor/Editor Window/Graph
+    Layers/Base/GraphLayer.cs
+  uploadId: 861896

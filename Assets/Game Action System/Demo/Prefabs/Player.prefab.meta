@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: e4fa347d03fc35b489d5a27c856801b8
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 248290
+  packageName: Game Action System - Gameplay Interaction Framework
+  packageVersion: 1.0
+  assetPath: Assets/Game Action System/Demo/Prefabs/Player.prefab
+  uploadId: 753397

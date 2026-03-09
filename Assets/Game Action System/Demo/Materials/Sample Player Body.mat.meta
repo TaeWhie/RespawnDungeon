@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 9f46d8f1a3d779d46bb42d981c76f058
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 248290
+  packageName: Game Action System - Gameplay Interaction Framework
+  packageVersion: 1.0
+  assetPath: Assets/Game Action System/Demo/Materials/Sample Player Body.mat
+  uploadId: 753397

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: bbd3d02988b886948847aeea9c184a9b
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 157252
+  packageName: Visual State Machine
+  packageVersion: 1.48
+  assetPath: Assets/Plugins/Ilumisoft/VisualStateMachine/Resources/Visual State Machine/Configuration.asset
+  uploadId: 861896

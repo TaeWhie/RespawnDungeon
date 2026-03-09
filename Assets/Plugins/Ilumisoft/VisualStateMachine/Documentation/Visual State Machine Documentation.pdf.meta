@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 33e4025305391a7449852c511de7861a
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 157252
+  packageName: Visual State Machine
+  packageVersion: 1.48
+  assetPath: Assets/Plugins/Ilumisoft/VisualStateMachine/Documentation/Visual State
+    Machine Documentation.pdf
+  uploadId: 861896

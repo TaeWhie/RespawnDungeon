@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 844f3385c0bb7e24892aecefffc51636
+TextScriptImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 248290
+  packageName: Game Action System - Gameplay Interaction Framework
+  packageVersion: 1.0
+  assetPath: Assets/Game Action System/Gizmos/Apache-License.txt
+  uploadId: 753397

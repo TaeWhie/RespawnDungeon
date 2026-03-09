@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 8c1d96eb74c359843aa6741e9e5ed85d
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {fileID: 2800000, guid: 0a737cbe3eb298c479b4a02006fb14e0, type: 3}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 248290
+  packageName: Game Action System - Gameplay Interaction Framework
+  packageVersion: 1.0
+  assetPath: Assets/Game Action System/Scripts/Tasks/Object/ToggletGameObjectsActiveStateTask.cs
+  uploadId: 753397

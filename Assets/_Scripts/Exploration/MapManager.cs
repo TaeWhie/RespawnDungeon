@@ -1,0 +1,271 @@
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.Tilemaps;
+
+/// <summary>
+/// 격자 기반 맵의 탐험 상태(visited)와 도달 불가 타일(unreachable)을 관리합니다.
+/// 타일맵 할당 시 맵 크기를 자동 계산하며, Gizmos로 탐험 과정을 시각화합니다.
+/// </summary>
+public class MapManager : MonoBehaviour
+{
+    [Header("Tilemap 연동")]
+    [Tooltip("바닥 타일맵. 비워두면 TilemapVisualizer에서 자동 검색합니다. 맵 크기 계산에 사용됩니다.")]
+    [SerializeField] private Tilemap _floorTilemap;
+
+    [Header("시각화 (Gizmos)")]
+    [Tooltip("체크 해제하면 Gizmo 그리기를 끄고 프레임이 안정됩니다. 디버깅할 때만 켜세요.")]
+    [SerializeField] private bool _drawGizmos = true;
+    [Tooltip("선택 시에만 Gizmo 그리기 (에디터). 맵이 클 때 프레임 보호")]
+    [SerializeField] private bool _gizmosOnlyWhenSelected = true;
+    [SerializeField] private Color _visitedColor = new Color(0.2f, 0.4f, 0.9f, 0.35f);
+    [SerializeField] private Color _unreachableColor = Color.red;
+    [SerializeField] private Color _globalTargetColor = Color.yellow;
+    [SerializeField] private float _gizmoCellSize = 0.9f;
+
+    // 맵 그리드: 셀 좌표 (minX + i, minY + j) -> 배열 인덱스 [i, j]
+    private int _minX, _minY, _width, _height;
+    private bool[,] _walkable;
+    private bool[,] _visited;
+    private bool[,] _unreachable;
+
+    /// <summary>현재 글로벌 목표 셀 (Navigating 시 시각화용)</summary>
+    private Vector2Int? _globalTargetCell;
+
+    /// <summary>맵 데이터가 준비되었는지</summary>
+    public bool IsInitialized => _walkable != null && _width > 0 && _height > 0;
+
+    public int Width => _width;
+    public int Height => _height;
+    public int MinX => _minX;
+    public int MinY => _minY;
+    public int VisitedCount { get; private set; }
+    public int WalkableCount { get; private set; }
+
+    private void Start()
+    {
+        EnsureFloorTilemap();
+    }
+
+    private void EnsureFloorTilemap()
+    {
+        if (_floorTilemap != null) return;
+        var vis = FindFirstObjectByType<TilemapVisualizer>();
+        if (vis != null) _floorTilemap = vis.FloorTilemap;
+    }
+
+    /// <summary>
+    /// 던전 생성기가 호출합니다. 이동 가능(바닥) 타일 집합으로 맵을 초기화하고,
+    /// visited / unreachable 배열을 맵 크기에 맞게 생성합니다.
+    /// </summary>
+    public void SetWalkableTiles(HashSet<Vector2Int> walkableSet)
+    {
+        EnsureFloorTilemap();
+        if (walkableSet == null || walkableSet.Count == 0)
+        {
+            _walkable = null;
+            _visited = null;
+            _unreachable = null;
+            _width = _height = 0;
+            return;
+        }
+
+        int minX = int.MaxValue, minY = int.MaxValue, maxX = int.MinValue, maxY = int.MinValue;
+        foreach (var c in walkableSet)
+        {
+            if (c.x < minX) minX = c.x;
+            if (c.y < minY) minY = c.y;
+            if (c.x > maxX) maxX = c.x;
+            if (c.y > maxY) maxY = c.y;
+        }
+
+        _minX = minX;
+        _minY = minY;
+        _width = maxX - minX + 1;
+        _height = maxY - minY + 1;
+
+        _walkable = new bool[_width, _height];
+        _visited = new bool[_width, _height];
+        _unreachable = new bool[_width, _height];
+
+        WalkableCount = 0;
+        VisitedCount = 0;
+        foreach (var c in walkableSet)
+        {
+            if (CellToIndex(c, out int i, out int j))
+            {
+                _walkable[i, j] = true;
+                WalkableCount++;
+            }
+        }
+    }
+
+    /// <summary>셀 좌표를 배열 인덱스로 변환. 범위 밖이면 false.</summary>
+    public bool CellToIndex(Vector2Int cell, out int i, out int j)
+    {
+        i = cell.x - _minX;
+        j = cell.y - _minY;
+        return i >= 0 && i < _width && j >= 0 && j < _height;
+    }
+
+    /// <summary>배열 인덱스를 셀 좌표로 변환</summary>
+    public Vector2Int IndexToCell(int i, int j)
+    {
+        return new Vector2Int(_minX + i, _minY + j);
+    }
+
+    public bool IsWalkable(Vector2Int cell)
+    {
+        if (!CellToIndex(cell, out int i, out int j)) return false;
+        return _walkable[i, j];
+    }
+
+    public bool IsVisited(Vector2Int cell)
+    {
+        if (!CellToIndex(cell, out int i, out int j)) return false;
+        return _visited[i, j];
+    }
+
+    public bool IsUnreachable(Vector2Int cell)
+    {
+        if (!CellToIndex(cell, out int i, out int j)) return false;
+        return _unreachable[i, j];
+    }
+
+    /// <summary>시야 반경 내 타일을 모두 방문 처리합니다. (Local Exploration 시야 업데이트)</summary>
+    public void MarkVisitedInRadius(Vector2Int center, int viewRadius)
+    {
+        if (!IsInitialized) return;
+        for (int dx = -viewRadius; dx <= viewRadius; dx++)
+        for (int dy = -viewRadius; dy <= viewRadius; dy++)
+        {
+            var cell = new Vector2Int(center.x + dx, center.y + dy);
+            if (IsWalkable(cell) && !IsVisited(cell))
+            {
+                MarkVisited(cell);
+            }
+        }
+    }
+
+    public void MarkVisited(Vector2Int cell)
+    {
+        if (!CellToIndex(cell, out int i, out int j)) return;
+        if (_visited[i, j]) return;
+        _visited[i, j] = true;
+        VisitedCount++;
+    }
+
+    public void MarkUnreachable(Vector2Int cell)
+    {
+        if (!CellToIndex(cell, out int i, out int j)) return;
+        _unreachable[i, j] = true;
+    }
+
+    /// <summary>글로벌 목표 셀 설정 (Navigating 시 Gizmos 표시용)</summary>
+    public void SetGlobalTarget(Vector2Int? cell)
+    {
+        _globalTargetCell = cell;
+    }
+
+    /// <summary>인접 4방향 중 방문하지 않은 이동 가능 타일 목록</summary>
+    public List<Vector2Int> GetUnvisitedNeighbors(Vector2Int cell)
+    {
+        var list = new List<Vector2Int>(4);
+        foreach (var dir in Direction2D.cardinalDirectionsList)
+        {
+            var next = cell + dir;
+            if (IsWalkable(next) && !IsVisited(next) && !IsUnreachable(next))
+                list.Add(next);
+        }
+        return list;
+    }
+
+    /// <summary>접근 가능한 모든 타일을 방문했는지</summary>
+    public bool IsExplorationComplete()
+    {
+        if (!IsInitialized) return false;
+        return VisitedCount >= WalkableCount;
+    }
+
+    /// <summary>방문 타일과 미방문 타일의 경계선인 프론티어 셀 목록을 반환합니다.</summary>
+    public List<Vector2Int> GetFrontierCells()
+    {
+        var frontier = new HashSet<Vector2Int>();
+        if (!IsInitialized) return new List<Vector2Int>(frontier);
+
+        for (int i = 0; i < _width; i++)
+        for (int j = 0; j < _height; j++)
+        {
+            if (!_walkable[i, j] || _visited[i, j] || _unreachable[i, j]) continue;
+            var cell = IndexToCell(i, j);
+            foreach (var dir in Direction2D.cardinalDirectionsList)
+            {
+                var neighbor = cell + dir;
+                if (IsWalkable(neighbor) && IsVisited(neighbor))
+                {
+                    frontier.Add(cell);
+                    break;
+                }
+            }
+        }
+        return new List<Vector2Int>(frontier);
+    }
+
+    /// <summary>월드 좌표 → 그리드 셀</summary>
+    public Vector2Int WorldToCell(Vector3 worldPos)
+    {
+        EnsureFloorTilemap();
+        if (_floorTilemap == null) return Vector2Int.zero;
+        var c = _floorTilemap.WorldToCell(worldPos);
+        return new Vector2Int(c.x, c.y);
+    }
+
+    /// <summary>그리드 셀 → 월드 좌표 (타일 중심)</summary>
+    public Vector3 CellToWorld(Vector2Int cell)
+    {
+        EnsureFloorTilemap();
+        if (_floorTilemap == null) return (Vector3)(Vector2)cell;
+        return _floorTilemap.CellToWorld((Vector3Int)cell) + _floorTilemap.cellSize * 0.5f;
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (!_drawGizmos || !IsInitialized) return;
+#if UNITY_EDITOR
+        if (_gizmosOnlyWhenSelected && UnityEditor.Selection.activeGameObject != gameObject)
+            return;
+#endif
+        // 셀 수가 많으면 매 N번째만 그려서 프레임 보호 (대략 500개 이하로 제한)
+        int step = 1;
+        int total = _width * _height;
+        if (total > 600) step = 2;
+        if (total > 1200) step = 3;
+
+        for (int i = 0; i < _width; i += step)
+        for (int j = 0; j < _height; j += step)
+        {
+            var cell = IndexToCell(i, j);
+            Vector3 center = CellToWorld(cell);
+            bool unreachable = _unreachable[i, j];
+            bool visited = _visited[i, j];
+
+            if (unreachable)
+            {
+                Gizmos.color = _unreachableColor;
+                float s = _gizmoCellSize * 0.4f;
+                Gizmos.DrawLine(center + new Vector3(-s, -s), center + new Vector3(s, s));
+                Gizmos.DrawLine(center + new Vector3(-s, s), center + new Vector3(s, -s));
+            }
+            else if (visited)
+            {
+                Gizmos.color = _visitedColor;
+                Gizmos.DrawCube(center, Vector3.one * _gizmoCellSize * 0.5f);
+            }
+        }
+
+        if (_globalTargetCell.HasValue && IsWalkable(_globalTargetCell.Value))
+        {
+            Gizmos.color = _globalTargetColor;
+            Gizmos.DrawSphere(CellToWorld(_globalTargetCell.Value), _gizmoCellSize * 0.6f);
+        }
+    }
+}

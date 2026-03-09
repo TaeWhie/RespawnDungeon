@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 628744727893d144498adf1c1036d911
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 248290
+  packageName: Game Action System - Gameplay Interaction Framework
+  packageVersion: 1.0
+  assetPath: Assets/Game Action System/Demo/Materials/Door.mat
+  uploadId: 753397
