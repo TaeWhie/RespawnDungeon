@@ -30,9 +30,9 @@ public class ExplorerAI : MonoBehaviour
 
     [Header("탐험 설정")]
     [Tooltip("현재 위치 기준 시야 반경(타일 수). 이 범위 내 타일을 즉시 visited 처리")]
-    [SerializeField] private int _viewRadius = 1;
+    [SerializeField] private int _viewRadius = 2;
     [Tooltip("이동 속도")]
-    [SerializeField] private float _speed = 5f;
+    [SerializeField] private float _speed = 2f;
     [Tooltip("웨이포인트 도착 판정 반경")]
     [SerializeField] private float _waypointReachRadius = 0.35f;
     [Tooltip("인접 탐색 시 여러 방향이 있을 때: true=시야를 가장 많이 밝힐 수 있는 방향 우선, 동점일 때 랜덤 / false=동점일 때만 첫 번째 우선")]

@@ -1495,10 +1495,9 @@ GameObject:
   - component: {fileID: 5740399887439733863}
   - component: {fileID: 4573762430089681264}
   - component: {fileID: 348506803336512374}
-  - component: {fileID: 2524128799438897804}
   m_Layer: 0
-  m_Name: Knight(Clone)
-  m_TagString: Player
+  m_Name: Character
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1791,32 +1790,6 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
---- !u!114 &2524128799438897804
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8405169357790782598}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dca3a5aa41b290c448853fa32b0fcacf, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::ExplorerAI
-  _mapManager: {fileID: 0}
-  _pathfinder: {fileID: 0}
-  _exitTransform: {fileID: 0}
-  _animator: {fileID: 0}
-  _viewRadius: 3
-  _speed: 2
-  _waypointReachRadius: 0.35
-  _randomizeLocalChoice: 1
-  _adventurousness: 1
-  _maxFrontierCandidatesForPath: 5
-  _runSpeedMultiplier: 1.5
-  _onReachedExit:
-    m_PersistentCalls:
-      m_Calls: []
 --- !u!1 &8474842492982620890
 GameObject:
   m_ObjectHideFlags: 0
@@ -1898,7 +1871,7 @@ SpriteRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 39
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 21300000, guid: 61d5284ba7c489646a7fb56941eb9eeb, type: 3}
+  m_Sprite: {fileID: 0}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -1906,7 +1879,7 @@ SpriteRenderer:
   m_Size: {x: 2, y: 2}
   m_AdaptiveModeThreshold: 0.5
   m_SpriteTileMode: 0
-  m_WasSpriteAssigned: 1
+  m_WasSpriteAssigned: 0
   m_SpriteSortPoint: 0
 --- !u!1 &8755500372353457144
 GameObject:

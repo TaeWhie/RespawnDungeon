@@ -15,6 +15,13 @@ public class TilemapVisualizer : MonoBehaviour
     [SerializeField]
     private GameObject startPrefab, exitPrefab;
 
+    [Header("파티 스폰")]
+    [Tooltip("던전 생성 시 리더(플레이어) 포함 파티 인원 수. 1이면 리더만 스폰합니다.")]
+    [SerializeField] private int _partyCount = 1;
+
+    [Tooltip("리더와 동료 모두에 사용할 공용 캐릭터 프리팹 (예: Assets/Character).")]
+    [SerializeField] private GameObject _characterPrefab;
+
     private List<GameObject> spawnedObjects = new List<GameObject>();
 
     public Tilemap FloorTilemap => floorTilemap;
@@ -26,21 +33,89 @@ public class TilemapVisualizer : MonoBehaviour
 
     public (GameObject start, GameObject exit) PlaceSpecialObjects(Vector2Int start, Vector2Int exit)
     {
-        GameObject startObj = null;
+        GameObject startMarker = null;
         GameObject exitObj = null;
         Vector3 startWorld = floorTilemap.CellToWorld((Vector3Int)start) + floorTilemap.cellSize * 0.5f;
         Vector3 exitWorld = floorTilemap.CellToWorld((Vector3Int)exit) + floorTilemap.cellSize * 0.5f;
 
-        // 씬에 이미 Player가 있으면 새로 생성하지 않고 시작 위치로만 이동
-        var existingPlayer = GameObject.FindWithTag("Player");
-        if (existingPlayer != null)
+        // 시작 마커: 순수 시각적 오브젝트
+        if (startPrefab != null)
         {
-            existingPlayer.transform.position = startWorld;
-            startObj = existingPlayer;
+            startMarker = SpawnObject(startPrefab, start);
         }
-        else if (startPrefab != null)
+
+        // 리더(플레이어) 스폰 또는 위치 이동
+        GameObject leader = GameObject.FindWithTag("Player");
+        if (leader != null)
         {
-            startObj = SpawnObject(startPrefab, start);
+            leader.transform.position = startWorld;
+        }
+        else if (_characterPrefab != null)
+        {
+            leader = Instantiate(_characterPrefab, startWorld, Quaternion.identity);
+        }
+
+        // 리더 컴포넌트 보장: Tag, Rigidbody2D, Collider2D, ExplorerAI
+        if (leader != null)
+        {
+            leader.tag = "Player";
+
+            var rb = leader.GetComponent<Rigidbody2D>();
+            if (rb == null)
+            {
+                rb = leader.AddComponent<Rigidbody2D>();
+                rb.gravityScale = 0f;
+                rb.constraints = RigidbodyConstraints2D.FreezeRotation;
+            }
+
+            if (leader.GetComponent<Collider2D>() == null)
+            {
+                var col = leader.AddComponent<CapsuleCollider2D>();
+                col.isTrigger = false;
+            }
+
+            if (leader.GetComponent<ExplorerAI>() == null)
+            {
+                leader.AddComponent<ExplorerAI>();
+            }
+        }
+
+        // 동료 스폰: 리더 포함 _partyCount 명이 되도록 공용 캐릭터 프리팹에서 생성
+        if (_partyCount > 1 && _characterPrefab != null && leader != null)
+        {
+            for (int i = 1; i < _partyCount; i++)
+            {
+                var follower = Instantiate(_characterPrefab, startWorld, Quaternion.identity);
+
+                // 최소한의 물리 컴포넌트만 보장
+                var rbF = follower.GetComponent<Rigidbody2D>();
+                if (rbF == null)
+                {
+                    rbF = follower.AddComponent<Rigidbody2D>();
+                    rbF.gravityScale = 0f;
+                    rbF.constraints = RigidbodyConstraints2D.FreezeRotation;
+                }
+
+                if (follower.GetComponent<Collider2D>() == null)
+                {
+                    var col = follower.AddComponent<CapsuleCollider2D>();
+                    col.isTrigger = false;
+                }
+
+                // 카메라용 태그
+                follower.tag = "Ally";
+
+                // 동료는 AI를 직접 붙이지 않고, 나중에 따로 Follow 로직을 추가할 수 있도록 비워둠
+            }
+        }
+
+        // 카메라가 처음부터 파티를 보도록 즉시 스냅
+        var mainCam = Camera.main;
+        if (mainCam != null)
+        {
+            var partyCam = mainCam.GetComponent<PartyCameraController>();
+            if (partyCam != null)
+                partyCam.SnapToPartyImmediate();
         }
 
         // 씬에 이미 Exit이 있으면 새로 생성하지 않고 출구 위치로만 이동
@@ -55,7 +130,8 @@ public class TilemapVisualizer : MonoBehaviour
             exitObj = SpawnObject(exitPrefab, exit);
         }
 
-        return (startObj, exitObj);
+        // start 반환값은 실제 리더(플레이어) 오브젝트를 의미하도록 설정
+        return (leader, exitObj);
     }
 
     private GameObject SpawnObject(GameObject prefab, Vector2Int position)

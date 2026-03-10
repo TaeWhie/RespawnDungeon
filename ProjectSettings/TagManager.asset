@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - Exit
+  - Ally
   layers:
   - Default
   - TransparentFX
