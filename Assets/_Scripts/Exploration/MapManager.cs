@@ -132,7 +132,7 @@ public class MapManager : MonoBehaviour
         return _unreachable[i, j];
     }
 
-    /// <summary>시야 반경 내 타일을 모두 방문 처리합니다. (Local Exploration 시야 업데이트)</summary>
+    /// <summary>시야 반경 내 타일을 모두 방문 처리합니다. 벽 너머는 보이지 않습니다 (라인 오브 사이트).</summary>
     public void MarkVisitedInRadius(Vector2Int center, int viewRadius)
     {
         if (!IsInitialized) return;
@@ -140,11 +140,31 @@ public class MapManager : MonoBehaviour
         for (int dy = -viewRadius; dy <= viewRadius; dy++)
         {
             var cell = new Vector2Int(center.x + dx, center.y + dy);
-            if (IsWalkable(cell) && !IsVisited(cell))
+            if (IsWalkable(cell) && !IsVisited(cell) && HasLineOfSight(center, cell))
             {
                 MarkVisited(cell);
             }
         }
+    }
+
+    /// <summary>두 셀 사이에 벽이 없으면 true. 그리드 직선 경로상 비-워커블(벽) 셀이 있으면 false.</summary>
+    public bool HasLineOfSight(Vector2Int from, Vector2Int to)
+    {
+        int x0 = from.x, y0 = from.y;
+        int x1 = to.x, y1 = to.y;
+        int steps = Mathf.Max(Mathf.Abs(x1 - x0), Mathf.Abs(y1 - y0));
+        if (steps == 0)
+            return IsWalkable(from);
+
+        for (int i = 0; i <= steps; i++)
+        {
+            float t = (float)i / steps;
+            int cx = Mathf.RoundToInt(x0 + t * (x1 - x0));
+            int cy = Mathf.RoundToInt(y0 + t * (y1 - y0));
+            if (!IsWalkable(new Vector2Int(cx, cy)))
+                return false;
+        }
+        return true;
     }
 
     public void MarkVisited(Vector2Int cell)
@@ -186,7 +206,7 @@ public class MapManager : MonoBehaviour
         return list;
     }
 
-    /// <summary>해당 셀을 중심으로 시야 반경 내 미방문·이동가능 타일 개수 (방문 처리 없음). 탐험 방향 선택용.</summary>
+    /// <summary>해당 셀을 중심으로 시야 반경 내 미방문·이동가능 타일 개수 (방문 처리 없음). 벽 너머는 제외.</summary>
     public int GetUnvisitedCountInRadius(Vector2Int center, int viewRadius)
     {
         if (!IsInitialized) return 0;
@@ -195,7 +215,7 @@ public class MapManager : MonoBehaviour
         for (int dy = -viewRadius; dy <= viewRadius; dy++)
         {
             var cell = new Vector2Int(center.x + dx, center.y + dy);
-            if (IsWalkable(cell) && !IsVisited(cell) && !IsUnreachable(cell))
+            if (IsWalkable(cell) && !IsVisited(cell) && !IsUnreachable(cell) && HasLineOfSight(center, cell))
                 count++;
         }
         return count;

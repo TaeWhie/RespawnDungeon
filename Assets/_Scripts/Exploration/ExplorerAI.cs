@@ -198,7 +198,7 @@ public class ExplorerAI : MonoBehaviour
     {
         int dx = Mathf.Abs(exitCell.x - myCell.x);
         int dy = Mathf.Abs(exitCell.y - myCell.y);
-        return dx <= _viewRadius && dy <= _viewRadius;
+        return dx <= _viewRadius && dy <= _viewRadius && _mapManager.HasLineOfSight(myCell, exitCell);
     }
 
     /// <summary>로컬 탐험: 인접 미방문 타일이 있으면 그쪽으로, 없으면 재타겟팅 코루틴 시작</summary>
