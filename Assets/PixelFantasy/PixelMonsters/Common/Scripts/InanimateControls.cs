@@ -1,5 +1,6 @@
 using Assets.PixelFantasy.Common.Scripts;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace Assets.PixelFantasy.PixelMonsters.Common.Scripts
 {
@@ -19,21 +20,24 @@ namespace Assets.PixelFantasy.PixelMonsters.Common.Scripts
 
         public void Update()
         {
-            if (Input.GetKeyDown(KeyCode.I))
+            var keyboard = Keyboard.current;
+            if (keyboard == null) return;
+
+            if (keyboard.iKey.wasPressedThisFrame)
             {
                 SetState(idle: true);
             }
-            else if (Input.GetKeyDown(KeyCode.D) && _animator.HasState(0, Animator.StringToHash("Destroy")))
+            else if (keyboard.dKey.wasPressedThisFrame && _animator.HasState(0, Animator.StringToHash("Destroy")))
             {
                 SetState(destroy: true);
                 EffectManager.Instance.CreateSpriteEffect(_creature, "Fall");
             }
-            else if (Input.GetKeyDown(KeyCode.O) && _animator.HasState(0, Animator.StringToHash("Open")))
+            else if (keyboard.oKey.wasPressedThisFrame && _animator.HasState(0, Animator.StringToHash("Open")))
             {
                 SetState(open: true);
                 EffectManager.Instance.CreateSpriteEffect(_creature, "Fall");
             }
-            else if (Input.GetKeyDown(KeyCode.L))
+            else if (keyboard.lKey.wasPressedThisFrame)
             {
                 EffectManager.Instance.Blink(_creature);
             }

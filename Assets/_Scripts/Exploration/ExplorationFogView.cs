@@ -47,7 +47,7 @@ public class ExplorationFogView : MonoBehaviour
         }
     }
 
-    /// <summary>모든 이동 가능 셀에 폭 타일을 칠합니다. 맵 재생성 시에도 호출됩니다.</summary>
+    /// <summary>모든 이동 가능 셀에 폭 타일을 칠합니다. 장애물(비워커블) 셀도 폭으로 덮어 미탐험 시 가려둡니다.</summary>
     private void PaintFogAll()
     {
         if (_mapManager == null || _fogTilemap == null || _fogTile == null)
@@ -59,7 +59,7 @@ public class ExplorationFogView : MonoBehaviour
         for (int y = _mapManager.MinY; y <= _mapManager.MinY + _mapManager.Height - 1; y++)
         {
             var cell = new Vector2Int(x, y);
-            if (_mapManager.IsWalkable(cell) && !_mapManager.IsVisited(cell))
+            if (!_mapManager.IsVisited(cell))
                 SetFogTile(cell, true);
         }
     }

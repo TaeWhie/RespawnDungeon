@@ -41,6 +41,7 @@ public class CorridorFirstDungeonGenerator : SimpleRandomWalkDungeonGenerator
 
         var (start, exit) = ProceduralGenerationAlgorithms.GetLongestPathPoints(floorPositions, roomCenters);
         var (startObj, exitObj) = tilemapVisualizer.PlaceSpecialObjects(start, exit);
+        tilemapVisualizer.PlacePerlinObstaclesAndTreasures(floorPositions, start, exit, LastUsedSeed);
         SetMapManagerWalkable(floorPositions);
         Debug.Log($"[CorridorFirst] Special objects placed. Start: {startObj != null}, Exit: {exitObj != null}");
     }

@@ -30,7 +30,7 @@ public class ExplorerAI : MonoBehaviour
 
     [Header("탐험 설정")]
     [Tooltip("현재 위치 기준 시야 반경(타일 수). 이 범위 내 타일을 즉시 visited 처리")]
-    [SerializeField] private int _viewRadius = 2;
+    [SerializeField] private int _viewRadius = 3;
     [Tooltip("이동 속도")]
     [SerializeField] private float _speed = 2f;
     [Tooltip("웨이포인트 도착 판정 반경")]

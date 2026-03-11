@@ -252,7 +252,7 @@ TilemapRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingOrder: 10
   m_MaskInteraction: 0
   m_ChunkSize: {x: 32, y: 32, z: 32}
   m_ChunkCullingBounds: {x: 0, y: 0, z: 0}
@@ -10192,6 +10192,11 @@ MonoBehaviour:
   wallDiagonalCornerUpLeft: {fileID: 11400000, guid: 990709a76d4f9124db8ca4026e79a932, type: 2}
   startPrefab: {fileID: 7226897409720442304, guid: 17237c75ce0f6e346962a4b6d6853d16, type: 3}
   exitPrefab: {fileID: 7226897409720442304, guid: f7f705f5a16ed90489ad29cc1e6073c2, type: 3}
+  _perlinScale: 0.2
+  _obstacleThreshold: 0.75
+  _treasureThreshold: 0.85
+  _obstaclePrefab: {fileID: 4038988234304929280, guid: aaa0b4f6ea6374742af505e9c8c77504, type: 3}
+  _treasureChestPrefab: {fileID: 9103507562460050893, guid: ba68d87b4d41bb1499b610d2f6ed65cb, type: 3}
   _partyCount: 3
   _characterPrefab: {fileID: 8405169357790782598, guid: 6e4c0ac43cef75f40a6f1bcafe093607, type: 3}
 --- !u!4 &1510052177

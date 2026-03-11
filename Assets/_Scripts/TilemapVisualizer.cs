@@ -15,6 +15,18 @@ public class TilemapVisualizer : MonoBehaviour
     [SerializeField]
     private GameObject startPrefab, exitPrefab;
 
+    [Header("펄린 노이즈 배치 (장애물·보물상자)")]
+    [Tooltip("노이즈 조밀도. 작을수록 군집이 커짐")]
+    [SerializeField] private float _perlinScale = 0.1f;
+    [Tooltip("이 값 이상인 구역에 장애물 배치 (군집)")]
+    [SerializeField] [Range(0f, 1f)] private float _obstacleThreshold = 0.6f;
+    [Tooltip("이 값 이상인 구역에 보물상자 배치 (희귀)")]
+    [SerializeField] [Range(0f, 1f)] private float _treasureThreshold = 0.85f;
+    [Tooltip("장애물 프리팹 (바위, 나무 등). 비우면 장애물 미배치")]
+    [SerializeField] private GameObject _obstaclePrefab;
+    [Tooltip("보물상자 프리팹. 비우면 보물상자 미배치")]
+    [SerializeField] private GameObject _treasureChestPrefab;
+
     [Header("파티 스폰")]
     [Tooltip("던전 생성 시 리더(플레이어) 포함 파티 인원 수. 1이면 리더만 스폰합니다.")]
     [SerializeField] private int _partyCount = 1;
@@ -143,6 +155,134 @@ public class TilemapVisualizer : MonoBehaviour
 
         // start 반환값은 실제 리더(플레이어) 오브젝트를 의미하도록 설정
         return (leader, exitObj);
+    }
+
+    /// <summary>
+    /// 펄린 노이즈로 장애물·보물상자를 군집감 있게 배치합니다.
+    /// 타일 위에 오브젝트를 생성하며, 장애물이 있는 셀은 floor에서 제거해 벽(비이동) 취급합니다.
+    /// 입구~출구 최장 경로 상의 셀에는 장애물/보물을 배치하지 않습니다.
+    /// </summary>
+    public void PlacePerlinObstaclesAndTreasures(HashSet<Vector2Int> floor, Vector2Int start, Vector2Int exit, int seed)
+    {
+        if (floor == null) return;
+
+        HashSet<Vector2Int> pathCells = GetCellsOnLongestPath(floor, start, exit);
+
+        float seedOffset = (seed % 10000) * 0.01f;
+
+        foreach (var cell in new List<Vector2Int>(floor))
+        {
+            if (cell == start || cell == exit) continue;
+            if (Mathf.Abs(cell.x - start.x) <= 1 && Mathf.Abs(cell.y - start.y) <= 1) continue;
+            if (Mathf.Abs(cell.x - exit.x) <= 1 && Mathf.Abs(cell.y - exit.y) <= 1) continue;
+            if (pathCells != null && pathCells.Contains(cell)) continue;
+
+            float nx = cell.x * _perlinScale + seedOffset;
+            float ny = cell.y * _perlinScale + seedOffset;
+            float obstacleNoise = Mathf.PerlinNoise(nx, ny);
+            float treasureNoise = Mathf.PerlinNoise(nx + 100f, ny + 100f);
+
+            if (_treasureChestPrefab != null && treasureNoise >= _treasureThreshold)
+            {
+                SpawnObject(_treasureChestPrefab, cell);
+                continue;
+            }
+            if (_obstaclePrefab != null && obstacleNoise >= _obstacleThreshold)
+            {
+                SpawnObject(_obstaclePrefab, cell);
+                floor.Remove(cell);
+            }
+        }
+    }
+
+    /// <summary>입구~출구 최장 경로(4방향, 단순 경로) 상의 셀 집합을 반환합니다. DFS 백트래킹 + 반복 한도로 근사합니다. 경로가 없으면 null.</summary>
+    private static HashSet<Vector2Int> GetCellsOnLongestPath(HashSet<Vector2Int> floor, Vector2Int start, Vector2Int exit)
+    {
+        if (floor == null || !floor.Contains(start) || !floor.Contains(exit)) return null;
+
+        List<Vector2Int> bestPath = null;
+        int bestLen = -1;
+        const int maxIterations = 300000;
+        int iterations = 0;
+
+        var path = new List<Vector2Int> { start };
+        var pathSet = new HashSet<Vector2Int> { start };
+
+        void Dfs(Vector2Int cur)
+        {
+            if (iterations++ >= maxIterations) return;
+            if (cur == exit)
+            {
+                if (path.Count > bestLen)
+                {
+                    bestLen = path.Count;
+                    bestPath = new List<Vector2Int>(path);
+                }
+                return;
+            }
+
+            foreach (var dir in FourDirs)
+            {
+                var next = cur + dir;
+                if (!floor.Contains(next) || pathSet.Contains(next)) continue;
+                path.Add(next);
+                pathSet.Add(next);
+                Dfs(next);
+                pathSet.Remove(next);
+                path.RemoveAt(path.Count - 1);
+            }
+        }
+
+        Dfs(start);
+
+        if (bestPath == null) return null;
+        var set = new HashSet<Vector2Int>(bestPath);
+        return set;
+    }
+
+    /// <summary>입구~출구 최단 경로(4방향) 상에 있는 셀 집합을 반환합니다. 경로가 없으면 null.</summary>
+    private static HashSet<Vector2Int> GetCellsOnShortestPath(HashSet<Vector2Int> floor, Vector2Int start, Vector2Int exit)
+    {
+        if (floor == null || !floor.Contains(start) || !floor.Contains(exit)) return null;
+
+        var distFromStart = BFSDistances(floor, start);
+        var distFromExit = BFSDistances(floor, exit);
+
+        if (!distFromStart.TryGetValue(exit, out int pathLen) || pathLen < 0) return null;
+
+        var pathCells = new HashSet<Vector2Int>();
+        foreach (var c in floor)
+        {
+            if (distFromStart.TryGetValue(c, out int ds) && distFromExit.TryGetValue(c, out int de)
+                && ds + de == pathLen)
+                pathCells.Add(c);
+        }
+        return pathCells;
+    }
+
+    private static readonly Vector2Int[] FourDirs = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
+
+    private static Dictionary<Vector2Int, int> BFSDistances(HashSet<Vector2Int> floor, Vector2Int from)
+    {
+        var dist = new Dictionary<Vector2Int, int> { [from] = 0 };
+        var q = new Queue<Vector2Int>();
+        q.Enqueue(from);
+
+        while (q.Count > 0)
+        {
+            var cur = q.Dequeue();
+            int d = dist[cur];
+            foreach (var dir in FourDirs)
+            {
+                var next = cur + dir;
+                if (floor.Contains(next) && !dist.ContainsKey(next))
+                {
+                    dist[next] = d + 1;
+                    q.Enqueue(next);
+                }
+            }
+        }
+        return dist;
     }
 
     private GameObject SpawnObject(GameObject prefab, Vector2Int position)

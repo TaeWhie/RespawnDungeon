@@ -132,7 +132,8 @@ public class MapManager : MonoBehaviour
         return _unreachable[i, j];
     }
 
-    /// <summary>시야 반경 내 타일을 모두 방문 처리합니다. 벽 너머는 보이지 않습니다 (라인 오브 사이트).</summary>
+    /// <summary>시야 반경 내 타일을 모두 방문 처리합니다. 벽 너머는 보이지 않습니다 (라인 오브 사이트).
+    /// 장애물(비워커블) 셀도 시야에 들어오면 방문 처리해 안개가 벗겨지도록 합니다.</summary>
     public void MarkVisitedInRadius(Vector2Int center, int viewRadius)
     {
         if (!IsInitialized) return;
@@ -140,11 +141,39 @@ public class MapManager : MonoBehaviour
         for (int dy = -viewRadius; dy <= viewRadius; dy++)
         {
             var cell = new Vector2Int(center.x + dx, center.y + dy);
+            if (!CellToIndex(cell, out _, out _)) continue;
+
             if (IsWalkable(cell) && !IsVisited(cell) && HasLineOfSight(center, cell))
             {
                 MarkVisited(cell);
             }
+            else if (!IsWalkable(cell) && !IsVisited(cell) && HasLineOfSightToCell(center, cell))
+            {
+                MarkVisited(cell);
+            }
         }
+    }
+
+    /// <summary>목표 셀까지 라인 오브 사이트. 목표 셀 자체는 비워커블(장애물)이어도 true 가능.</summary>
+    private bool HasLineOfSightToCell(Vector2Int from, Vector2Int to)
+    {
+        int x0 = from.x, y0 = from.y;
+        int x1 = to.x, y1 = to.y;
+        int steps = Mathf.Max(Mathf.Abs(x1 - x0), Mathf.Abs(y1 - y0));
+        if (steps == 0)
+            return true;
+
+        for (int i = 0; i <= steps; i++)
+        {
+            float t = (float)i / steps;
+            int cx = Mathf.RoundToInt(x0 + t * (x1 - x0));
+            int cy = Mathf.RoundToInt(y0 + t * (y1 - y0));
+            var cur = new Vector2Int(cx, cy);
+            if (cur == to) continue;
+            if (!IsWalkable(cur))
+                return false;
+        }
+        return true;
     }
 
     /// <summary>두 셀 사이에 벽이 없으면 true. 그리드 직선 경로상 비-워커블(벽) 셀이 있으면 false.</summary>
