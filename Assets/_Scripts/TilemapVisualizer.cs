@@ -39,6 +39,14 @@ public class TilemapVisualizer : MonoBehaviour
     [Tooltip("상자 간 최소 맨해튼 거리 (이 값 미만이면 뭉침으로 간주)")]
     [SerializeField] private int _chestMinSpacing = 4;
 
+    [Header("문 배치")]
+    [Tooltip("중요 복도(출구/황금상자/고립 방 경로)에 배치할 문 프리팹. 비우면 문 미배치")]
+    [SerializeField] private GameObject _doorPrefab;
+    [Tooltip("최대 문 개수")]
+    [SerializeField] private int _doorCount = 4;
+    [Tooltip("문 간 최소 맨해튼 거리")]
+    [SerializeField] private int _doorMinSpacing = 5;
+
     [Header("파티 스폰")]
     [Tooltip("던전 생성 시 리더(플레이어) 포함 파티 인원 수. 1이면 리더만 스폰합니다.")]
     [SerializeField] private int _partyCount = 1;
@@ -183,9 +191,12 @@ public class TilemapVisualizer : MonoBehaviour
         if (floor == null) return;
 
         _lastPlacedChests.Clear();
-        HashSet<Vector2Int> pathCells = GetCellsOnLongestPath(floor, start, exit);
+        // 문/상자/장애물 경로 계산용으로, 원본 floor를 보존한 복사본을 사용합니다.
+        var floorForPaths = new HashSet<Vector2Int>(floor);
+
+        HashSet<Vector2Int> pathCells = GetCellsOnLongestPath(floorForPaths, start, exit);
         Dictionary<Vector2Int, int> distanceFromPath = pathCells != null
-            ? MultiSourceBFS(floor, pathCells)
+            ? MultiSourceBFS(floorForPaths, pathCells)
             : new Dictionary<Vector2Int, int>();
 
         var validChestCells = new List<Vector2Int>();
@@ -201,7 +212,7 @@ public class TilemapVisualizer : MonoBehaviour
             {
                 int pathDist;
                 bool farFromPath = distanceFromPath.TryGetValue(c, out pathDist) && pathDist >= _goldenChestMinPathDistance;
-                bool isDeadEnd = CountFloorNeighbors(floor, c) <= 1;
+                bool isDeadEnd = CountFloorNeighbors(floorForPaths, c) <= 1;
                 if (farFromPath || isDeadEnd)
                     goldenCandidatesList.Add(c);
             }
@@ -253,6 +264,65 @@ public class TilemapVisualizer : MonoBehaviour
                 var obj = SpawnObject(_obstaclePrefab, cell);
                 EnsureVisibilityByViewStage(obj);
                 floor.Remove(cell);
+            }
+        }
+
+        // -------------------------------
+        // 중요 복도에만 문 배치
+        // - 출구로 가는 최단 경로
+        // - 각 황금 상자까지의 최단 경로
+        // 위 경로에서 "양쪽이 복도인" 좁은 복도 셀만 문 후보로 사용합니다.
+        // -------------------------------
+        if (_doorPrefab != null && _doorCount > 0)
+        {
+            var doorCandidates = new HashSet<Vector2Int>();
+
+            // 1) 시작 → 출구 최단 경로
+            var exitShortest = GetCellsOnShortestPath(floorForPaths, start, exit);
+            if (exitShortest != null)
+            {
+                foreach (var c in exitShortest)
+                {
+                    if (c == start || c == exit) continue;
+                    if (Mathf.Abs(c.x - start.x) <= 1 && Mathf.Abs(c.y - start.y) <= 1) continue;
+                    if (Mathf.Abs(c.x - exit.x) <= 1 && Mathf.Abs(c.y - exit.y) <= 1) continue;
+                    // 양쪽이 복도(인접 floor 2개)인 좁은 복도이면서, 좌우 또는 상하에 벽이 끼인 "문틀" 위치만 후보로 사용
+                    if (CountFloorNeighbors(floorForPaths, c) == 2 && IsGoodDoorCell(floorForPaths, c))
+                        doorCandidates.Add(c);
+                }
+            }
+
+            // 2) 각 황금 상자까지의 최단 경로
+            if (chosenGolden != null)
+            {
+                foreach (var gold in chosenGolden)
+                {
+                    var toGold = GetCellsOnShortestPath(floorForPaths, start, gold);
+                    if (toGold == null) continue;
+                    foreach (var c in toGold)
+                    {
+                        if (c == start || c == exit || c == gold) continue;
+                        if (Mathf.Abs(c.x - start.x) <= 1 && Mathf.Abs(c.y - start.y) <= 1) continue;
+                        if (Mathf.Abs(c.x - exit.x) <= 1 && Mathf.Abs(c.y - exit.y) <= 1) continue;
+                        if (Mathf.Abs(c.x - gold.x) <= 1 && Mathf.Abs(c.y - gold.y) <= 1) continue;
+                        if (CountFloorNeighbors(floorForPaths, c) == 2 && IsGoodDoorCell(floorForPaths, c))
+                            doorCandidates.Add(c);
+                    }
+                }
+            }
+
+            if (doorCandidates.Count > 0)
+            {
+                int doorSpacing = Mathf.Max(1, _doorMinSpacing);
+                var doorList = new List<Vector2Int>(doorCandidates);
+                var doorCells = PickChestPositionsWithSpacing(doorList, _doorCount, doorSpacing, null);
+                foreach (var cell in doorCells)
+                {
+                    // 문은 일단 "닫힌 문 = 벽"처럼 취급: floor에서 제거해서 탐험 AI에겐 비이동 셀로 보이게 함
+                    var obj = SpawnObject(_doorPrefab, cell);
+                    EnsureVisibilityByViewStage(obj);
+                    floor.Remove(cell);
+                }
             }
         }
     }
@@ -384,6 +454,27 @@ public class TilemapVisualizer : MonoBehaviour
         foreach (var dir in FourDirs)
             if (floor.Contains(cell + dir)) n++;
         return n;
+    }
+
+    /// <summary>
+    /// 문 배치용 "좋은" 복도 셀인지 여부.
+    /// - 좌우가 모두 floor이고, 위/아래는 floor가 아닌 경우 (가로 복도, 위·아래가 벽)
+    /// - 위/아래가 모두 floor이고, 좌/우는 floor가 아닌 경우 (세로 복도, 좌·우가 벽)
+    /// 이런 셀은 룸/복도 사이에 끼인 전형적인 문 위치가 됩니다.
+    /// </summary>
+    private static bool IsGoodDoorCell(HashSet<Vector2Int> floor, Vector2Int cell)
+    {
+        bool left = floor.Contains(cell + Vector2Int.left);
+        bool right = floor.Contains(cell + Vector2Int.right);
+        bool up = floor.Contains(cell + Vector2Int.up);
+        bool down = floor.Contains(cell + Vector2Int.down);
+
+        // 가로 복도: 좌우가 길, 위/아래는 벽
+        bool horizontalDoor = left && right && !up && !down;
+        // 세로 복도: 위/아래가 길, 좌/우는 벽
+        bool verticalDoor = up && down && !left && !right;
+
+        return horizontalDoor || verticalDoor;
     }
 
     /// <summary>후보 셀에서 최대 count개를 골라, 서로 및 excludePositions와 최소 minSpacing(맨해튼) 이상 떨어지게 합니다.</summary>

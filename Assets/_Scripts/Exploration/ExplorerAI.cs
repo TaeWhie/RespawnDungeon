@@ -244,6 +244,26 @@ public class ExplorerAI : MonoBehaviour
         UpdateMovementAnimation(myCell);
     }
 
+    private void OnDrawGizmos()
+    {
+        if (_mapManager == null || !_mapManager.DrawGizmos) return;
+        if (_currentPath == null || _currentPath.Count < 2) return;
+
+        Gizmos.color = Color.cyan;
+        for (int i = 0; i < _currentPath.Count - 1; i++)
+        {
+            var a = _mapManager.CellToWorld(_currentPath[i]);
+            var b = _mapManager.CellToWorld(_currentPath[i + 1]);
+            Gizmos.DrawLine(a, b);
+        }
+
+        if (_globalTargetCell.HasValue)
+        {
+            Gizmos.color = Color.blue;
+            Gizmos.DrawSphere(_mapManager.CellToWorld(_globalTargetCell.Value), 0.1f);
+        }
+    }
+
     /// <summary>시야 거리: 셀 간 체비쇼프 거리 (시야가 정사각형이므로)</summary>
     private static int CellDistance(Vector2Int a, Vector2Int b)
     {

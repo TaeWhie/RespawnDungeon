@@ -15,12 +15,14 @@ public class MapManager : MonoBehaviour
     [Header("시각화 (Gizmos)")]
     [Tooltip("체크 해제하면 Gizmo 그리기를 끄고 프레임이 안정됩니다. 디버깅할 때만 켜세요.")]
     [SerializeField] private bool _drawGizmos = true;
-    [Tooltip("선택 시에만 Gizmo 그리기 (에디터). 맵이 클 때 프레임 보호")]
-    [SerializeField] private bool _gizmosOnlyWhenSelected = true;
     [SerializeField] private Color _visitedColor = new Color(0.2f, 0.4f, 0.9f, 0.35f);
     [SerializeField] private Color _unreachableColor = Color.red;
     [SerializeField] private Color _globalTargetColor = Color.yellow;
     [SerializeField] private float _gizmoCellSize = 0.9f;
+
+    [Header("Debug")]
+    [Tooltip("개발용: 시야/안개 무시하고 맵 전체를 항상 보이게 할지 여부")]
+    [SerializeField] private bool _debugRevealAll = false;
 
     // 맵 그리드: 셀 좌표 (minX + i, minY + j) -> 배열 인덱스 [i, j]
     private int _minX, _minY, _width, _height;
@@ -53,6 +55,20 @@ public class MapManager : MonoBehaviour
     public int MinY => _minY;
     public int VisitedCount { get; private set; }
     public int WalkableCount { get; private set; }
+
+    /// <summary>개발용: 시야/안개 무시하고 맵 전체를 항상 보이게 할지 여부.</summary>
+    public bool DebugRevealAll
+    {
+        get => _debugRevealAll;
+        set => _debugRevealAll = value;
+    }
+
+    /// <summary>개발용: Gizmo 그리기 on/off.</summary>
+    public bool DrawGizmos
+    {
+        get => _drawGizmos;
+        set => _drawGizmos = value;
+    }
 
     private void Start()
     {
@@ -465,10 +481,6 @@ public class MapManager : MonoBehaviour
     private void OnDrawGizmos()
     {
         if (!_drawGizmos || !IsInitialized) return;
-#if UNITY_EDITOR
-        if (_gizmosOnlyWhenSelected && UnityEditor.Selection.activeGameObject != gameObject)
-            return;
-#endif
         // 셀 수가 많으면 매 N번째만 그려서 프레임 보호 (대략 500개 이하로 제한)
         int step = 1;
         int total = _width * _height;

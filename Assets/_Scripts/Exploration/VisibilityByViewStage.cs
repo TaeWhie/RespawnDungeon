@@ -35,7 +35,7 @@ public class VisibilityByViewStage : MonoBehaviour
 
         Vector2Int cell = _mapManager.WorldToCell(transform.position);
         // 1단계에서만 보이거나, 한 번 1단계로 밝혀진 셀은 2단계에서도 계속 표시
-        bool visible = _mapManager.IsInFullView(cell);
+        bool visible = _mapManager.DebugRevealAll || _mapManager.IsInFullView(cell);
 
         if (visible == _lastVisible)
             return;

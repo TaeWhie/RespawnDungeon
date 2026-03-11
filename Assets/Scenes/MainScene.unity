@@ -173,6 +173,7 @@ MonoBehaviour:
   _thickFogAlpha: 1
   _lightFogAlpha: 0.45
   _viewUpdateRadius: 10
+  _showDebugRevealButton: 1
 --- !u!1839735485 &66020327
 Tilemap:
   m_ObjectHideFlags: 0
@@ -10209,6 +10210,9 @@ MonoBehaviour:
   _goldenChestCount: 3
   _treasureChestCount: 8
   _chestMinSpacing: 4
+  _doorPrefab: {fileID: 4156020295426105175, guid: b17498375ed9cb74d9b6c1a63ce3055b, type: 3}
+  _doorCount: 4
+  _doorMinSpacing: 5
   _partyCount: 3
   _characterPrefab: {fileID: 8405169357790782598, guid: 6e4c0ac43cef75f40a6f1bcafe093607, type: 3}
 --- !u!4 &1510052177
@@ -36213,6 +36217,7 @@ MonoBehaviour:
   _unreachableColor: {r: 1, g: 0, b: 0, a: 1}
   _globalTargetColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
   _gizmoCellSize: 0.9
+  _debugRevealAll: 0
 --- !u!4 &2050850801
 Transform:
   m_ObjectHideFlags: 0

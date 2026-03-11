@@ -337,6 +337,26 @@ public class PartyFollower : MonoBehaviour
         return false;
     }
 
+    private void OnDrawGizmos()
+    {
+        if (_mapManager == null || !_mapManager.DrawGizmos) return;
+        if (_currentPath == null || _currentPath.Count < 2) return;
+
+        Gizmos.color = Color.green;
+        for (int i = 0; i < _currentPath.Count - 1; i++)
+        {
+            var a = _mapManager.CellToWorld(_currentPath[i]);
+            var b = _mapManager.CellToWorld(_currentPath[i + 1]);
+            Gizmos.DrawLine(a, b);
+        }
+
+        if (_lastTargetCell.HasValue)
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawSphere(_mapManager.CellToWorld(_lastTargetCell.Value), 0.08f);
+        }
+    }
+
     /// <summary>리더 참조 설정 (런타임에 동료를 배치할 때 사용)</summary>
     public void SetLeader(Transform leader)
     {

@@ -77,6 +77,15 @@ public class ExplorationFogView : MonoBehaviour
     {
         if (_mapManager == null || !_mapManager.IsInitialized || _fogTilemap == null || _fogTile == null)
             return;
+
+        // 개발용: 전체 시야 보기 모드일 때는 맵 전체를 강제로 갱신
+        if (_mapManager.DebugRevealAll)
+        {
+            RefreshFogAllDebugReveal();
+            RefreshObjectsVisibility();
+            return;
+        }
+
         RefreshFogInViewRegion();
         RefreshObjectsVisibility();
     }
@@ -156,7 +165,7 @@ public class ExplorationFogView : MonoBehaviour
             var v = _cachedVisibilityObjects[i];
             if (v == null || !v.gameObject) continue;
             Vector2Int cell = _mapManager.WorldToCell(v.transform.position);
-            bool shouldBeActive = _mapManager.IsInFullView(cell);
+            bool shouldBeActive = _mapManager.DebugRevealAll || _mapManager.IsInFullView(cell);
             if (v.gameObject.activeSelf != shouldBeActive)
                 v.gameObject.SetActive(shouldBeActive);
         }
@@ -227,6 +236,45 @@ public class ExplorationFogView : MonoBehaviour
             }
         }
     }
+
+    /// <summary>개발용: 시야/안개를 무시하고 맵 전체 바닥·벽을 항상 보이게 합니다.</summary>
+    private void RefreshFogAllDebugReveal()
+    {
+        if (_mapManager == null || _fogTilemap == null)
+            return;
+
+        _fogTilemap.ClearAllTiles();
+
+        for (int x = _mapManager.MinX; x <= _mapManager.MinX + _mapManager.Width - 1; x++)
+        for (int y = _mapManager.MinY; y <= _mapManager.MinY + _mapManager.Height - 1; y++)
+        {
+            var cell = new Vector2Int(x, y);
+            var pos = new Vector3Int(cell.x, cell.y, 0);
+
+            // 안개 없음 + 바닥/벽 항상 표시
+            if (_floorTilemap != null && _floorTile != null && _mapManager.IsWalkable(cell))
+                _floorTilemap.SetTile(pos, _floorTile);
+            if (_wallTilemap != null && _wallTilesCache.TryGetValue(cell, out var wt))
+                _wallTilemap.SetTile(pos, wt);
+        }
+    }
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    /// <summary>디버그 패널에서 Reveal All을 켰을 때, 전체 맵을 한 번 갱신해 줍니다.</summary>
+    public void DebugForceRevealAll()
+    {
+        RefreshFogAllDebugReveal();
+        RefreshObjectsVisibility();
+    }
+
+    /// <summary>디버그 패널에서 Reveal All을 껐을 때, 원래 안개 규칙으로 전체를 한 번 리셋합니다.</summary>
+    public void DebugForceNormalFog()
+    {
+        CacheWallTiles();
+        RefreshFogAll();
+        RefreshObjectsVisibility();
+    }
+#endif
 
     private void SetFog(Vector2Int cell, float alpha)
     {

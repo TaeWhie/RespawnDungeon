@@ -59,6 +59,13 @@
 
 ## 기록
 
+### 2025-03-11 — 문 배치·황금방 시도 롤백, 디버그 패널/기즈모 통합
+- **TilemapVisualizer / 던전 구조**: 황금 방 경계 벽/장애물 실험 코드 제거, 상자/장애물/문 배치만 남기고 맵 구조는 원래대로 유지.
+- **문 배치**: 출구·황금상자 필수 경로에서 "양옆이 복도인 복도 셀"만 문 후보로 사용하는 필터 유지, Door 프리팹 추가.
+- **디버그 패널**: `ExplorationDebugPanel` 추가로 Reveal Map(전체 시야) 및 MapManager 기즈모 on/off를 한 곳에서 토글.
+- **시야/기즈모**: `MapManager.DebugRevealAll` 기반 전체 시야 토글, `ExplorationFogView`에 DebugForceRevealAll/NormalFog 도입, VisibilityByViewStage는 DebugRevealAll 시 항상 보이도록. MapManager 기즈모 옵션 단순화(DrawGizmos만 사용).
+- **경로 기즈모**: `ExplorerAI`와 `PartyFollower`에 OnDrawGizmos 추가, 리더/동료의 현재 A* 경로와 목표 셀을 색상별 선·구로 시각화.
+
 ### 2025-03-11 — 보물상자 픽·열기, 상자 Animator Bool
 - **ExplorerAI**: 보물상자 발견 시 인접 stand 셀으로 이동, **목표 도착 후에만** PickingChest 전환(_navigatingToChestCell). Pick 파라미터 Bool로 켜고, 같은 자리에서 두 번 반복 후 꺼서 Exploring 복귀.
 - **ChestOpenable**: 상자 픽 시 Idle=false, Open=true 설정 후 일정 시간 뒤 Destroy. 셀 walkable 복구. Animator GetComponent/GetComponentInChildren으로 캐시.
