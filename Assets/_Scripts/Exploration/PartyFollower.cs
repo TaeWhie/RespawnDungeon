@@ -52,6 +52,8 @@ public class PartyFollower : MonoBehaviour
     [Header("시야 (파티 공유)")]
     [Tooltip("현재 위치 기준 시야 반경(타일 수). 이 범위 내 타일을 파티 공유 맵에 방문 처리합니다.")]
     [SerializeField] private int _viewRadius = 2;
+    [Tooltip("2단계 시야 반경(구조만 보임). 이 범위까지 벽/바닥이 보이고, _viewRadius 안에서만 장애물 등 전부 보임")]
+    [SerializeField] private int _viewRadiusStructure = 4;
 
     private Rigidbody2D _rigidbody;
     private Vector2 _lastLeaderPosition;
@@ -128,7 +130,7 @@ public class PartyFollower : MonoBehaviour
         }
 
         // 시야: 파티 공유 맵에 이 동료 위치 기준 반경 내 타일 방문 처리 (리더 시야와 동일 맵에 합쳐짐)
-        _mapManager.MarkVisitedInRadius(myCell, _viewRadius);
+        _mapManager.MarkVisitedInRadius(myCell, _viewRadius, _viewRadiusStructure);
 
         // 리더 이동 방향 갱신
         Vector2 delta = leaderPos - _lastLeaderPosition;

@@ -37,6 +37,8 @@ public class TilemapVisualizer : MonoBehaviour
     private List<GameObject> spawnedObjects = new List<GameObject>();
 
     public Tilemap FloorTilemap => floorTilemap;
+    public Tilemap WallTilemap => wallTilemap;
+    public TileBase FloorTile => floorTile;
 
     public void PaintFloorTiles(IEnumerable<Vector2Int> floorPositions)
     {
@@ -184,12 +186,14 @@ public class TilemapVisualizer : MonoBehaviour
 
             if (_treasureChestPrefab != null && treasureNoise >= _treasureThreshold)
             {
-                SpawnObject(_treasureChestPrefab, cell);
+                var obj = SpawnObject(_treasureChestPrefab, cell);
+                EnsureVisibilityByViewStage(obj);
                 continue;
             }
             if (_obstaclePrefab != null && obstacleNoise >= _obstacleThreshold)
             {
-                SpawnObject(_obstaclePrefab, cell);
+                var obj = SpawnObject(_obstaclePrefab, cell);
+                EnsureVisibilityByViewStage(obj);
                 floor.Remove(cell);
             }
         }
@@ -291,6 +295,13 @@ public class TilemapVisualizer : MonoBehaviour
         var spawned = Instantiate(prefab, worldPos, Quaternion.identity);
         spawnedObjects.Add(spawned);
         return spawned;
+    }
+
+    private static void EnsureVisibilityByViewStage(GameObject obj)
+    {
+        if (obj == null) return;
+        if (obj.GetComponent<VisibilityByViewStage>() == null)
+            obj.AddComponent<VisibilityByViewStage>();
     }
 
     private void PaintTiles(IEnumerable<Vector2Int> positions, Tilemap tilemap, TileBase tile)

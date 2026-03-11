@@ -31,6 +31,8 @@ public class ExplorerAI : MonoBehaviour
     [Header("탐험 설정")]
     [Tooltip("현재 위치 기준 시야 반경(타일 수). 이 범위 내 타일을 즉시 visited 처리")]
     [SerializeField] private int _viewRadius = 3;
+    [Tooltip("2단계 시야 반경(구조만 보임). 이 범위까지 벽/바닥이 보이고, _viewRadius 안에서만 장애물 등 전부 보임")]
+    [SerializeField] private int _viewRadiusStructure = 6;
     [Tooltip("이동 속도")]
     [SerializeField] private float _speed = 2f;
     [Tooltip("웨이포인트 도착 판정 반경")]
@@ -119,7 +121,7 @@ public class ExplorerAI : MonoBehaviour
         }
 
         // 시야 반경 업데이트: 현재 위치 중심으로 반경 내 타일 방문 처리 (모든 모드에서 수행)
-        _mapManager.MarkVisitedInRadius(myCell, _viewRadius);
+        _mapManager.MarkVisitedInRadius(myCell, _viewRadius, _viewRadiusStructure);
 
         // 출구가 보이면 탐색 중단 후 출구로 이동 (리더가 보든 동료가 보든 파티 중 누군가 발견하면 출구로 감)
         Vector2Int? exitCell = GetExitCell();

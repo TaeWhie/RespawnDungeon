@@ -28,6 +28,12 @@ public class MapManager : MonoBehaviour
     private bool[,] _visited;
     private bool[,] _unreachable;
 
+    /// <summary>현재 프레임에서 "1단계(전부 보임)" 시야 안에 있는 셀. 매 프레임 갱신.</summary>
+    private HashSet<Vector2Int> _currentFullView = new HashSet<Vector2Int>();
+    /// <summary>한 번이라도 1단계로 밝혀진 셀. 맵 재생성 시 초기화.</summary>
+    private HashSet<Vector2Int> _everFullView = new HashSet<Vector2Int>();
+    private int _lastViewUpdateFrame = -1;
+
     /// <summary>현재 글로벌 목표 셀 (Navigating 시 시각화용)</summary>
     private Vector2Int? _globalTargetCell;
 
@@ -66,6 +72,8 @@ public class MapManager : MonoBehaviour
             _visited = null;
             _unreachable = null;
             _width = _height = 0;
+            _currentFullView?.Clear();
+            _everFullView?.Clear();
             return;
         }
 
@@ -86,6 +94,7 @@ public class MapManager : MonoBehaviour
         _walkable = new bool[_width, _height];
         _visited = new bool[_width, _height];
         _unreachable = new bool[_width, _height];
+        _everFullView?.Clear();
 
         WalkableCount = 0;
         VisitedCount = 0;
@@ -134,24 +143,75 @@ public class MapManager : MonoBehaviour
 
     /// <summary>시야 반경 내 타일을 모두 방문 처리합니다. 벽 너머는 보이지 않습니다 (라인 오브 사이트).
     /// 장애물(비워커블) 셀도 시야에 들어오면 방문 처리해 안개가 벗겨지도록 합니다.</summary>
+    /// <param name="center">시야 중심 셀</param>
+    /// <param name="viewRadius">방문 처리할 반경(타일 수). 이 반경까지 안개 제거(2단계: 구조만 보임).</param>
     public void MarkVisitedInRadius(Vector2Int center, int viewRadius)
     {
+        MarkVisitedInRadius(center, viewRadius, viewRadius);
+    }
+
+    /// <summary>2단계 시야(넓은 반경)와 1단계 시야(좁은 반경)를 구분해 갱신합니다.</summary>
+    /// <param name="center">시야 중심 셀</param>
+    /// <param name="fullViewRadius">1단계 반경: 이 안이면 장애물 등 전부 보임</param>
+    /// <param name="structureViewRadius">2단계 반경: 이 안이면 벽/바닥만 보임(안개 제거). fullViewRadius 이상이어야 함.</param>
+    public void MarkVisitedInRadius(Vector2Int center, int fullViewRadius, int structureViewRadius)
+    {
         if (!IsInitialized) return;
-        for (int dx = -viewRadius; dx <= viewRadius; dx++)
-        for (int dy = -viewRadius; dy <= viewRadius; dy++)
+
+        int frame = Time.frameCount;
+        if (frame != _lastViewUpdateFrame)
+        {
+            _lastViewUpdateFrame = frame;
+            _currentFullView.Clear();
+        }
+
+        int outer = Mathf.Max(structureViewRadius, fullViewRadius);
+
+        for (int dx = -outer; dx <= outer; dx++)
+        for (int dy = -outer; dy <= outer; dy++)
         {
             var cell = new Vector2Int(center.x + dx, center.y + dy);
             if (!CellToIndex(cell, out _, out _)) continue;
 
-            if (IsWalkable(cell) && !IsVisited(cell) && HasLineOfSight(center, cell))
+            int dist = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy));
+            bool inStructure = dist <= outer;
+            bool inFull = dist <= fullViewRadius;
+
+            if (inStructure)
             {
-                MarkVisited(cell);
+                if (IsWalkable(cell) && !IsVisited(cell) && HasLineOfSight(center, cell))
+                    MarkVisited(cell);
+                else if (!IsWalkable(cell) && !IsVisited(cell) && HasLineOfSightToCell(center, cell))
+                    MarkVisited(cell);
             }
-            else if (!IsWalkable(cell) && !IsVisited(cell) && HasLineOfSightToCell(center, cell))
+
+            if (inFull)
             {
-                MarkVisited(cell);
+                if (IsWalkable(cell) && HasLineOfSight(center, cell))
+                {
+                    _currentFullView.Add(cell);
+                    _everFullView.Add(cell);
+                }
+                else if (!IsWalkable(cell) && HasLineOfSightToCell(center, cell))
+                {
+                    _currentFullView.Add(cell);
+                    _everFullView.Add(cell);
+                }
             }
         }
+    }
+
+    /// <summary>해당 셀이 현재 1단계 시야(전부 보임) 안에 있거나, 한 번이라도 1단계로 밝혀진 적 있으면 true. (안개·바닥 복원용)</summary>
+    public bool IsInFullView(Vector2Int cell)
+    {
+        if (_currentFullView != null && _currentFullView.Contains(cell)) return true;
+        return _everFullView != null && _everFullView.Contains(cell);
+    }
+
+    /// <summary>해당 셀이 지금 이 프레임 1단계 시야 안에 있을 때만 true. 오브젝트는 이걸로만 표시(2단계에서 숨김).</summary>
+    public bool IsInCurrentFullView(Vector2Int cell)
+    {
+        return _currentFullView != null && _currentFullView.Contains(cell);
     }
 
     /// <summary>목표 셀까지 라인 오브 사이트. 목표 셀 자체는 비워커블(장애물)이어도 true 가능.</summary>
