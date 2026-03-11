@@ -39,7 +39,7 @@ public class ExplorerAI : MonoBehaviour
     [SerializeField] private float _waypointReachRadius = 0.35f;
     [Tooltip("인접 탐색 시 여러 방향이 있을 때: true=시야를 가장 많이 밝힐 수 있는 방향 우선, 동점일 때 랜덤 / false=동점일 때만 첫 번째 우선")]
     [SerializeField] private bool _randomizeLocalChoice = true;
-    [Tooltip("모험심 (0~1). 0=항상 최선의 방향만, 1=매번 모든 방향 중 완전 랜덤. 높을수록 덜 최적·더 들쭉날쭉한 탐험")]
+    [Tooltip("모험심 (0~1). 0=2단계 시야 가장자리만 확장(안전), 1=미탐험(3단계) 방향도 자주 선택. 2단계로 갈 곳이 없으면 어쩔 수 없이 3단계로 감")]
     [Range(0f, 1f)]
     [SerializeField] private float _adventurousness = 0f;
     [Tooltip("재타겟팅 시 A*를 돌릴 프론티어 후보 수 상한. 낮을수록 프레임 유리")]
@@ -211,21 +211,6 @@ public class ExplorerAI : MonoBehaviour
     {
         var unvisitedNeighbors = _mapManager.GetUnvisitedNeighbors(myCell);
 
-        // 모험심이 높으면 가끔 이미 방문한 타일로 한 칸 되돌아감 → 0과 1의 차이가 확실해짐
-        var visitedNeighbors = GetVisitedNeighbors(myCell);
-        if (unvisitedNeighbors.Count > 0 && visitedNeighbors.Count > 0 && Random.value < _adventurousness)
-        {
-            Vector2Int backCell = visitedNeighbors[Random.Range(0, visitedNeighbors.Count)];
-            Vector3 targetWorld = _mapManager.CellToWorld(backCell);
-            Vector2 toTarget = (Vector2)(targetWorld - transform.position);
-            if (toTarget.sqrMagnitude >= 0.0001f)
-            {
-                _currentTargetCell = backCell;
-                _desiredVelocity = toTarget.normalized * _speed;
-            }
-            return;
-        }
-
         if (unvisitedNeighbors.Count > 0)
         {
             Vector2Int nextCell = ChooseBestExplorationDirection(unvisitedNeighbors);
@@ -261,39 +246,66 @@ public class ExplorerAI : MonoBehaviour
             StartCoroutine(ReTargetingCoroutine(myCell));
     }
 
-    /// <summary>후보 셀 중 시야를 가장 많이 밝힐 수 있는 셀 선택. 모험심이 높으면 확률적으로 모든 후보 중 랜덤 선택.</summary>
+    /// <summary>기본은 2단계 시야 가장자리만 선택. 모험심에 비례해 3단계(미탐험) 방향을 택함. 2단계로 갈 곳이 없을 때만 예외로 3단계 진입.</summary>
     private Vector2Int ChooseBestExplorationDirection(List<Vector2Int> candidates)
     {
         if (candidates == null || candidates.Count == 0) return default;
         if (candidates.Count == 1) return candidates[0];
 
-        // 모험심 1에 가까우면 매번 전체 후보 중 랜덤 → 0과 1의 차이가 확실히 남
-        if (Random.value < _adventurousness)
-            return candidates[Random.Range(0, candidates.Count)];
+        int maxVisitedAdj = -1;
+        foreach (var cell in candidates)
+        {
+            int n = _mapManager.GetVisitedNeighborCount(cell);
+            if (n > maxVisitedAdj) maxVisitedAdj = n;
+        }
+
+        var stage2Candidates = new List<Vector2Int>(candidates.Count); // 2단계 가장자리 = 방문 인접 많은 셀
+        var stage3Candidates = new List<Vector2Int>(candidates.Count); // 3단계 = 방문 인접 적은 셀 (미탐험 쪽)
+        foreach (var cell in candidates)
+        {
+            int n = _mapManager.GetVisitedNeighborCount(cell);
+            if (n == maxVisitedAdj)
+                stage2Candidates.Add(cell);
+            else
+                stage3Candidates.Add(cell);
+        }
+
+        // 예외: 2단계로 갈 곳 없음 (모두 방문 인접 1 등으로 가장자리 선택지가 없음) → 어쩔 수 없이 3단계로 한 칸
+        if (maxVisitedAdj <= 1 || stage2Candidates.Count == 0)
+            return PickFromCandidatesWithTieBreak(candidates);
+
+        // 기본: 2단계 가장자리만. 모험심에 비례해 3단계 방향 선택
+        List<Vector2Int> pool;
+        if (stage3Candidates.Count > 0 && Random.value < _adventurousness)
+            pool = stage3Candidates; // 모험심: 3단계(미탐험) 방향
+        else
+            pool = stage2Candidates; // 기본: 2단계 가장자리
+
+        return PickFromCandidatesWithTieBreak(pool);
+    }
+
+    private Vector2Int PickFromCandidatesWithTieBreak(List<Vector2Int> pool)
+    {
+        if (pool == null || pool.Count == 0) return default;
+        if (pool.Count == 1) return pool[0];
 
         int bestCount = -1;
-        var bestCandidates = new List<Vector2Int>(candidates.Count);
-
-        foreach (var cell in candidates)
+        var best = new List<Vector2Int>(pool.Count);
+        foreach (var cell in pool)
         {
             int unvisitedInView = _mapManager.GetUnvisitedCountInRadius(cell, _viewRadius);
             if (unvisitedInView > bestCount)
             {
                 bestCount = unvisitedInView;
-                bestCandidates.Clear();
-                bestCandidates.Add(cell);
+                best.Clear();
+                best.Add(cell);
             }
             else if (unvisitedInView == bestCount)
             {
-                bestCandidates.Add(cell);
+                best.Add(cell);
             }
         }
-
-        if (bestCandidates.Count == 1)
-            return bestCandidates[0];
-        return _randomizeLocalChoice
-            ? bestCandidates[Random.Range(0, bestCandidates.Count)]
-            : bestCandidates[0];
+        return best.Count == 1 ? best[0] : (_randomizeLocalChoice ? best[Random.Range(0, best.Count)] : best[0]);
     }
 
     /// <summary>목표를 잃었거나 막다른 길에 도달했을 때만 실행. 프론티어 검색 → 최근접 목표 선정 → 도달 가능 검증</summary>
@@ -343,12 +355,18 @@ public class ExplorerAI : MonoBehaviour
             }
             else
             {
+                // 2단계 기준: 경로 짧은 것 우선, 동점이면 방문 인접 많은 프론티어(가장자리) 우선
                 int minLen = int.MaxValue;
+                int maxVisitedAdj = -1;
                 foreach (var (path, cell) in reachableOptions)
                 {
-                    if (path.Count < minLen)
+                    int visitedAdj = _mapManager.GetVisitedNeighborCount(cell);
+                    bool better = path.Count < minLen
+                        || (path.Count == minLen && visitedAdj > maxVisitedAdj);
+                    if (better)
                     {
                         minLen = path.Count;
+                        maxVisitedAdj = visitedAdj;
                         chosenPath = path;
                         chosenTarget = cell;
                     }

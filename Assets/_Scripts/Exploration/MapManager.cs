@@ -295,6 +295,19 @@ public class MapManager : MonoBehaviour
         return list;
     }
 
+    /// <summary>해당 셀의 인접 4방향 중 방문된(2단계 이상) 셀 개수. 2단계 기준 이동 시 "가장자리" 선호용.</summary>
+    public int GetVisitedNeighborCount(Vector2Int cell)
+    {
+        int count = 0;
+        foreach (var dir in Direction2D.cardinalDirectionsList)
+        {
+            var next = cell + dir;
+            if (IsWalkable(next) && IsVisited(next))
+                count++;
+        }
+        return count;
+    }
+
     /// <summary>해당 셀을 중심으로 시야 반경 내 미방문·이동가능 타일 개수 (방문 처리 없음). 벽 너머는 제외.</summary>
     public int GetUnvisitedCountInRadius(Vector2Int center, int viewRadius)
     {
