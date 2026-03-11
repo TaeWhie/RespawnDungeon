@@ -180,7 +180,9 @@ public class ExplorerAI : MonoBehaviour
             _animator.SetBool("Walk", useWalk);
             _animator.SetBool("Run", useRun);
         }
-        if (hasVelocity && Mathf.Abs(_desiredVelocity.x) >= 0.01f)
+        // 위/아래 이동 시 velocity.x 미세 요동으로 플립 방지: 가로 성분이 충분할 때만 좌우 반전
+        const float flipHorizontalThreshold = 0.25f;
+        if (hasVelocity && Mathf.Abs(_desiredVelocity.x) >= flipHorizontalThreshold)
         {
             var scale = transform.localScale;
             if ((_desiredVelocity.x > 0 && scale.x < 0) || (_desiredVelocity.x < 0 && scale.x > 0))

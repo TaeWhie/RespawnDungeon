@@ -38,6 +38,14 @@ public class PartyFollower : MonoBehaviour
     [SerializeField] private Vector2 _idleFormationDirection = new Vector2(0f, -1f);
     [Tooltip("동료끼리 겹치지 않도록 포메이션 직선의 좌우로 번갈아 밀어내는 거리 (월드 단위). 0이면 오프셋 없음")]
     [SerializeField] private float _formationSpread = 0.35f;
+    [Tooltip("뒤쪽 동료의 포메이션 방향을 이 시간만큼 부드럽게 보간 (커브 시 자연스러운 곡선). 0이면 즉시 반영")]
+    [SerializeField] private float _formationDirSmoothTime = 0.1f;
+    [Tooltip("슬롯별 거리 미세 변동 (0~0.1). 0이면 균일 간격")]
+    [SerializeField] private float _distanceVariation = 0.05f;
+    [Tooltip("동료마다 랜덤한 좌우 오프셋 범위 (일자 감소). 0이면 없음")]
+    [SerializeField] private float _personalSpreadRange = 0.25f;
+    [Tooltip("목표 위치를 이 시간만큼 부드럽게 보간 (궤적이 휘어져 보임). 0이면 즉시")]
+    [SerializeField] private float _targetSmoothTime = 0.15f;
     [Tooltip("리더 또는 앞쪽 동료와 이 거리보다 가까우면 멈춤 (동선 겹침 시 뒤쪽이 서서 간격 벌어짐). 0이면 비활성")]
     [SerializeField] private float _overlapStopRadius = 0.5f;
 
@@ -52,6 +60,10 @@ public class PartyFollower : MonoBehaviour
     private List<Vector2Int> _currentPath = new List<Vector2Int>();
     private int _pathIndex;
     private Vector2Int? _lastTargetCell;
+    private Vector2 _smoothedFormationDir;
+    private Vector2 _smoothedTargetWorld;
+    private float _personalSpreadOffset;
+    private float _personalDistanceOffset;
 
     private void Awake()
     {
@@ -87,6 +99,12 @@ public class PartyFollower : MonoBehaviour
 
         if (_mapManager == null) _mapManager = FindFirstObjectByType<MapManager>();
         if (_pathfinder == null) _pathfinder = FindFirstObjectByType<Pathfinder>();
+
+        _smoothedFormationDir = _idleFormationDirection.normalized;
+        _smoothedTargetWorld = _leader != null ? (Vector2)_leader.position : (Vector2)transform.position;
+        if (_personalSpreadRange > 0f)
+            _personalSpreadOffset = Random.Range(-_personalSpreadRange, _personalSpreadRange);
+        _personalDistanceOffset = Random.Range(-0.08f, 0.08f);
     }
 
     private void FixedUpdate()
@@ -138,6 +156,12 @@ public class PartyFollower : MonoBehaviour
             if (myFormationDir.sqrMagnitude < 0.01f)
                 myFormationDir = _idleFormationDirection.normalized;
             totalDistance = _firstFollowerDistance > 0f ? _firstFollowerDistance : _followDistance;
+            if (_formationDirSmoothTime > 0f)
+            {
+                _smoothedFormationDir = Vector2.Lerp(_smoothedFormationDir, myFormationDir, Time.fixedDeltaTime / Mathf.Max(0.01f, _formationDirSmoothTime));
+                if (_smoothedFormationDir.sqrMagnitude >= 0.01f)
+                    myFormationDir = _smoothedFormationDir.normalized;
+            }
         }
         else
         {
@@ -146,15 +170,27 @@ public class PartyFollower : MonoBehaviour
             totalDistance = _firstFollowerDistance > 0f ? _firstFollowerDistance + _followDistance * _slotIndex : _followDistance * (_slotIndex + 1);
         }
 
+        // 거리 미세 변동으로 일자 간격 완화 (자연스러운 느낌)
+        if (_distanceVariation > 0f)
+            totalDistance += _distanceVariation * ((_slotIndex % 3) - 1);
+        totalDistance += _personalDistanceOffset;
+
         Vector2 formationDir = myFormationDir;
         Vector2 targetWorld = myLeaderPos - formationDir * totalDistance;
 
-        // 동료끼리 겹치지 않도록 슬롯별로 포메이션 직선의 수직 방향으로 번갈아 오프셋
-        if (_formationSpread > 0f)
+        // 수직 오프셋: 사인파 + 동료마다 고정 랜덤 (일자 감소)
+        if (_formationSpread > 0f || _personalSpreadRange > 0f)
         {
             Vector2 perp = new Vector2(formationDir.y, -formationDir.x);
-            float offset = (_slotIndex % 2 == 0 ? -1f : 1f) * _formationSpread;
+            float offset = Mathf.Sin(_slotIndex * 0.85f) * _formationSpread + _personalSpreadOffset;
             targetWorld += perp * offset;
+        }
+
+        // 목표 위치 스무딩: 궤적이 휘어져 보이도록 (움직임이 덜 일자)
+        if (_targetSmoothTime > 0f)
+        {
+            _smoothedTargetWorld = Vector2.Lerp(_smoothedTargetWorld, targetWorld, Time.fixedDeltaTime / Mathf.Max(0.02f, _targetSmoothTime));
+            targetWorld = _smoothedTargetWorld;
         }
 
         Vector2Int targetCell = _mapManager.WorldToCell(targetWorld);
@@ -244,7 +280,9 @@ public class PartyFollower : MonoBehaviour
         _animator.SetBool("Walk", hasVelocity && !useRun);
         _animator.SetBool("Run", hasVelocity && useRun);
 
-        if (hasVelocity && Mathf.Abs(velocity.x) >= 0.01f)
+        // 위/아래 이동 시 velocity.x 미세 요동으로 플립 방지: 가로 성분이 충분할 때만 좌우 반전
+        const float flipHorizontalThreshold = 0.25f;
+        if (hasVelocity && Mathf.Abs(velocity.x) >= flipHorizontalThreshold)
         {
             var scale = transform.localScale;
             if ((velocity.x > 0 && scale.x < 0) || (velocity.x < 0 && scale.x > 0))
@@ -310,6 +348,9 @@ public class PartyFollower : MonoBehaviour
         _currentPath = null;
         _pathIndex = 0;
         _lastTargetCell = null;
+        _smoothedFormationDir = _idleFormationDirection.normalized;
+        if (_leader != null)
+            _smoothedTargetWorld = _leader.position;
     }
 
     /// <summary>포메이션 슬롯 설정 (0=리더 바로 뒤)</summary>
