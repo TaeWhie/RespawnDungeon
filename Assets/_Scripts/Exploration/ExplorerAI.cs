@@ -121,9 +121,9 @@ public class ExplorerAI : MonoBehaviour
         // 시야 반경 업데이트: 현재 위치 중심으로 반경 내 타일 방문 처리 (모든 모드에서 수행)
         _mapManager.MarkVisitedInRadius(myCell, _viewRadius);
 
-        // 출구가 보이면 탐색 중단 후 출구로 이동 (이미 출구로 가는 중이면 경로 재계산 안 함)
+        // 출구가 보이면 탐색 중단 후 출구로 이동 (리더가 보든 동료가 보든 파티 중 누군가 발견하면 출구로 감)
         Vector2Int? exitCell = GetExitCell();
-        if (exitCell.HasValue && IsExitVisible(myCell, exitCell.Value) && _mapManager.IsWalkable(exitCell.Value))
+        if (exitCell.HasValue && (IsExitVisible(myCell, exitCell.Value) || AnyPartyMemberSeesExit(exitCell.Value)) && _mapManager.IsWalkable(exitCell.Value))
         {
             bool alreadyGoingToExit = _state == State.Navigating && _globalTargetCell == exitCell.Value;
             if (!alreadyGoingToExit)
@@ -199,6 +199,21 @@ public class ExplorerAI : MonoBehaviour
         int dx = Mathf.Abs(exitCell.x - myCell.x);
         int dy = Mathf.Abs(exitCell.y - myCell.y);
         return dx <= _viewRadius && dy <= _viewRadius && _mapManager.HasLineOfSight(myCell, exitCell);
+    }
+
+    /// <summary>동료(Ally) 중 한 명이라도 출구를 시야 내에서 보면 true. 파티 공통 출구 발견 판정용.</summary>
+    private bool AnyPartyMemberSeesExit(Vector2Int exitCell)
+    {
+        var allies = GameObject.FindGameObjectsWithTag("Ally");
+        foreach (var go in allies)
+        {
+            if (go == null) continue;
+            Vector2Int allyCell = _mapManager.WorldToCell(go.transform.position);
+            if (!_mapManager.IsWalkable(allyCell)) continue;
+            if (IsExitVisible(allyCell, exitCell))
+                return true;
+        }
+        return false;
     }
 
     /// <summary>로컬 탐험: 인접 미방문 타일이 있으면 그쪽으로, 없으면 재타겟팅 코루틴 시작</summary>

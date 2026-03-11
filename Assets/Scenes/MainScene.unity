@@ -10191,8 +10191,8 @@ MonoBehaviour:
   wallDiagonalCornerUpRight: {fileID: 11400000, guid: 809171e13e7908f40a916074c244f08c, type: 2}
   wallDiagonalCornerUpLeft: {fileID: 11400000, guid: 990709a76d4f9124db8ca4026e79a932, type: 2}
   startPrefab: {fileID: 7226897409720442304, guid: 17237c75ce0f6e346962a4b6d6853d16, type: 3}
-  exitPrefab: {fileID: 7226897409720442304, guid: 17237c75ce0f6e346962a4b6d6853d16, type: 3}
-  _partyCount: 2
+  exitPrefab: {fileID: 7226897409720442304, guid: f7f705f5a16ed90489ad29cc1e6073c2, type: 3}
+  _partyCount: 3
   _characterPrefab: {fileID: 8405169357790782598, guid: 6e4c0ac43cef75f40a6f1bcafe093607, type: 3}
 --- !u!4 &1510052177
 Transform:

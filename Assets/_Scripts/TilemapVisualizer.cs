@@ -59,6 +59,9 @@ public class TilemapVisualizer : MonoBehaviour
         if (leader != null)
         {
             leader.tag = "Player";
+            int playerLayer = LayerMask.NameToLayer("Player");
+            if (playerLayer >= 0)
+                leader.layer = playerLayer;
 
             var rb = leader.GetComponent<Rigidbody2D>();
             if (rb == null)
@@ -104,8 +107,16 @@ public class TilemapVisualizer : MonoBehaviour
 
                 // 카메라용 태그
                 follower.tag = "Ally";
+                int allyLayer = LayerMask.NameToLayer("Ally");
+                if (allyLayer >= 0)
+                    follower.layer = allyLayer;
 
-                // 동료는 AI를 직접 붙이지 않고, 나중에 따로 Follow 로직을 추가할 수 있도록 비워둠
+                // 리더를 자연스럽게 따라오는 Follow 로직
+                var partyFollower = follower.GetComponent<PartyFollower>();
+                if (partyFollower == null)
+                    partyFollower = follower.AddComponent<PartyFollower>();
+                partyFollower.SetLeader(leader.transform);
+                partyFollower.SetSlotIndex(i - 1);
             }
         }
 
