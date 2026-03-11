@@ -56,7 +56,6 @@ public class ExplorerAI : MonoBehaviour
     private List<Vector2Int> _currentPath = new List<Vector2Int>();
     private int _pathIndex;
     private Vector2Int? _globalTargetCell;
-    private bool _explorationCompleteLogged;
     private bool _isReTargeting;
     /// <summary>현재 이동 목표 셀 (Exploring 시 다음 셀, 애니메이션용)</summary>
     private Vector2Int? _currentTargetCell;
@@ -106,19 +105,6 @@ public class ExplorerAI : MonoBehaviour
 
         if (!_mapManager.IsWalkable(myCell))
             return;
-
-        // 탐험 완료 시 모든 루프 정지 및 한 번만 로그
-        if (_mapManager.IsExplorationComplete())
-        {
-            _state = State.Idle;
-            _mapManager.SetGlobalTarget(null);
-            if (!_explorationCompleteLogged)
-            {
-                _explorationCompleteLogged = true;
-                Debug.Log("Exploration Complete");
-            }
-            return;
-        }
 
         // 시야 반경 업데이트: 현재 위치 중심으로 반경 내 타일 방문 처리 (모든 모드에서 수행)
         _mapManager.MarkVisitedInRadius(myCell, _viewRadius, _viewRadiusStructure);
