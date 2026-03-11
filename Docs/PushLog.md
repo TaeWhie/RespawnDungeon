@@ -59,6 +59,13 @@
 
 ## 기록
 
+### 2025-03-11 — 보물상자 픽·열기, 상자 Animator Bool
+- **ExplorerAI**: 보물상자 발견 시 인접 stand 셀으로 이동, **목표 도착 후에만** PickingChest 전환(_navigatingToChestCell). Pick 파라미터 Bool로 켜고, 같은 자리에서 두 번 반복 후 꺼서 Exploring 복귀.
+- **ChestOpenable**: 상자 픽 시 Idle=false, Open=true 설정 후 일정 시간 뒤 Destroy. 셀 walkable 복구. Animator GetComponent/GetComponentInChildren으로 캐시.
+- **MapManager**: RegisterChests, MarkChestPicked(view.Open()), GetStandCellsNextToChest, SetCellWalkable.
+- **TilemapVisualizer**: 골든/일반 상자 개수·간격 제한, chest 셀 floor 제거, GetOrAddChestOpenable·SetChestCell, GetLastPlacedChests.
+- **AbstractDungeonGenerator·3개 생성기**: SetMapManagerWalkable 후 RegisterChestCellsToMapManager 호출.
+
 ### 2025-03-11 — ReTargeting 2단계/3단계 기준 적용
 - ExplorerAI ReTargetingCoroutine: 프론티어 선택 시에도 2단계(방문 인접 많은)·3단계(적은) 분류 적용.
 - 모험심이면 3단계 프론티어 풀에서, 아니면 2단계 풀에서 선택 후 경로 짧은 것·동점 시 방문 인접 수로 결정.

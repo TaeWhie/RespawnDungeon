@@ -45,5 +45,13 @@ public abstract class AbstractDungeonGenerator : MonoBehaviour
         if (mapManager != null) mapManager.SetWalkableTiles(floor);
     }
 
+    /// <summary>던전 생성 후 보물/황금상자 셀을 MapManager에 등록 (픽 대상·Open 후 제거용)</summary>
+    protected void RegisterChestCellsToMapManager()
+    {
+        if (mapManager == null) mapManager = FindFirstObjectByType<MapManager>();
+        if (tilemapVisualizer != null && mapManager != null)
+            mapManager.RegisterChests(tilemapVisualizer.GetLastPlacedChests());
+    }
+
     protected abstract void RunProceduralGeneration();
 }

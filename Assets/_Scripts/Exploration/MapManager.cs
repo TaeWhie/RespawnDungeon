@@ -37,6 +37,13 @@ public class MapManager : MonoBehaviour
     /// <summary>현재 글로벌 목표 셀 (Navigating 시 시각화용)</summary>
     private Vector2Int? _globalTargetCell;
 
+    /// <summary>보물/황금상자 셀 (던전 생성 시 등록). 비워커블이므로 이동 불가.</summary>
+    private HashSet<Vector2Int> _chestCells = new HashSet<Vector2Int>();
+    /// <summary>이미 픽한 상자 셀</summary>
+    private HashSet<Vector2Int> _pickedChests = new HashSet<Vector2Int>();
+    /// <summary>셀 → ChestOpenable (Open 애니 후 제거용)</summary>
+    private Dictionary<Vector2Int, ChestOpenable> _chestViews = new Dictionary<Vector2Int, ChestOpenable>();
+
     /// <summary>맵 데이터가 준비되었는지</summary>
     public bool IsInitialized => _walkable != null && _width > 0 && _height > 0;
 
@@ -74,6 +81,9 @@ public class MapManager : MonoBehaviour
             _width = _height = 0;
             _currentFullView?.Clear();
             _everFullView?.Clear();
+            _chestCells?.Clear();
+            _pickedChests?.Clear();
+            _chestViews?.Clear();
             return;
         }
 
@@ -127,6 +137,18 @@ public class MapManager : MonoBehaviour
     {
         if (!CellToIndex(cell, out int i, out int j)) return false;
         return _walkable[i, j];
+    }
+
+    /// <summary>특정 셀을 이동 가능/불가로 설정. 상자 제거 시 해당 셀을 다시 floor로 쓸 때 사용.</summary>
+    public void SetCellWalkable(Vector2Int cell, bool walkable)
+    {
+        if (!CellToIndex(cell, out int i, out int j)) return;
+        bool wasWalkable = _walkable[i, j];
+        _walkable[i, j] = walkable;
+        if (walkable && !wasWalkable)
+            WalkableCount++;
+        else if (!walkable && wasWalkable)
+            WalkableCount--;
     }
 
     public bool IsVisited(Vector2Int cell)
@@ -275,6 +297,75 @@ public class MapManager : MonoBehaviour
     public void SetGlobalTarget(Vector2Int? cell)
     {
         _globalTargetCell = cell;
+    }
+
+    /// <summary>던전 생성 후 보물/황금상자 셀·뷰 등록. SetWalkableTiles 이후에 호출.</summary>
+    public void RegisterChests(IEnumerable<(Vector2Int cell, ChestOpenable openable)> chests)
+    {
+        _chestCells?.Clear();
+        _pickedChests?.Clear();
+        _chestViews?.Clear();
+        if (chests == null) return;
+        _chestCells = new HashSet<Vector2Int>();
+        _chestViews = new Dictionary<Vector2Int, ChestOpenable>();
+        foreach (var t in chests)
+        {
+            _chestCells.Add(t.cell);
+            if (t.openable != null)
+                _chestViews[t.cell] = t.openable;
+        }
+    }
+
+    /// <summary>던전 생성 후 보물/황금상자 셀만 등록 (뷰 없이). RegisterChests 사용 권장.</summary>
+    public void RegisterChestCells(IEnumerable<Vector2Int> cells)
+    {
+        _chestCells?.Clear();
+        _pickedChests?.Clear();
+        _chestViews?.Clear();
+        if (cells == null) return;
+        _chestCells = new HashSet<Vector2Int>(cells);
+    }
+
+    /// <summary>해당 셀이 상자 셀인지</summary>
+    public bool IsChestCell(Vector2Int cell) => _chestCells != null && _chestCells.Contains(cell);
+
+    /// <summary>해당 상자를 픽 완료 처리. ChestOpenable이 있으면 Open 애니 재생 후 제거.</summary>
+    public void MarkChestPicked(Vector2Int cell)
+    {
+        if (_pickedChests != null) _pickedChests.Add(cell);
+        if (_chestViews != null && _chestViews.TryGetValue(cell, out var view))
+        {
+            _chestViews.Remove(cell);
+            view?.Open();
+        }
+    }
+
+    /// <summary>이미 픽한 상자인지</summary>
+    public bool IsChestPicked(Vector2Int cell) => _pickedChests != null && _pickedChests.Contains(cell);
+
+    /// <summary>현재 1단계 시야 안에 있고 아직 픽하지 않은 상자 셀 목록</summary>
+    public List<Vector2Int> GetUnpickedChestCellsInFullView()
+    {
+        var list = new List<Vector2Int>();
+        if (_chestCells == null || _pickedChests == null || _currentFullView == null) return list;
+        foreach (var cell in _chestCells)
+        {
+            if (!_pickedChests.Contains(cell) && _currentFullView.Contains(cell))
+                list.Add(cell);
+        }
+        return list;
+    }
+
+    /// <summary>상자 셀에 인접한 이동 가능(서 있을 수 있는) 셀 목록. 상하좌우만.</summary>
+    public List<Vector2Int> GetStandCellsNextToChest(Vector2Int chestCell)
+    {
+        var list = new List<Vector2Int>(4);
+        foreach (var dir in Direction2D.cardinalDirectionsList)
+        {
+            var adj = chestCell + dir;
+            if (IsWalkable(adj)) list.Add(adj);
+        }
+        return list;
     }
 
     /// <summary>맵 초기화 직후 한 번 호출됩니다. (폭/블러 뷰에서 미탐색 타일을 그릴 때 사용)</summary>

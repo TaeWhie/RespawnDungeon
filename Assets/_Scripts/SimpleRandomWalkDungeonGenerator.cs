@@ -23,6 +23,7 @@ public class SimpleRandomWalkDungeonGenerator : AbstractDungeonGenerator
         var (startObj, exitObj) = tilemapVisualizer.PlaceSpecialObjects(start, exit);
         tilemapVisualizer.PlacePerlinObstaclesAndTreasures(floorPositions, start, exit, LastUsedSeed);
         SetMapManagerWalkable(floorPositions);
+        RegisterChestCellsToMapManager();
         Debug.Log($"[RandomWalk] Special objects placed. Start: {startObj != null}, Exit: {exitObj != null}");
     }
 

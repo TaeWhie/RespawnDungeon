@@ -10,12 +10,13 @@ using UnityEngine.Events;
 [RequireComponent(typeof(Rigidbody2D))]
 public class ExplorerAI : MonoBehaviour
 {
-    /// <summary>상태 머신: 대기 / 로컬 탐험 / 글로벌 목표로 이동</summary>
+    /// <summary>상태 머신: 대기 / 로컬 탐험 / 글로벌 목표로 이동 / 상자 픽 중</summary>
     public enum State
     {
         Idle,
         Exploring,
-        Navigating
+        Navigating,
+        PickingChest
     }
 
     [Header("참조")]
@@ -51,6 +52,10 @@ public class ExplorerAI : MonoBehaviour
     [Tooltip("출구 셀에 도착했을 때 호출 (다음 씬 로드 등)")]
     [SerializeField] private UnityEvent _onReachedExit;
 
+    [Header("보물상자")]
+    [Tooltip("상자 인접 칸에 도착 후 픽 애니메이션 재생 시간(초)")]
+    [SerializeField] private float _pickDuration = 1f;
+
     private Rigidbody2D _rigidbody;
     private State _state = State.Idle;
     private List<Vector2Int> _currentPath = new List<Vector2Int>();
@@ -61,6 +66,14 @@ public class ExplorerAI : MonoBehaviour
     private Vector2Int? _currentTargetCell;
     /// <summary>Update에서 계산한 속도. FixedUpdate에서 실제 적용 (물리 연산과 동기화)</summary>
     private Vector2 _desiredVelocity;
+    /// <summary>PickingChest 시 픽할 상자 셀</summary>
+    private Vector2Int? _pickingChestCell;
+    private float _pickingTimer;
+    private bool _didTriggerPick;
+    /// <summary>같은 자리에서 픽 완료 횟수. 2가 되면 꺼고 Exploring으로</summary>
+    private int _pickingCount;
+    /// <summary>Navigating 시 목표가 상자 인접 칸일 때 그 상자 셀. 도착 후 PickingChest로 전환할 때 사용</summary>
+    private Vector2Int? _navigatingToChestCell;
 
     public State CurrentState => _state;
 
@@ -125,6 +138,90 @@ public class ExplorerAI : MonoBehaviour
                     _pathIndex = 0;
                     _state = State.Navigating;
                     _currentTargetCell = null;
+                    _navigatingToChestCell = null;
+                }
+            }
+        }
+
+        // 보물상자 픽 중: 이동 없이 픽 애니 재생 후 탐험 재개
+        if (_state == State.PickingChest)
+        {
+            if (!_didTriggerPick && _animator != null)
+            {
+                _animator.SetBool("Pick", true);
+                _didTriggerPick = true;
+            }
+            _pickingTimer -= Time.deltaTime;
+            if (_pickingTimer <= 0f && _pickingChestCell.HasValue)
+            {
+                _pickingCount++;
+                if (_pickingCount >= 2)
+                {
+                    _mapManager.MarkChestPicked(_pickingChestCell.Value);
+                    _pickingChestCell = null;
+                    if (_animator != null)
+                        _animator.SetBool("Pick", false);
+                    _state = State.Exploring;
+                    _globalTargetCell = null;
+                    _mapManager.SetGlobalTarget(null);
+                    _currentPath = null;
+                    _pathIndex = 0;
+                    _currentTargetCell = null;
+                }
+                else
+                {
+                    _pickingTimer = _pickDuration;
+                    _didTriggerPick = false;
+                    if (_animator != null)
+                        _animator.SetBool("Pick", true);
+                    _didTriggerPick = true;
+                }
+            }
+            UpdateMovementAnimation(myCell);
+            return;
+        }
+
+        // 보물상자 발견: 시야 안 미픽 상자 있으면 인접한 가까운 칸으로 이동 후, 도착하면 픽
+        bool goingToExit = exitCell.HasValue && _globalTargetCell == exitCell.Value;
+        if (!goingToExit)
+        {
+            var unpicked = _mapManager.GetUnpickedChestCellsInFullView();
+            if (unpicked.Count > 0)
+            {
+                Vector2Int? bestStand = null;
+                Vector2Int? bestChest = null;
+                int bestPathLen = int.MaxValue;
+                foreach (var chestCell in unpicked)
+                {
+                    var standCells = _mapManager.GetStandCellsNextToChest(chestCell);
+                    foreach (var stand in standCells)
+                    {
+                        var path = _pathfinder.GetPath(_mapManager, myCell, stand);
+                        if (path != null && path.Count > 0 && path.Count < bestPathLen)
+                        {
+                            bestPathLen = path.Count;
+                            bestStand = stand;
+                            bestChest = chestCell;
+                        }
+                    }
+                }
+                if (bestStand.HasValue && bestChest.HasValue)
+                {
+                    bool alreadyGoingThere = _state == State.Navigating && _globalTargetCell == bestStand.Value;
+                    if (!alreadyGoingThere)
+                    {
+                        var path = _pathfinder.GetPath(_mapManager, myCell, bestStand.Value);
+                        if (path != null && path.Count > 0)
+                        {
+                            _globalTargetCell = bestStand;
+                            _mapManager.SetGlobalTarget(bestStand);
+                            _currentPath = path;
+                            _pathIndex = 0;
+                            _state = State.Navigating;
+                            _currentTargetCell = null;
+                            _navigatingToChestCell = bestChest;
+                        }
+                    }
                 }
             }
         }
@@ -152,6 +249,8 @@ public class ExplorerAI : MonoBehaviour
     {
         return Mathf.Max(Mathf.Abs(b.x - a.x), Mathf.Abs(b.y - a.y));
     }
+
+    private bool IsChestUnpicked(Vector2Int cell) => _mapManager != null && !_mapManager.IsChestPicked(cell);
 
     /// <summary>목표까지 거리만으로 걷기/뛰기. 시야 밖이면 뛰기. 경계에서 Run 한 프레임 방지: Run은 distance > viewRadius+1 일 때만.</summary>
     private void UpdateMovementAnimation(Vector2Int myCell)
@@ -420,10 +519,26 @@ public class ExplorerAI : MonoBehaviour
     {
         if (_currentPath == null || _pathIndex >= _currentPath.Count)
         {
+            if (_navigatingToChestCell.HasValue && IsChestUnpicked(_navigatingToChestCell.Value))
+            {
+                _pickingChestCell = _navigatingToChestCell;
+                _pickingTimer = _pickDuration;
+                _didTriggerPick = false;
+                _pickingCount = 0;
+                _state = State.PickingChest;
+                _mapManager.SetGlobalTarget(null);
+                _globalTargetCell = null;
+                _currentTargetCell = null;
+                _currentPath = null;
+                _pathIndex = 0;
+                _navigatingToChestCell = null;
+                return;
+            }
             _state = State.Exploring;
             _mapManager.SetGlobalTarget(null);
             _globalTargetCell = null;
             _currentTargetCell = null;
+            _navigatingToChestCell = null;
             return;
         }
 
@@ -438,7 +553,7 @@ public class ExplorerAI : MonoBehaviour
             _pathIndex++;
             if (_pathIndex >= _currentPath.Count)
             {
-                // 출구에 도착했으면 이벤트 호출 후 대기, 아니면 탐험 재개
+                // 출구에 도착했으면 이벤트 호출 후 대기, 아니면 탐험 재개 또는 상자 픽
                 Vector2Int? exitCell = GetExitCell();
                 if (exitCell.HasValue && _globalTargetCell == exitCell.Value)
                 {
@@ -446,13 +561,30 @@ public class ExplorerAI : MonoBehaviour
                     _mapManager.SetGlobalTarget(null);
                     _globalTargetCell = null;
                     _currentTargetCell = null;
+                    _navigatingToChestCell = null;
                     _onReachedExit?.Invoke();
+                    return;
+                }
+                if (_navigatingToChestCell.HasValue && IsChestUnpicked(_navigatingToChestCell.Value))
+                {
+                    _pickingChestCell = _navigatingToChestCell;
+                    _pickingTimer = _pickDuration;
+                    _didTriggerPick = false;
+                    _pickingCount = 0;
+                    _state = State.PickingChest;
+                    _mapManager.SetGlobalTarget(null);
+                    _globalTargetCell = null;
+                    _currentTargetCell = null;
+                    _currentPath = null;
+                    _pathIndex = 0;
+                    _navigatingToChestCell = null;
                     return;
                 }
                 _state = State.Exploring;
                 _mapManager.SetGlobalTarget(null);
                 _globalTargetCell = null;
                 _currentTargetCell = null;
+                _navigatingToChestCell = null;
                 UpdateExploring(myCell);
                 return;
             }

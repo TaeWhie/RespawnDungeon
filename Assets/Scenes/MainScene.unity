@@ -10203,6 +10203,12 @@ MonoBehaviour:
   _treasureThreshold: 0.85
   _obstaclePrefab: {fileID: 4038988234304929280, guid: aaa0b4f6ea6374742af505e9c8c77504, type: 3}
   _treasureChestPrefab: {fileID: 9103507562460050893, guid: ba68d87b4d41bb1499b610d2f6ed65cb, type: 3}
+  _goldenChestPrefab: {fileID: 8235717577392731582, guid: bc9932d54bfc0ad4bb7ed5d99ba117de, type: 3}
+  _goldenChestThreshold: 0.92
+  _goldenChestMinPathDistance: 3
+  _goldenChestCount: 3
+  _treasureChestCount: 8
+  _chestMinSpacing: 4
   _partyCount: 3
   _characterPrefab: {fileID: 8405169357790782598, guid: 6e4c0ac43cef75f40a6f1bcafe093607, type: 3}
 --- !u!4 &1510052177

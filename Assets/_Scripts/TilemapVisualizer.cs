@@ -26,6 +26,18 @@ public class TilemapVisualizer : MonoBehaviour
     [SerializeField] private GameObject _obstaclePrefab;
     [Tooltip("보물상자 프리팹. 비우면 보물상자 미배치")]
     [SerializeField] private GameObject _treasureChestPrefab;
+    [Tooltip("황금상자 프리팹. 비우면 황금상자 미배치. 시야 확인 어렵거나 고립된 곳에만 배치")]
+    [SerializeField] private GameObject _goldenChestPrefab;
+    [Tooltip("황금상자 배치 확률(노이즈 기준). 이 값 이상일 때만 후보 셀에 배치")]
+    [SerializeField] [Range(0f, 1f)] private float _goldenChestThreshold = 0.92f;
+    [Tooltip("황금상자 후보: 최장 경로에서 이 거리 이상 떨어진 셀 또는 막다른 길(인접 floor 1개)")]
+    [SerializeField] private int _goldenChestMinPathDistance = 3;
+    [Tooltip("황금상자 개수 (고립/막다른 길 후보에서 최소 간격 유지하며 배치)")]
+    [SerializeField] private int _goldenChestCount = 3;
+    [Tooltip("일반 보물상자 개수 (최소 간격 유지하며 배치)")]
+    [SerializeField] private int _treasureChestCount = 8;
+    [Tooltip("상자 간 최소 맨해튼 거리 (이 값 미만이면 뭉침으로 간주)")]
+    [SerializeField] private int _chestMinSpacing = 4;
 
     [Header("파티 스폰")]
     [Tooltip("던전 생성 시 리더(플레이어) 포함 파티 인원 수. 1이면 리더만 스폰합니다.")]
@@ -35,6 +47,8 @@ public class TilemapVisualizer : MonoBehaviour
     [SerializeField] private GameObject _characterPrefab;
 
     private List<GameObject> spawnedObjects = new List<GameObject>();
+    /// <summary>마지막 PlacePerlinObstaclesAndTreasures 호출 시 배치한 (셀, ChestOpenable) 목록</summary>
+    private List<(Vector2Int cell, ChestOpenable openable)> _lastPlacedChests = new List<(Vector2Int, ChestOpenable)>();
 
     public Tilemap FloorTilemap => floorTilemap;
     public Tilemap WallTilemap => wallTilemap;
@@ -168,7 +182,58 @@ public class TilemapVisualizer : MonoBehaviour
     {
         if (floor == null) return;
 
+        _lastPlacedChests.Clear();
         HashSet<Vector2Int> pathCells = GetCellsOnLongestPath(floor, start, exit);
+        Dictionary<Vector2Int, int> distanceFromPath = pathCells != null
+            ? MultiSourceBFS(floor, pathCells)
+            : new Dictionary<Vector2Int, int>();
+
+        var validChestCells = new List<Vector2Int>();
+        var goldenCandidatesList = new List<Vector2Int>();
+        foreach (var c in floor)
+        {
+            if (c == start || c == exit) continue;
+            if (pathCells != null && pathCells.Contains(c)) continue;
+            if (Mathf.Abs(c.x - start.x) <= 1 && Mathf.Abs(c.y - start.y) <= 1) continue;
+            if (Mathf.Abs(c.x - exit.x) <= 1 && Mathf.Abs(c.y - exit.y) <= 1) continue;
+            validChestCells.Add(c);
+            if (_goldenChestPrefab != null && _goldenChestMinPathDistance > 0)
+            {
+                int pathDist;
+                bool farFromPath = distanceFromPath.TryGetValue(c, out pathDist) && pathDist >= _goldenChestMinPathDistance;
+                bool isDeadEnd = CountFloorNeighbors(floor, c) <= 1;
+                if (farFromPath || isDeadEnd)
+                    goldenCandidatesList.Add(c);
+            }
+        }
+
+        UnityEngine.Random.InitState(seed);
+        int minSpacing = Mathf.Max(1, _chestMinSpacing);
+
+        var chosenGolden = new List<Vector2Int>();
+        if (_goldenChestPrefab != null && goldenCandidatesList.Count > 0)
+            chosenGolden = PickChestPositionsWithSpacing(goldenCandidatesList, _goldenChestCount, minSpacing, null);
+        foreach (var cell in chosenGolden)
+        {
+            var obj = SpawnObject(_goldenChestPrefab, cell);
+            EnsureVisibilityByViewStage(obj);
+            var openable = GetOrAddChestOpenable(obj, cell);
+            if (openable != null) _lastPlacedChests.Add((cell, openable));
+            floor.Remove(cell);
+        }
+
+        var chosenNormal = PickChestPositionsWithSpacing(validChestCells, _treasureChestCount, minSpacing, chosenGolden);
+        if (_treasureChestPrefab != null)
+        {
+            foreach (var cell in chosenNormal)
+            {
+                var obj = SpawnObject(_treasureChestPrefab, cell);
+                EnsureVisibilityByViewStage(obj);
+                var openable = GetOrAddChestOpenable(obj, cell);
+                if (openable != null) _lastPlacedChests.Add((cell, openable));
+                floor.Remove(cell);
+            }
+        }
 
         float seedOffset = (seed % 10000) * 0.01f;
 
@@ -182,14 +247,7 @@ public class TilemapVisualizer : MonoBehaviour
             float nx = cell.x * _perlinScale + seedOffset;
             float ny = cell.y * _perlinScale + seedOffset;
             float obstacleNoise = Mathf.PerlinNoise(nx, ny);
-            float treasureNoise = Mathf.PerlinNoise(nx + 100f, ny + 100f);
 
-            if (_treasureChestPrefab != null && treasureNoise >= _treasureThreshold)
-            {
-                var obj = SpawnObject(_treasureChestPrefab, cell);
-                EnsureVisibilityByViewStage(obj);
-                continue;
-            }
             if (_obstaclePrefab != null && obstacleNoise >= _obstacleThreshold)
             {
                 var obj = SpawnObject(_obstaclePrefab, cell);
@@ -289,6 +347,76 @@ public class TilemapVisualizer : MonoBehaviour
         return dist;
     }
 
+    /// <summary>여러 출발 셀(pathCells)에서 BFS해 각 floor 셀까지의 최소 거리를 반환합니다.</summary>
+    private static Dictionary<Vector2Int, int> MultiSourceBFS(HashSet<Vector2Int> floor, HashSet<Vector2Int> pathCells)
+    {
+        var dist = new Dictionary<Vector2Int, int>();
+        var q = new Queue<Vector2Int>();
+        foreach (var p in pathCells)
+        {
+            if (floor.Contains(p))
+            {
+                dist[p] = 0;
+                q.Enqueue(p);
+            }
+        }
+        while (q.Count > 0)
+        {
+            var cur = q.Dequeue();
+            int d = dist[cur];
+            foreach (var dir in FourDirs)
+            {
+                var next = cur + dir;
+                if (floor.Contains(next) && !dist.ContainsKey(next))
+                {
+                    dist[next] = d + 1;
+                    q.Enqueue(next);
+                }
+            }
+        }
+        return dist;
+    }
+
+    /// <summary>4방향 인접 셀 중 floor에 포함된 개수를 반환합니다. 막다른 길은 1 이하.</summary>
+    private static int CountFloorNeighbors(HashSet<Vector2Int> floor, Vector2Int cell)
+    {
+        int n = 0;
+        foreach (var dir in FourDirs)
+            if (floor.Contains(cell + dir)) n++;
+        return n;
+    }
+
+    /// <summary>후보 셀에서 최대 count개를 골라, 서로 및 excludePositions와 최소 minSpacing(맨해튼) 이상 떨어지게 합니다.</summary>
+    private static List<Vector2Int> PickChestPositionsWithSpacing(
+        List<Vector2Int> candidates, int count, int minSpacing, List<Vector2Int> excludePositions)
+    {
+        var chosen = new List<Vector2Int>();
+        var pool = new List<Vector2Int>(candidates);
+        for (int i = 0; i < count && pool.Count > 0; i++)
+        {
+            var valid = new List<Vector2Int>();
+            foreach (var c in pool)
+            {
+                bool ok = true;
+                foreach (var p in chosen)
+                    if (Manhattan(c, p) < minSpacing) { ok = false; break; }
+                if (ok && excludePositions != null)
+                    foreach (var p in excludePositions)
+                        if (Manhattan(c, p) < minSpacing) { ok = false; break; }
+                if (ok) valid.Add(c);
+            }
+            if (valid.Count == 0) break;
+            int idx = UnityEngine.Random.Range(0, valid.Count);
+            var pick = valid[idx];
+            chosen.Add(pick);
+            pool.Remove(pick);
+        }
+        return chosen;
+    }
+
+    private static int Manhattan(Vector2Int a, Vector2Int b)
+        => Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
+
     private GameObject SpawnObject(GameObject prefab, Vector2Int position)
     {
         var worldPos = floorTilemap.CellToWorld((Vector3Int)position) + floorTilemap.cellSize * 0.5f;
@@ -355,6 +483,22 @@ public class TilemapVisualizer : MonoBehaviour
             if (obj != null) DestroyImmediate(obj);
         }
         spawnedObjects.Clear();
+        _lastPlacedChests.Clear();
+    }
+
+    /// <summary>마지막 PlacePerlinObstaclesAndTreasures 호출 시 배치한 (셀, ChestOpenable) 목록. MapManager 등록용.</summary>
+    public List<(Vector2Int cell, ChestOpenable openable)> GetLastPlacedChests()
+    {
+        return new List<(Vector2Int, ChestOpenable)>(_lastPlacedChests);
+    }
+
+    private static ChestOpenable GetOrAddChestOpenable(GameObject obj, Vector2Int cell)
+    {
+        if (obj == null) return null;
+        var openable = obj.GetComponent<ChestOpenable>();
+        if (openable == null) openable = obj.AddComponent<ChestOpenable>();
+        openable.SetChestCell(cell);
+        return openable;
     }
 
     internal void PaintSingleCornerWall(Vector2Int position, string binaryType)
