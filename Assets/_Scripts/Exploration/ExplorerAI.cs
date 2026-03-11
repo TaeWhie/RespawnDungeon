@@ -270,10 +270,6 @@ public class ExplorerAI : MonoBehaviour
                 stage3Candidates.Add(cell);
         }
 
-        // 예외: 2단계로 갈 곳 없음 (모두 방문 인접 1 등으로 가장자리 선택지가 없음) → 어쩔 수 없이 3단계로 한 칸
-        if (maxVisitedAdj <= 1 || stage2Candidates.Count == 0)
-            return PickFromCandidatesWithTieBreak(candidates);
-
         // 기본: 2단계 가장자리만. 모험심에 비례해 3단계 방향 선택
         List<Vector2Int> pool;
         if (stage3Candidates.Count > 0 && Random.value < _adventurousness)
@@ -281,6 +277,8 @@ public class ExplorerAI : MonoBehaviour
         else
             pool = stage2Candidates; // 기본: 2단계 가장자리
 
+        if (pool.Count == 0)
+            pool = candidates;
         return PickFromCandidatesWithTieBreak(pool);
     }
 
@@ -347,29 +345,46 @@ public class ExplorerAI : MonoBehaviour
 
         if (reachableOptions.Count > 0)
         {
-            if (Random.value < _adventurousness)
+            // 프론티어도 2단계/3단계 기준: 방문 인접 많은 셀 = 2단계, 적은 셀 = 3단계
+            int maxVisitedAdj = -1;
+            foreach (var (_, cell) in reachableOptions)
             {
-                var pick = reachableOptions[Random.Range(0, reachableOptions.Count)];
-                chosenPath = pick.path;
-                chosenTarget = pick.cell;
+                int n = _mapManager.GetVisitedNeighborCount(cell);
+                if (n > maxVisitedAdj) maxVisitedAdj = n;
             }
-            else
+            var stage2Options = new List<(List<Vector2Int> path, Vector2Int cell)>();
+            var stage3Options = new List<(List<Vector2Int> path, Vector2Int cell)>();
+            foreach (var opt in reachableOptions)
             {
-                // 2단계 기준: 경로 짧은 것 우선, 동점이면 방문 인접 많은 프론티어(가장자리) 우선
-                int minLen = int.MaxValue;
-                int maxVisitedAdj = -1;
-                foreach (var (path, cell) in reachableOptions)
+                int n = _mapManager.GetVisitedNeighborCount(opt.cell);
+                if (n == maxVisitedAdj)
+                    stage2Options.Add(opt);
+                else
+                    stage3Options.Add(opt);
+            }
+
+            List<(List<Vector2Int> path, Vector2Int cell)> pool;
+            if (stage3Options.Count > 0 && Random.value < _adventurousness)
+                pool = stage3Options; // 모험심: 3단계(방문 인접 적은) 프론티어로 이동
+            else
+                pool = stage2Options; // 기본: 2단계(가장자리) 프론티어로 이동
+            if (pool.Count == 0)
+                pool = reachableOptions;
+
+            // 선택된 풀에서 경로 짧은 것 우선, 동점이면 방문 인접 많은 셀 우선
+            int minLen = int.MaxValue;
+            int bestVisitedAdj = -1;
+            foreach (var (path, cell) in pool)
+            {
+                int visitedAdj = _mapManager.GetVisitedNeighborCount(cell);
+                bool better = path.Count < minLen
+                    || (path.Count == minLen && visitedAdj > bestVisitedAdj);
+                if (better)
                 {
-                    int visitedAdj = _mapManager.GetVisitedNeighborCount(cell);
-                    bool better = path.Count < minLen
-                        || (path.Count == minLen && visitedAdj > maxVisitedAdj);
-                    if (better)
-                    {
-                        minLen = path.Count;
-                        maxVisitedAdj = visitedAdj;
-                        chosenPath = path;
-                        chosenTarget = cell;
-                    }
+                    minLen = path.Count;
+                    bestVisitedAdj = visitedAdj;
+                    chosenPath = path;
+                    chosenTarget = cell;
                 }
             }
         }
