@@ -22,10 +22,14 @@ public class PartyFollower : MonoBehaviour
     [Header("포메이션")]
     [Tooltip("리더와의 유지 거리 (월드 단위). 리더 이동 방향 반대쪽으로 이만큼 떨어짐")]
     [SerializeField] private float _followDistance = 1f;
-    [Tooltip("이 동료의 포메이션 슬롯 (0=리더 바로 뒤, 1=한 칸 더 뒤, …). 동일 슬롯이면 겹칠 수 있음")]
+    [Tooltip("맨앞 동료가 리더를 따르는 거리. 뒤쪽 동료도 앞 동료를 이 거리로 따라감 (0이면 _followDistance 사용)")]
+    [SerializeField] private float _firstFollowerDistance = 0.5f;
+    [Tooltip("이 동료의 포메이션 슬롯 (0=리더 바로 뒤, 1=그 다음, …). 뒤쪽은 앞쪽 동료를 이 거리로 따라감")]
     [SerializeField] private int _slotIndex = 0;
     [Tooltip("이동 속도. 리더와 비슷하거나 약간 낮추면 자연스러움")]
     [SerializeField] private float _speed = 2f;
+    [Tooltip("뛸 때 속도 배율 (걷기=1배, 리더와 비슷하게 1.5 등)")]
+    [SerializeField] private float _runSpeedMultiplier = 1.5f;
     [Tooltip("웨이포인트 도착 판정 반경 (경로 따라갈 때)")]
     [SerializeField] private float _waypointReachRadius = 0.35f;
     [Tooltip("목표 지점 도착으로 보는 반경. 이 안이면 멈춤")]
@@ -117,9 +121,33 @@ public class PartyFollower : MonoBehaviour
         }
         _lastLeaderPosition = leaderPos;
 
-        Vector2 formationDir = _hasStoredDirection ? _lastLeaderDirection : _idleFormationDirection.normalized;
-        float totalDistance = _followDistance * (_slotIndex + 1);
-        Vector2 targetWorld = leaderPos - formationDir * totalDistance;
+        // 맨앞(slot 0)은 리더를, 뒤쪽(slot≥1)은 바로 앞 동료를 맨앞이 리더 따르듯이 따라감
+        Vector2 myLeaderPos;
+        Vector2 myFormationDir;
+        float totalDistance;
+        if (_slotIndex == 0)
+        {
+            myLeaderPos = leaderPos;
+            myFormationDir = _hasStoredDirection ? _lastLeaderDirection : _idleFormationDirection.normalized;
+            totalDistance = _firstFollowerDistance > 0f ? _firstFollowerDistance : _followDistance;
+        }
+        else if (TryGetFrontAlly(out Vector2 frontPos, out Vector2 frontDir))
+        {
+            myLeaderPos = frontPos;
+            myFormationDir = frontDir.sqrMagnitude >= 0.01f ? frontDir.normalized : (frontPos - (Vector2)transform.position).normalized;
+            if (myFormationDir.sqrMagnitude < 0.01f)
+                myFormationDir = _idleFormationDirection.normalized;
+            totalDistance = _firstFollowerDistance > 0f ? _firstFollowerDistance : _followDistance;
+        }
+        else
+        {
+            myLeaderPos = leaderPos;
+            myFormationDir = _hasStoredDirection ? _lastLeaderDirection : _idleFormationDirection.normalized;
+            totalDistance = _firstFollowerDistance > 0f ? _firstFollowerDistance + _followDistance * _slotIndex : _followDistance * (_slotIndex + 1);
+        }
+
+        Vector2 formationDir = myFormationDir;
+        Vector2 targetWorld = myLeaderPos - formationDir * totalDistance;
 
         // 동료끼리 겹치지 않도록 슬롯별로 포메이션 직선의 수직 방향으로 번갈아 오프셋
         if (_formationSpread > 0f)
@@ -131,9 +159,9 @@ public class PartyFollower : MonoBehaviour
 
         Vector2Int targetCell = _mapManager.WorldToCell(targetWorld);
 
-        // 목표 셀이 벽이면 리더 셀로 경로 목표 설정 (가까이만 가면 됨)
+        // 목표 셀이 벽이면 따라가는 대상(리더 또는 앞 동료) 셀로 경로 목표 설정
         if (!_mapManager.IsWalkable(targetCell))
-            targetCell = _mapManager.WorldToCell(leaderPos);
+            targetCell = _mapManager.WorldToCell(myLeaderPos);
 
         // 목표가 바뀌었거나 경로가 없/끝났으면 경로 재계산
         bool needNewPath = targetCell != _lastTargetCell
@@ -189,19 +217,32 @@ public class PartyFollower : MonoBehaviour
         if (_overlapStopRadius > 0f && IsTooCloseToSomeoneInFront(leaderPos))
             desiredVelocity = Vector2.zero;
 
+        // 뛰기 조건: 이동 중이고 목표(포메이션)까지 셀 거리가 시야+1보다 멀 때 (리더와 동일)
+        int distToTarget = CellDistance(myCell, targetCell);
+        int runThreshold = _viewRadius + 1;
+        bool useRun = desiredVelocity.sqrMagnitude >= 0.01f && distToTarget > runThreshold;
+
+        if (useRun && desiredVelocity.sqrMagnitude >= 0.0001f)
+            desiredVelocity = desiredVelocity.normalized * (_speed * _runSpeedMultiplier);
+
         _rigidbody.linearVelocity = desiredVelocity;
-        UpdateMovementAnimation(desiredVelocity);
+        UpdateMovementAnimation(desiredVelocity, useRun);
     }
 
-    private void UpdateMovementAnimation(Vector2 velocity)
+    private static int CellDistance(Vector2Int a, Vector2Int b)
+    {
+        return Mathf.Max(Mathf.Abs(b.x - a.x), Mathf.Abs(b.y - a.y));
+    }
+
+    private void UpdateMovementAnimation(Vector2 velocity, bool useRun)
     {
         if (_animator == null)
             return;
 
         bool hasVelocity = velocity.sqrMagnitude >= 0.01f;
         _animator.SetBool("Idle", !hasVelocity);
-        _animator.SetBool("Walk", hasVelocity);
-        _animator.SetBool("Run", false);
+        _animator.SetBool("Walk", hasVelocity && !useRun);
+        _animator.SetBool("Run", hasVelocity && useRun);
 
         if (hasVelocity && Mathf.Abs(velocity.x) >= 0.01f)
         {
@@ -213,6 +254,27 @@ public class PartyFollower : MonoBehaviour
 
     /// <summary>포메이션 슬롯 (0=리더 바로 뒤). 앞쪽 동료 판정용.</summary>
     public int SlotIndex => _slotIndex;
+
+    /// <summary>바로 앞 동료(slotIndex - 1)의 위치와 이동 방향을 반환. 없으면 false.</summary>
+    private bool TryGetFrontAlly(out Vector2 position, out Vector2 movementDirection)
+    {
+        position = Vector2.zero;
+        movementDirection = Vector2.zero;
+        if (_slotIndex < 1) return false;
+
+        var allies = GameObject.FindGameObjectsWithTag("Ally");
+        foreach (var go in allies)
+        {
+            if (go == null || go == gameObject) continue;
+            var other = go.GetComponent<PartyFollower>();
+            if (other == null || other.SlotIndex != _slotIndex - 1) continue;
+            position = go.transform.position;
+            var rb = go.GetComponent<Rigidbody2D>();
+            movementDirection = rb != null ? rb.linearVelocity : Vector2.zero;
+            return true;
+        }
+        return false;
+    }
 
     /// <summary>리더 또는 슬롯이 더 앞인 동료와 _overlapStopRadius 안에 있으면 true. 뒤쪽이 멈출 때 사용.</summary>
     private bool IsTooCloseToSomeoneInFront(Vector2 leaderPos)
