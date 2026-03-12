@@ -11,13 +11,14 @@ using TriInspector;
 [RequireComponent(typeof(Rigidbody2D))]
 public class ExplorerAI : MonoBehaviour
 {
-    /// <summary>상태 머신: 대기 / 로컬 탐험 / 글로벌 목표로 이동 / 상자 픽 중</summary>
+    /// <summary>상태 머신: 대기 / 로컬 탐험 / 글로벌 목표로 이동 / 상자 픽 중 / 장애물 부수기 중</summary>
     public enum State
     {
         Idle,
         Exploring,
         Navigating,
-        PickingChest
+        PickingChest,
+        PickingObstacle
     }
 
     [Title("참조")]
@@ -33,16 +34,19 @@ public class ExplorerAI : MonoBehaviour
     [Title("탐험 설정")]
     [Tooltip("현재 위치 기준 시야 반경(타일 수). 이 범위 내 타일을 즉시 visited 처리")]
     [Slider(1, 15)]
-    [SerializeField] private int _viewRadius = 3;
+    [SerializeField] private int _viewRadius = 4;
     [Tooltip("2단계 시야 반경(구조만 보임). 이 범위까지 벽/바닥이 보이고, _viewRadius 안에서만 장애물 등 전부 보임")]
     [Slider(1, 20)]
-    [SerializeField] private int _viewRadiusStructure = 6;
+    [SerializeField] private int _viewRadiusStructure = 8;
     [Tooltip("이동 속도")]
     [Slider(0.5f, 10f)]
     [SerializeField] private float _speed = 2f;
     [Tooltip("웨이포인트 도착 판정 반경")]
     [Slider(0.1f, 2f)]
-    [SerializeField] private float _waypointReachRadius = 0.35f;
+    [SerializeField] private float _waypointReachRadius = 0.05f;
+    [Tooltip("목적지(마지막 웨이포인트) 도착 판정 반경. 작을수록 셀 중심에 정확히 도달")]
+    [Slider(0.01f, 0.5f)]
+    [SerializeField] private float _destinationReachRadius = 0.05f;
     [Tooltip("인접 탐색 시 여러 방향이 있을 때: true=시야를 가장 많이 밝힐 수 있는 방향 우선, 동점일 때 랜덤 / false=동점일 때만 첫 번째 우선")]
     [SerializeField] private bool _randomizeLocalChoice = true;
     [Tooltip("모험심 (0~1). 0=2단계 시야 가장자리만 확장(안전), 1=미탐험(3단계) 방향도 자주 선택. 2단계로 갈 곳이 없으면 어쩔 수 없이 3단계로 감")]
@@ -74,6 +78,9 @@ public class ExplorerAI : MonoBehaviour
     [Tooltip("상자 인접 칸에 도착 후 픽 애니메이션 재생 시간(초)")]
     [Slider(0.1f, 5f)]
     [SerializeField] private float _pickDuration = 1f;
+    [Tooltip("장애물 부수기 대기 시간(초). 상자보다 짧게 두면 자연스러움")]
+    [Slider(0.1f, 2f)]
+    [SerializeField] private float _obstacleBreakDuration = 0.35f;
 
     private Rigidbody2D _rigidbody;
     private State _state = State.Idle;
@@ -93,6 +100,10 @@ public class ExplorerAI : MonoBehaviour
     private int _pickingCount;
     /// <summary>Navigating 시 목표가 상자 인접 칸일 때 그 상자 셀. 도착 후 PickingChest로 전환할 때 사용</summary>
     private Vector2Int? _navigatingToChestCell;
+    /// <summary>PickingObstacle 시 부술 장애물 셀</summary>
+    private Vector2Int? _pickingObstacleCell;
+    /// <summary>장애물 부수기 후 경로 재개할지 (경로상 장애물이면 true)</summary>
+    private bool _resumePathAfterObstacle;
 
     public State CurrentState => _state;
 
@@ -149,7 +160,8 @@ public class ExplorerAI : MonoBehaviour
 
         Vector2Int myCell = _mapManager.WorldToCell(transform.position);
 
-        if (!_mapManager.IsWalkable(myCell))
+        // 워커블이 아닌 셀(벽 등)에 있으면 스킵. 상자/장애물 셀 위에서는 경로 완료·픽 로직이 동작하도록 허용
+        if (!_mapManager.IsPassableForPathfinding(myCell))
             return;
 
         // 시야 반경 업데이트: 현재 위치 중심으로 반경 내 타일 방문 처리 (모든 모드에서 수행)
@@ -214,40 +226,88 @@ public class ExplorerAI : MonoBehaviour
             return;
         }
 
-        // 보물상자 발견: 시야 안 미픽 상자 있으면 인접한 가까운 칸으로 이동 후, 도착하면 픽
+        // 장애물 부수기 중: 잠깐 멈췄다가 Slash 재생 후 부수고 탐험/경로 재개
+        if (_state == State.PickingObstacle)
+        {
+            if (!_didTriggerPick && _pickingObstacleCell.HasValue)
+            {
+                Vector2Int dir = _pickingObstacleCell.Value - myCell;
+                if (dir.x != 0)
+                {
+                    var scale = transform.localScale;
+                    if ((dir.x > 0 && scale.x < 0) || (dir.x < 0 && scale.x > 0))
+                        transform.localScale = new Vector3(-scale.x, scale.y, scale.z);
+                }
+                if (_animator != null)
+                    _animator.SetTrigger("Slash");
+                _didTriggerPick = true;
+            }
+            _pickingTimer -= Time.deltaTime;
+            if (_pickingTimer <= 0f && _pickingObstacleCell.HasValue)
+            {
+                _mapManager.MarkObstacleBroken(_pickingObstacleCell.Value);
+                _pickingObstacleCell = null;
+                if (_animator != null)
+                    _animator.ResetTrigger("Slash");
+                if (_resumePathAfterObstacle && _currentPath != null && _pathIndex < _currentPath.Count)
+                {
+                    _resumePathAfterObstacle = false;
+                    Vector2Int goal = _globalTargetCell ?? _currentPath[_currentPath.Count - 1];
+                    var newPath = _pathfinder.GetPath(_mapManager, myCell, goal);
+                    if (newPath != null && newPath.Count > 0)
+                    {
+                        _currentPath = newPath;
+                        _pathIndex = 0;
+                    }
+                    else
+                        _pathIndex++;
+                    _state = State.Navigating;
+                }
+                else
+                {
+                    _resumePathAfterObstacle = false;
+                    _state = State.Exploring;
+                    _globalTargetCell = null;
+                    _mapManager.SetGlobalTarget(null);
+                    _currentPath = null;
+                    _pathIndex = 0;
+                    _currentTargetCell = null;
+                }
+                UpdateMovementAnimation(myCell);
+                return;
+            }
+            UpdateMovementAnimation(myCell);
+            return;
+        }
+
+        // 보물상자 발견:
         bool goingToExit = exitCell.HasValue && _globalTargetCell == exitCell.Value;
         if (!goingToExit)
         {
             var unpicked = _mapManager.GetUnpickedChestCellsInFullView();
             if (unpicked.Count > 0)
             {
-                Vector2Int? bestStand = null;
                 Vector2Int? bestChest = null;
                 int bestPathLen = int.MaxValue;
                 foreach (var chestCell in unpicked)
                 {
-                    var standCells = _mapManager.GetStandCellsNextToChest(chestCell);
-                    foreach (var stand in standCells)
+                    var path = _pathfinder.GetPath(_mapManager, myCell, chestCell);
+                    if (path != null && path.Count > 0 && path.Count < bestPathLen)
                     {
-                        var path = _pathfinder.GetPath(_mapManager, myCell, stand);
-                        if (path != null && path.Count > 0 && path.Count < bestPathLen)
-                        {
-                            bestPathLen = path.Count;
-                            bestStand = stand;
-                            bestChest = chestCell;
-                        }
+                        bestPathLen = path.Count;
+                        bestChest = chestCell;
                     }
                 }
-                if (bestStand.HasValue && bestChest.HasValue)
+                if (bestChest.HasValue)
                 {
-                    bool alreadyGoingThere = _state == State.Navigating && _globalTargetCell == bestStand.Value;
+                    bool alreadyGoingThere = _state == State.Navigating && _globalTargetCell == bestChest.Value;
                     if (!alreadyGoingThere)
                     {
-                        var path = _pathfinder.GetPath(_mapManager, myCell, bestStand.Value);
+                        var path = _pathfinder.GetPath(_mapManager, myCell, bestChest.Value);
                         if (path != null && path.Count > 0)
                         {
-                            _globalTargetCell = bestStand;
-                            _mapManager.SetGlobalTarget(bestStand);
+                            _globalTargetCell = bestChest;
+                            _mapManager.SetGlobalTarget(bestChest);
                             _currentPath = path;
                             _pathIndex = 0;
                             _state = State.Navigating;
@@ -271,6 +331,9 @@ public class ExplorerAI : MonoBehaviour
 
             case State.Navigating:
                 UpdateNavigating(myCell);
+                break;
+
+            case State.PickingObstacle:
                 break;
         }
 
@@ -305,7 +368,7 @@ public class ExplorerAI : MonoBehaviour
 
     private bool IsChestUnpicked(Vector2Int cell) => _mapManager != null && !_mapManager.IsChestPicked(cell);
 
-    /// <summary>목표까지 거리만으로 걷기/뛰기. 시야 밖이면 뛰기. 경계에서 Run 한 프레임 방지: Run은 distance > viewRadius+1 일 때만.</summary>
+    /// <summary>목표까지 거리만으로 걷기/뛰기.</summary>
     private void UpdateMovementAnimation(Vector2Int myCell)
     {
         bool hasVelocity = _desiredVelocity.sqrMagnitude >= 0.01f;
@@ -336,6 +399,23 @@ public class ExplorerAI : MonoBehaviour
         return _mapManager.IsWalkable(c) ? c : (Vector2Int?)null;
     }
 
+    /// <summary>상자 트리거에 닿았을 때 ChestOpenable에서 호출. 해당 셀 상자 픽을 시작합니다.</summary>
+    public void BeginPickChest(Vector2Int cell)
+    {
+        if (_mapManager == null || _mapManager.IsChestPicked(cell)) return;
+        if (_pickingChestCell == cell) return;
+        _pickingChestCell = cell;
+        _pickingTimer = _pickDuration;
+        _didTriggerPick = false;
+        _pickingCount = 0;
+        _state = State.PickingChest;
+        _mapManager.SetGlobalTarget(null);
+        _globalTargetCell = null;
+        _currentPath = null;
+        _pathIndex = 0;
+        _navigatingToChestCell = null;
+    }
+
     private bool IsExitVisible(Vector2Int myCell, Vector2Int exitCell)
     {
         int dx = Mathf.Abs(exitCell.x - myCell.x);
@@ -363,19 +443,19 @@ public class ExplorerAI : MonoBehaviour
     /// - 인접 타일 중 안개 3단계 셀을 기본 후보로 삼고, 그 안에서 "가장자리(2단계 인접) 성향" / "깊은 3단계 성향"으로 나눈 뒤
     /// - 모험심(adventurousness)에 따라 어느 성향을 따를지 확률적으로 결정해 한 칸 이동합니다.
     /// - 인접 3단계가 없을 때만 예외적으로 2단계 셀을 사용하며, 더 갈 곳이 없으면 재타겟팅 코루틴을 시작합니다.
+    /// - 대각선 셀은 벽/장애물에 끼지 않을 때만 후보에 포함(두 인접 cardinal 통과 가능 시).
     /// </summary>
     private void UpdateExploring(Vector2Int myCell)
     {
-        var neighbors = new List<Vector2Int>(4);
-        foreach (var dir in Direction2D.cardinalDirectionsList)
+        var neighbors = new List<Vector2Int>(8);
+        foreach (var dir in Direction2D.eightDirectionsList)
         {
             var c = myCell + dir;
-            if (_mapManager.IsWalkable(c))
-            {
-                int stage = _mapManager.GetFogStage(c);
-                if (stage == 2 || stage == 3)
-                    neighbors.Add(c);
-            }
+            if (!_mapManager.IsWalkable(c)) continue;
+            if (dir.x != 0 && dir.y != 0 && !CanMoveDiagonal(myCell, dir)) continue;
+            int stage = _mapManager.GetFogStage(c);
+            if (stage == 2 || stage == 3)
+                neighbors.Add(c);
         }
 
         if (neighbors.Count > 0)
@@ -389,16 +469,15 @@ public class ExplorerAI : MonoBehaviour
             float r2 = _waypointReachRadius * _waypointReachRadius;
             if (toTarget.sqrMagnitude <= r2)
             {
-                var nextNeighbors = new List<Vector2Int>(4);
-                foreach (var dir in Direction2D.cardinalDirectionsList)
+                var nextNeighbors = new List<Vector2Int>(8);
+                foreach (var dir in Direction2D.eightDirectionsList)
                 {
                     var c = nextCell + dir;
-                    if (_mapManager.IsWalkable(c))
-                    {
-                        int stage = _mapManager.GetFogStage(c);
-                        if (stage == 2 || stage == 3)
-                            nextNeighbors.Add(c);
-                    }
+                    if (!_mapManager.IsWalkable(c)) continue;
+                    if (dir.x != 0 && dir.y != 0 && !CanMoveDiagonal(nextCell, dir)) continue;
+                    int stage = _mapManager.GetFogStage(c);
+                    if (stage == 2 || stage == 3)
+                        nextNeighbors.Add(c);
                 }
                 if (nextNeighbors.Count > 0)
                 {
@@ -421,6 +500,14 @@ public class ExplorerAI : MonoBehaviour
         // 막다른 길: 글로벌 재타겟팅은 코루틴으로 한 번만 실행 (성능 최적화)
         if (!_isReTargeting)
             StartCoroutine(ReTargetingCoroutine(myCell));
+    }
+
+    /// <summary>대각선 이동 시 끼인 두 cardinal 셀이 통과 가능한지 (벽/장애물 코너 관통 방지)</summary>
+    private bool CanMoveDiagonal(Vector2Int from, Vector2Int diagDir)
+    {
+        if (diagDir.x == 0 || diagDir.y == 0) return true;
+        return _mapManager.IsWalkable(from + new Vector2Int(diagDir.x, 0))
+            && _mapManager.IsWalkable(from + new Vector2Int(0, diagDir.y));
     }
 
     /// <summary>
@@ -545,17 +632,47 @@ public class ExplorerAI : MonoBehaviour
                 for (int idx = 0; idx < limit; idx++)
                 {
                     var cell = targets[idx];
-                    var path = _pathfinder.GetPath(_mapManager, fromCell, cell);
-                    if (path == null || path.Count == 0)
+                    List<Vector2Int> path = null;
+                    if (_mapManager.IsWalkable(cell))
                     {
-                        _mapManager.MarkUnreachable(cell);
-                        continue;
+                        path = _pathfinder.GetPath(_mapManager, fromCell, cell);
+                        if (path == null || path.Count == 0)
+                        {
+                            _mapManager.MarkUnreachable(cell);
+                            continue;
+                        }
                     }
+                    else if (_mapManager.IsObstacleCell(cell))
+                    {
+                        var stands = _mapManager.GetWalkableNeighbors(cell);
+                        int bestLen = int.MaxValue;
+                        foreach (var stand in stands)
+                        {
+                            var p = _pathfinder.GetPath(_mapManager, fromCell, stand);
+                            if (p != null && p.Count > 0 && p.Count < bestLen)
+                            {
+                                bestLen = p.Count;
+                                path = p;
+                            }
+                        }
+                        if (path == null) continue;
+                    }
+                    else if (_mapManager.IsChestCell(cell))
+                    {
+                        path = _pathfinder.GetPath(_mapManager, fromCell, cell);
+                        if (path == null || path.Count == 0)
+                        {
+                            _mapManager.MarkUnreachable(cell);
+                            continue;
+                        }
+                    }
+                    else
+                        continue;
                     dest.Add((path, cell));
                 }
             }
 
-            // 모험심 0: 목적지는 안개 2단계 셀(방문됐지만 완전 시야가 아닌 셀)
+            // 모험심 0: 목적지는 안개 2단계 셀(방문됐지만 완전 시야가 아닌 셀). 워커블 + 장애물 셀 모두 후보.
             if (Mathf.Approximately(_adventurousness, 0f))
             {
                 var fog2OnlyTargets = new List<Vector2Int>();
@@ -563,7 +680,8 @@ public class ExplorerAI : MonoBehaviour
                 for (int j = 0; j < _mapManager.Height; j++)
                 {
                     var cell = _mapManager.IndexToCell(i, j);
-                    if (!_mapManager.IsWalkable(cell) || _mapManager.IsUnreachable(cell)) continue;
+                    if (!_mapManager.IsWalkable(cell) && !_mapManager.IsObstacleCell(cell) && !_mapManager.IsChestCell(cell)) continue;
+                    if (_mapManager.IsWalkable(cell) && _mapManager.IsUnreachable(cell)) continue;
                     if (_mapManager.GetFogStage(cell) == 2)
                         fog2OnlyTargets.Add(cell);
                 }
@@ -572,7 +690,7 @@ public class ExplorerAI : MonoBehaviour
             }
             else
             {
-                // 모험심 > 0: 목적지는 안개 3단계 셀. 2단계 성향 / 3단계 성향으로 나눔.
+                // 모험심 > 0: 목적지는 안개 3단계 셀. 워커블 + 장애물 셀 모두 후보. 2단계 성향 / 3단계 성향으로 나눔.
                 var stage2LikeTargets = new List<Vector2Int>();
                 var stage3LikeTargets = new List<Vector2Int>();
 
@@ -580,7 +698,8 @@ public class ExplorerAI : MonoBehaviour
                 for (int j = 0; j < _mapManager.Height; j++)
                 {
                     var cell = _mapManager.IndexToCell(i, j);
-                    if (!_mapManager.IsWalkable(cell) || _mapManager.IsUnreachable(cell)) continue;
+                    if (!_mapManager.IsWalkable(cell) && !_mapManager.IsObstacleCell(cell) && !_mapManager.IsChestCell(cell)) continue;
+                    if (_mapManager.IsWalkable(cell) && _mapManager.IsUnreachable(cell)) continue;
 
                     int stage = _mapManager.GetFogStage(cell);
                     if (stage != 3) continue;
@@ -688,6 +807,24 @@ public class ExplorerAI : MonoBehaviour
             _state = State.Navigating;
             _currentTargetCell = null;
         }
+        else
+        {
+            // 더 이상 갈 탐험 목표가 없으면 목적지를 입구로 설정
+            var startCell = _mapManager.GetStartCell();
+            if (startCell.HasValue && _mapManager.IsWalkable(startCell.Value) && startCell.Value != fromCell)
+            {
+                var pathToStart = _pathfinder.GetPath(_mapManager, fromCell, startCell.Value);
+                if (pathToStart != null && pathToStart.Count > 0)
+                {
+                    _globalTargetCell = startCell;
+                    _mapManager.SetGlobalTarget(startCell);
+                    _currentPath = pathToStart;
+                    _pathIndex = 0;
+                    _state = State.Navigating;
+                    _currentTargetCell = null;
+                }
+            }
+        }
 
         _isReTargeting = false;
         yield break;
@@ -711,13 +848,13 @@ public class ExplorerAI : MonoBehaviour
     {
         if (_currentPath == null || _pathIndex >= _currentPath.Count)
         {
-            if (_navigatingToChestCell.HasValue && IsChestUnpicked(_navigatingToChestCell.Value))
+            if (_globalTargetCell.HasValue && _mapManager.IsObstacleCell(_globalTargetCell.Value))
             {
-                _pickingChestCell = _navigatingToChestCell;
-                _pickingTimer = _pickDuration;
+                _pickingObstacleCell = _globalTargetCell;
+                _pickingTimer = _obstacleBreakDuration;
                 _didTriggerPick = false;
-                _pickingCount = 0;
-                _state = State.PickingChest;
+                _resumePathAfterObstacle = false;
+                _state = State.PickingObstacle;
                 _mapManager.SetGlobalTarget(null);
                 _globalTargetCell = null;
                 _currentTargetCell = null;
@@ -734,12 +871,25 @@ public class ExplorerAI : MonoBehaviour
             return;
         }
 
+        // 경로상 다음 웨이포인트가 장애물이고 인접해 있으면 잠깐 멈췄다가 부수고 경로 재개
         Vector2Int waypoint = _currentPath[_pathIndex];
+        if (_mapManager.IsObstacleCell(waypoint) && CellDistance(myCell, waypoint) == 1)
+        {
+            _pickingObstacleCell = waypoint;
+            _pickingTimer = _obstacleBreakDuration;
+            _didTriggerPick = false;
+            _resumePathAfterObstacle = true;
+            _state = State.PickingObstacle;
+            return;
+        }
+
         Vector3 targetWorld = _mapManager.CellToWorld(waypoint);
         Vector2 toTarget = (Vector2)(targetWorld - transform.position);
-        float r2 = _waypointReachRadius * _waypointReachRadius;
+        bool isLastWaypoint = _pathIndex >= _currentPath.Count - 1;
+        float reachR = isLastWaypoint ? _destinationReachRadius : _waypointReachRadius;
+        float r2 = reachR * reachR;
 
-        // 웨이포인트 도착 시 다음으로 즉시 전환 (멈췄다 다시 가는 끊김 방지)
+        // 웨이포인트 도착 시 다음으로 즉시 전환. 목적지(마지막)는 작은 반경으로 셀 중심까지 도달.
         while (toTarget.sqrMagnitude <= r2)
         {
             _pathIndex++;
@@ -757,13 +907,13 @@ public class ExplorerAI : MonoBehaviour
                     _onReachedExit?.Invoke();
                     return;
                 }
-                if (_navigatingToChestCell.HasValue && IsChestUnpicked(_navigatingToChestCell.Value))
+                if (_globalTargetCell.HasValue && _mapManager.IsObstacleCell(_globalTargetCell.Value))
                 {
-                    _pickingChestCell = _navigatingToChestCell;
-                    _pickingTimer = _pickDuration;
+                    _pickingObstacleCell = _globalTargetCell;
+                    _pickingTimer = _obstacleBreakDuration;
                     _didTriggerPick = false;
-                    _pickingCount = 0;
-                    _state = State.PickingChest;
+                    _resumePathAfterObstacle = false;
+                    _state = State.PickingObstacle;
                     _mapManager.SetGlobalTarget(null);
                     _globalTargetCell = null;
                     _currentTargetCell = null;
@@ -782,15 +932,36 @@ public class ExplorerAI : MonoBehaviour
             }
             waypoint = _currentPath[_pathIndex];
             targetWorld = _mapManager.CellToWorld(waypoint);
+            // 방금 도달한 웨이포인트 위치로 스냅해 경로에서 틀어지지 않게 함
+            Vector2Int reachedCell = _currentPath[_pathIndex - 1];
+            Vector3 reachedWorld = _mapManager.CellToWorld(reachedCell);
+            var pos = new Vector3(reachedWorld.x, reachedWorld.y, transform.position.z);
+            transform.position = pos;
+            if (_rigidbody != null)
+                _rigidbody.position = new Vector2(pos.x, pos.y);
             toTarget = (Vector2)(targetWorld - transform.position);
+            isLastWaypoint = _pathIndex >= _currentPath.Count - 1;
+            reachR = isLastWaypoint ? _destinationReachRadius : _waypointReachRadius;
+            r2 = reachR * reachR;
         }
 
         if (toTarget.sqrMagnitude >= 0.0001f)
         {
-            int distToGoal = _globalTargetCell.HasValue ? CellDistance(myCell, _globalTargetCell.Value) : 0;
-            int runThreshold = _viewRadius + 1;
-            float moveSpeed = distToGoal > runThreshold ? _speed * _runSpeedMultiplier : _speed;
-            _desiredVelocity = toTarget.normalized * moveSpeed;
+            // 목적지(마지막 웨이포인트)에 아주 가까우면 셀 중심으로 스냅해 정확히 도달
+            if (isLastWaypoint && toTarget.sqrMagnitude <= 0.01f)
+            {
+                var pos = new Vector3(targetWorld.x, targetWorld.y, transform.position.z);
+                transform.position = pos;
+                if (_rigidbody != null)
+                    _rigidbody.position = new Vector2(pos.x, pos.y);
+            }
+            else
+            {
+                int distToGoal = _globalTargetCell.HasValue ? CellDistance(myCell, _globalTargetCell.Value) : 0;
+                int runThreshold = _viewRadius + 1;
+                float moveSpeed = distToGoal > runThreshold ? _speed * _runSpeedMultiplier : _speed;
+                _desiredVelocity = toTarget.normalized * moveSpeed;
+            }
         }
     }
 }

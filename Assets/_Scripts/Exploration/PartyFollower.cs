@@ -35,17 +35,28 @@ public class PartyFollower : MonoBehaviour
     [Tooltip("뛸 때 속도 배율 (걷기=1배, 리더와 비슷하게 1.5 등)")]
     [Slider(1f, 3f)]
     [SerializeField] private float _runSpeedMultiplier = 1.5f;
+    [Tooltip("리더가 뛸 때 동료가 리더 속도 이상으로 따라가도록 할지. 켜면 리더 속도를 참조해 최소 그만큼 뛰어서 붙음")]
+    [SerializeField] private bool _matchLeaderRunSpeed = true;
+    [Tooltip("목표(포메이션)까지 셀 거리가 이 값 이상일 때 달림. 0=항상 달리기, 1=1칸 이상, 2=2칸 이상, 3=3칸 이상일 때 달리기")]
+    [Min(0)]
+    [SerializeField] private int _runDistanceThreshold = 4;
     [Tooltip("웨이포인트 도착 판정 반경 (경로 따라갈 때)")]
     [Slider(0.1f, 2f)]
     [SerializeField] private float _waypointReachRadius = 0.35f;
     [Tooltip("목표 지점 도착으로 보는 반경. 이 안이면 멈춤")]
     [Slider(0.1f, 2f)]
     [SerializeField] private float _arrivalRadius = 0.35f;
+    [Tooltip("목표 셀 도착 판정 반경(리더와 동일). 이 안이어야 다음 목표로 전환. 0.05=셀 중심에 정확히 도달 후에만 전환")]
+    [Slider(0.01f, 0.5f)]
+    [SerializeField] private float _destinationReachRadius = 0.05f;
     [Tooltip("리더가 멈춰 있을 때 사용할 기본 방향 (월드). 예: (0,-1)=아래쪽 뒤")]
     [SerializeField] private Vector2 _idleFormationDirection = new Vector2(0f, -1f);
     [Tooltip("동료끼리 겹치지 않도록 포메이션 직선의 좌우로 번갈아 밀어내는 거리 (월드 단위). 0이면 오프셋 없음")]
     [Slider(0f, 2f)]
     [SerializeField] private float _formationSpread = 0.35f;
+    [Tooltip("목적지 셀을 슬롯마다 한 칸 옆으로 비틀어서 경로가 일자로 가지 않게 함. 0이면 비틀기 없음")]
+    [Slider(0, 2)]
+    [SerializeField] private int _formationCellJitter = 1;
     [Tooltip("뒤쪽 동료의 포메이션 방향을 이 시간만큼 부드럽게 보간 (커브 시 자연스러운 곡선). 0이면 즉시 반영")]
     [Slider(0f, 1f)]
     [SerializeField] private float _formationDirSmoothTime = 0.1f;
@@ -81,6 +92,8 @@ public class PartyFollower : MonoBehaviour
     private Vector2 _smoothedTargetWorld;
     private float _personalSpreadOffset;
     private float _personalDistanceOffset;
+    private int _lastPathMapVersion = -1;
+    private PartyFormationProvider _formationProvider;
 
     private void Awake()
     {
@@ -116,6 +129,11 @@ public class PartyFollower : MonoBehaviour
 
         if (_mapManager == null) _mapManager = FindFirstObjectByType<MapManager>();
         if (_pathfinder == null) _pathfinder = FindFirstObjectByType<Pathfinder>();
+
+        if (_leader != null)
+            _formationProvider = _leader.GetComponent<PartyFormationProvider>();
+        if (_leader != null && _formationProvider == null)
+            _formationProvider = _leader.gameObject.AddComponent<PartyFormationProvider>();
 
         _smoothedFormationDir = _idleFormationDirection.normalized;
         _smoothedTargetWorld = _leader != null ? (Vector2)_leader.position : (Vector2)transform.position;
@@ -156,8 +174,25 @@ public class PartyFollower : MonoBehaviour
         }
         _lastLeaderPosition = leaderPos;
 
-        // 맨앞(slot 0)은 리더를, 뒤쪽(slot≥1)은 바로 앞 동료를 맨앞이 리더 따르듯이 따라감
         Vector2 myLeaderPos;
+        Vector2 formationDir;
+        Vector2 targetWorld;
+        Vector2Int leaderOrFrontCell;
+
+        if (_formationProvider != null)
+        {
+            // 리더가 준 좌표만 그대로 사용 (스프레드/스무딩 없음)
+            targetWorld = _formationProvider.GetFormationTarget(_slotIndex);
+            formationDir = _formationProvider.FormationDirection;
+            leaderOrFrontCell = _slotIndex == 0
+                ? _mapManager.WorldToCell(leaderPos)
+                : _formationProvider.GetFormationTargetCell(_slotIndex - 1);
+            myLeaderPos = leaderPos;
+            _smoothedTargetWorld = targetWorld;
+        }
+        else
+        {
+        // 맨앞(slot 0)은 리더를, 뒤쪽(slot≥1)은 바로 앞 동료를 맨앞이 리더 따르듯이 따라감
         Vector2 myFormationDir;
         float totalDistance;
         if (_slotIndex == 0)
@@ -192,8 +227,8 @@ public class PartyFollower : MonoBehaviour
             totalDistance += _distanceVariation * ((_slotIndex % 3) - 1);
         totalDistance += _personalDistanceOffset;
 
-        Vector2 formationDir = myFormationDir;
-        Vector2 targetWorld = myLeaderPos - formationDir * totalDistance;
+        formationDir = myFormationDir;
+        targetWorld = myLeaderPos - formationDir * totalDistance;
 
         // 수직 오프셋: 사인파 + 동료마다 고정 랜덤 (일자 감소)
         if (_formationSpread > 0f || _personalSpreadRange > 0f)
@@ -210,20 +245,82 @@ public class PartyFollower : MonoBehaviour
             targetWorld = _smoothedTargetWorld;
         }
 
-        Vector2Int targetCell = _mapManager.WorldToCell(targetWorld);
+        leaderOrFrontCell = _mapManager.WorldToCell(myLeaderPos);
+        }
+
+        // 리더가 비틀린 좌표까지 줬으면 그 셀 사용, 아니면 월드→셀 후 동료 쪽에서 비틀기
+        Vector2Int targetCell = _formationProvider != null
+            ? _formationProvider.GetFormationTargetCell(_slotIndex)
+            : _mapManager.WorldToCell(targetWorld);
+        // 리더가 비틀린 좌표까지 줬으면 비틀기 생략, 아니면 동료가 셀 비틀기
+        if (_formationProvider == null && _formationCellJitter > 0 && CellDistance(myCell, targetCell) > 1)
+        {
+            Vector2 forwardDir = formationDir;
+            int sign = (_slotIndex % 2 == 0) ? 1 : -1;
+            var offsets = new[]
+            {
+                new Vector2Int(1, 0), new Vector2Int(-1, 0), new Vector2Int(0, 1), new Vector2Int(0, -1),
+                new Vector2Int(1, 1), new Vector2Int(1, -1), new Vector2Int(-1, 1), new Vector2Int(-1, -1)
+            };
+            foreach (var o in offsets)
+            {
+                Vector2Int jitterDelta = o * (sign * _formationCellJitter);
+                if (Vector2.Dot((Vector2)jitterDelta, forwardDir) < 0f) continue; // 뒤쪽·뒤쪽 대각선 제외
+                Vector2Int jitteredCell = targetCell + jitterDelta;
+                if (_mapManager.IsWalkable(jitteredCell) && jitteredCell != leaderOrFrontCell)
+                {
+                    targetCell = jitteredCell;
+                    break;
+                }
+            }
+        }
 
         // 목표 셀이 벽이면 따라가는 대상(리더 또는 앞 동료) 셀로 경로 목표 설정
         if (!_mapManager.IsWalkable(targetCell))
             targetCell = _mapManager.WorldToCell(myLeaderPos);
 
-        // 목표가 바뀌었거나 경로가 없/끝났으면 경로 재계산
-        bool needNewPath = targetCell != _lastTargetCell
-            || _currentPath == null
-            || _pathIndex >= _currentPath.Count;
+        // 동료가 리더(또는 맨 앞 동료)와 같은 셀을 목표로 하면 안 됨 → 인접 셀 중 하나로
+        if (targetCell == leaderOrFrontCell)
+        {
+            var neighbors = _mapManager.GetWalkableNeighbors(leaderOrFrontCell);
+            if (neighbors != null && neighbors.Count > 0)
+            {
+                Vector2 behindDir = -formationDir;
+                Vector2Int behindCell = leaderOrFrontCell + new Vector2Int(Mathf.RoundToInt(behindDir.x), Mathf.RoundToInt(behindDir.y));
+                if (neighbors.Contains(behindCell))
+                    targetCell = behindCell;
+                else
+                    targetCell = neighbors[0];
+            }
+        }
+
+        // 맵이 바뀌었으면(장애물/상자 부숴짐 등) 경로 무효화 후 재계산해서 꼬임 방지
+        if (_mapManager.WalkableVersion != _lastPathMapVersion)
+        {
+            _lastPathMapVersion = _mapManager.WalkableVersion;
+            _currentPath = null;
+            _pathIndex = 0;
+        }
+
+        // 목표 변경: 리더가 좌표를 줄 때는 무조건 그 좌표로 갱신. 리더 없으면 도착한 다음에만 새 목표로 전환
+        bool atCurrentTarget = true;
+        if (_currentPath != null && _pathIndex < _currentPath.Count)
+            atCurrentTarget = false;
+        else if (_currentPath != null && _pathIndex >= _currentPath.Count)
+        {
+            Vector2 destWorld = _mapManager.CellToWorld(_currentPath[_currentPath.Count - 1]);
+            float r2 = _destinationReachRadius * _destinationReachRadius;
+            atCurrentTarget = ((Vector2)transform.position - destWorld).sqrMagnitude <= r2;
+        }
+
+        bool needNewPath = _formationProvider != null
+            ? (targetCell != _lastTargetCell || _currentPath == null || _pathIndex >= _currentPath.Count)
+            : (atCurrentTarget && (targetCell != _lastTargetCell || _currentPath == null || _pathIndex >= _currentPath.Count));
 
         if (needNewPath)
         {
-            var path = _pathfinder.GetPath(_mapManager, myCell, targetCell);
+            // 동료는 장애물을 부수지 않으므로 장애물을 피하는 경로 사용
+            var path = _pathfinder.GetPath(_mapManager, myCell, targetCell, allowObstacles: false);
             if (path != null && path.Count > 0)
             {
                 _currentPath = path;
@@ -236,6 +333,7 @@ public class PartyFollower : MonoBehaviour
                 _pathIndex = 0;
                 _lastTargetCell = targetCell;
             }
+            _lastPathMapVersion = _mapManager.WalkableVersion;
         }
 
         Vector2 desiredVelocity = Vector2.zero;
@@ -245,12 +343,19 @@ public class PartyFollower : MonoBehaviour
             Vector2Int waypoint = _currentPath[_pathIndex];
             Vector3 waypointWorld = _mapManager.CellToWorld(waypoint);
             Vector2 toWaypoint = (Vector2)waypointWorld - (Vector2)transform.position;
-            float r2 = _waypointReachRadius * _waypointReachRadius;
+            float reachR = _destinationReachRadius;
+            float r2 = reachR * reachR;
 
-            // 웨이포인트 도착 시 다음으로
+            // 웨이포인트 도착 시 다음으로 (리더처럼 가까울 때만 전환 후 스냅 → 멀리서 튀지 않음)
             while (toWaypoint.sqrMagnitude <= r2 && _pathIndex < _currentPath.Count)
             {
                 _pathIndex++;
+                Vector2Int reachedCell = _currentPath[_pathIndex - 1];
+                Vector3 reachedWorld = _mapManager.CellToWorld(reachedCell);
+                var pos = new Vector3(reachedWorld.x, reachedWorld.y, transform.position.z);
+                transform.position = pos;
+                if (_rigidbody != null)
+                    _rigidbody.position = new Vector2(pos.x, pos.y);
                 if (_pathIndex >= _currentPath.Count)
                     break;
                 waypoint = _currentPath[_pathIndex];
@@ -259,7 +364,18 @@ public class PartyFollower : MonoBehaviour
             }
 
             if (_pathIndex < _currentPath.Count && toWaypoint.sqrMagnitude >= 0.0001f)
-                desiredVelocity = toWaypoint.normalized * _speed;
+            {
+                bool isLastWaypoint = _pathIndex >= _currentPath.Count - 1;
+                if (isLastWaypoint && toWaypoint.sqrMagnitude <= 0.01f)
+                {
+                    var pos = new Vector3(waypointWorld.x, waypointWorld.y, transform.position.z);
+                    transform.position = pos;
+                    if (_rigidbody != null)
+                        _rigidbody.position = new Vector2(pos.x, pos.y);
+                }
+                else
+                    desiredVelocity = toWaypoint.normalized * _speed;
+            }
         }
         else
         {
@@ -278,13 +394,37 @@ public class PartyFollower : MonoBehaviour
         if (_overlapStopRadius > 0f && IsTooCloseToSomeoneInFront(leaderPos))
             desiredVelocity = Vector2.zero;
 
-        // 뛰기 조건: 이동 중이고 목표(포메이션)까지 셀 거리가 시야+1보다 멀 때 (리더와 동일)
+        // 뛰기 조건:
+        // - 기본: 이동 중이고 목표까지 셀 거리가 _runDistanceThreshold 이상일 때
+        // - 추가: 리더가 충분히 빠르게 움직여서 "뛰는 중"이면 동료도 같이 뛰기
         int distToTarget = CellDistance(myCell, targetCell);
-        int runThreshold = _viewRadius + 1;
-        bool useRun = desiredVelocity.sqrMagnitude >= 0.01f && distToTarget > runThreshold;
+        bool hasMove = desiredVelocity.sqrMagnitude >= 0.01f;
+
+        bool leaderIsRunning = false;
+        float leaderSpeed = 0f;
+        if (_leader != null)
+        {
+            var leaderRb = _leader.GetComponent<Rigidbody2D>();
+            if (leaderRb != null)
+            {
+                leaderSpeed = leaderRb.linearVelocity.magnitude;
+                if (leaderSpeed > _speed * 1.01f)
+                    leaderIsRunning = true;
+            }
+        }
+
+        bool useRun = hasMove && (distToTarget >= _runDistanceThreshold || leaderIsRunning);
 
         if (useRun && desiredVelocity.sqrMagnitude >= 0.0001f)
-            desiredVelocity = desiredVelocity.normalized * (_speed * _runSpeedMultiplier);
+        {
+            float moveSpeed = _speed * _runSpeedMultiplier;
+            if (_matchLeaderRunSpeed && leaderIsRunning)
+            {
+                // 리더가 실제로 뛰는 중이면, 최소 리더 속도 이상으로 맞춰서 떨어지지 않도록
+                moveSpeed = Mathf.Max(moveSpeed, leaderSpeed);
+            }
+            desiredVelocity = desiredVelocity.normalized * moveSpeed;
+        }
 
         _rigidbody.linearVelocity = desiredVelocity;
         UpdateMovementAnimation(desiredVelocity, useRun);

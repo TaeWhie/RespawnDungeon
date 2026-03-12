@@ -5,7 +5,9 @@ using TriInspector;
 /// 보물상자 픽 시 Open 애니메이션 재생 후 오브젝트를 제거합니다.
 /// Animator에 "Open" Bool을 두고 true로 설정한 뒤, 재생 시간 후 Destroy합니다.
 /// 상자 제거 시 해당 셀을 MapManager에서 다시 이동 가능(floor)으로 복구합니다.
+/// 리더가 트리거에 닿으면 ExplorerAI.BeginPickChest가 호출되어 픽이 시작됩니다.
 /// </summary>
+[RequireComponent(typeof(Collider2D))]
 public class ChestOpenable : MonoBehaviour
 {
     [Title("상자 설정")]
@@ -21,6 +23,16 @@ public class ChestOpenable : MonoBehaviour
     private void Awake()
     {
         CacheAnimator();
+        EnsureTriggerCollider();
+    }
+
+    private void EnsureTriggerCollider()
+    {
+        var col = GetComponent<Collider2D>();
+        if (col != null)
+        {
+            col.isTrigger = true;
+        }
     }
 
     private void CacheAnimator()
@@ -49,5 +61,12 @@ public class ChestOpenable : MonoBehaviour
             _animator.SetBool("Open", true);
         }
         Destroy(gameObject, _openThenDestroyDelay);
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        var explorer = other.GetComponentInParent<ExplorerAI>();
+        if (explorer != null)
+            explorer.BeginPickChest(_chestCell);
     }
 }

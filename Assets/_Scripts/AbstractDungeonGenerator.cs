@@ -41,11 +41,23 @@ public abstract class AbstractDungeonGenerator : MonoBehaviour
         RunProceduralGeneration();
     }
 
-    /// <summary>던전 생성 후 이동 가능 타일을 MapManager에 등록 (탐험 AI가 사용)</summary>
+    /// <summary>던전 생성 후 이동 가능 타일을 MapManager에 등록 (탐험 AI가 사용). 장애물·상자 셀은 경계에 포함해 부순 뒤에도 floor로 인식되게 합니다.</summary>
     protected void SetMapManagerWalkable(HashSet<Vector2Int> floor)
     {
         if (mapManager == null) mapManager = FindFirstObjectByType<MapManager>();
-        if (mapManager != null) mapManager.SetWalkableTiles(floor);
+        if (mapManager != null)
+            mapManager.SetWalkableTiles(floor, GetBoundsExtensionForWalkable());
+    }
+
+    /// <summary>장애물·상자 셀 목록. 맵 경계에 포함해 SetCellWalkable이 동작하도록 합니다.</summary>
+    private IEnumerable<Vector2Int> GetBoundsExtensionForWalkable()
+    {
+        if (tilemapVisualizer == null) return null;
+        var list = new List<Vector2Int>();
+        list.AddRange(tilemapVisualizer.GetLastPlacedObstacleCells());
+        foreach (var (cell, _) in tilemapVisualizer.GetLastPlacedChests())
+            list.Add(cell);
+        return list.Count > 0 ? list : null;
     }
 
     /// <summary>던전 생성 후 보물/황금상자 셀을 MapManager에 등록 (픽 대상·Open 후 제거용)</summary>
@@ -54,6 +66,22 @@ public abstract class AbstractDungeonGenerator : MonoBehaviour
         if (mapManager == null) mapManager = FindFirstObjectByType<MapManager>();
         if (tilemapVisualizer != null && mapManager != null)
             mapManager.RegisterChests(tilemapVisualizer.GetLastPlacedChests());
+    }
+
+    /// <summary>던전 생성 후 장애물 셀·뷰를 MapManager에 등록 (시야는 막지 않음, 목적지 도착 시 부수기용)</summary>
+    protected void RegisterObstacleCellsToMapManager()
+    {
+        if (mapManager == null) mapManager = FindFirstObjectByType<MapManager>();
+        if (tilemapVisualizer != null && mapManager != null)
+            mapManager.RegisterObstacles(tilemapVisualizer.GetLastPlacedObstacles());
+    }
+
+    /// <summary>던전 생성 후 입구(시작) 셀을 MapManager에 등록. 이동할 곳이 없을 때 목적지로 사용.</summary>
+    protected void SetStartCellToMapManager(Vector2Int startCell)
+    {
+        if (mapManager == null) mapManager = FindFirstObjectByType<MapManager>();
+        if (mapManager != null)
+            mapManager.SetStartCell(startCell);
     }
 
     protected abstract void RunProceduralGeneration();

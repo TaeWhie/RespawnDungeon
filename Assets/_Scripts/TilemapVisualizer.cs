@@ -43,6 +43,9 @@ public class TilemapVisualizer : MonoBehaviour
     [Tooltip("상자 간 최소 맨해튼 거리 (이 값 미만이면 뭉침으로 간주)")]
     [Slider(1, 15)]
     [SerializeField] private int _chestMinSpacing = 4;
+    [Tooltip("입구·출구로부터 이 거리(칸) 이내에는 보물/황금상자 미배치. 1=인접칸만, 2=2칸까지 제외")]
+    [Slider(1, 5)]
+    [SerializeField] private int _chestMinDistanceFromStartExit = 2;
 
     [Title("문 배치")]
     [Tooltip("중요 복도(출구/황금상자/고립 방 경로)에 배치할 문 프리팹. 비우면 문 미배치")]
@@ -65,6 +68,8 @@ public class TilemapVisualizer : MonoBehaviour
     private List<GameObject> spawnedObjects = new List<GameObject>();
     /// <summary>마지막 PlacePerlinObstaclesAndTreasures 호출 시 배치한 (셀, ChestOpenable) 목록</summary>
     private List<(Vector2Int cell, ChestOpenable openable)> _lastPlacedChests = new List<(Vector2Int, ChestOpenable)>();
+    /// <summary>마지막 PlacePerlinObstaclesAndTreasures 호출 시 배치한 (셀, ObstacleBreakable) 목록. MapManager 부수기 등록용.</summary>
+    private List<(Vector2Int cell, ObstacleBreakable breakable)> _lastPlacedObstacles = new List<(Vector2Int, ObstacleBreakable)>();
 
     public Tilemap FloorTilemap => floorTilemap;
     public Tilemap WallTilemap => wallTilemap;
@@ -199,6 +204,7 @@ public class TilemapVisualizer : MonoBehaviour
         if (floor == null) return;
 
         _lastPlacedChests.Clear();
+        _lastPlacedObstacles.Clear();
         // 문/상자/장애물 경로 계산용으로, 원본 floor를 보존한 복사본을 사용합니다.
         var floorForPaths = new HashSet<Vector2Int>(floor);
 
@@ -209,12 +215,14 @@ public class TilemapVisualizer : MonoBehaviour
 
         var validChestCells = new List<Vector2Int>();
         var goldenCandidatesList = new List<Vector2Int>();
+        int nearStartExit = Mathf.Max(1, _chestMinDistanceFromStartExit);
         foreach (var c in floor)
         {
             if (c == start || c == exit) continue;
             if (pathCells != null && pathCells.Contains(c)) continue;
-            if (Mathf.Abs(c.x - start.x) <= 1 && Mathf.Abs(c.y - start.y) <= 1) continue;
-            if (Mathf.Abs(c.x - exit.x) <= 1 && Mathf.Abs(c.y - exit.y) <= 1) continue;
+            if (Mathf.Abs(c.x - start.x) <= nearStartExit && Mathf.Abs(c.y - start.y) <= nearStartExit) continue;
+            if (Mathf.Abs(c.x - exit.x) <= nearStartExit && Mathf.Abs(c.y - exit.y) <= nearStartExit) continue;
+            if (IsCorridorCell(floorForPaths, c)) continue;
             validChestCells.Add(c);
             if (_goldenChestPrefab != null && _goldenChestMinPathDistance > 0)
             {
@@ -272,6 +280,8 @@ public class TilemapVisualizer : MonoBehaviour
                 var obj = SpawnObject(_obstaclePrefab, cell);
                 EnsureVisibilityByViewStage(obj);
                 floor.Remove(cell);
+                var breakable = GetOrAddObstacleBreakable(obj, cell);
+                if (breakable != null) _lastPlacedObstacles.Add((cell, breakable));
             }
         }
 
@@ -464,6 +474,17 @@ public class TilemapVisualizer : MonoBehaviour
         return n;
     }
 
+    /// <summary>방과 방을 연결하는 통로(복도) 셀인지 여부. 인접 floor가 정확히 2개이고 서로 반대 방향(좌우 또는 상하)이면 통로.</summary>
+    private static bool IsCorridorCell(HashSet<Vector2Int> floor, Vector2Int cell)
+    {
+        var neighborDirs = new List<Vector2Int>(4);
+        foreach (var dir in FourDirs)
+            if (floor.Contains(cell + dir))
+                neighborDirs.Add(dir);
+        if (neighborDirs.Count != 2) return false;
+        return neighborDirs[0] + neighborDirs[1] == Vector2Int.zero;
+    }
+
     /// <summary>
     /// 문 배치용 "좋은" 복도 셀인지 여부.
     /// - 좌우가 모두 floor이고, 위/아래는 floor가 아닌 경우 (가로 복도, 위·아래가 벽)
@@ -583,12 +604,36 @@ public class TilemapVisualizer : MonoBehaviour
         }
         spawnedObjects.Clear();
         _lastPlacedChests.Clear();
+        _lastPlacedObstacles.Clear();
     }
 
     /// <summary>마지막 PlacePerlinObstaclesAndTreasures 호출 시 배치한 (셀, ChestOpenable) 목록. MapManager 등록용.</summary>
     public List<(Vector2Int cell, ChestOpenable openable)> GetLastPlacedChests()
     {
         return new List<(Vector2Int, ChestOpenable)>(_lastPlacedChests);
+    }
+
+    /// <summary>마지막 PlacePerlinObstaclesAndTreasures 호출 시 배치한 장애물 (셀, ObstacleBreakable) 목록. MapManager 부수기 등록용.</summary>
+    public List<(Vector2Int cell, ObstacleBreakable breakable)> GetLastPlacedObstacles()
+    {
+        return new List<(Vector2Int, ObstacleBreakable)>(_lastPlacedObstacles);
+    }
+
+    /// <summary>마지막 PlacePerlinObstaclesAndTreasures 호출 시 배치한 장애물 셀 목록. MapManager LOS(시야 통과) 등록용.</summary>
+    public List<Vector2Int> GetLastPlacedObstacleCells()
+    {
+        var list = new List<Vector2Int>(_lastPlacedObstacles.Count);
+        foreach (var t in _lastPlacedObstacles) list.Add(t.cell);
+        return list;
+    }
+
+    private static ObstacleBreakable GetOrAddObstacleBreakable(GameObject obj, Vector2Int cell)
+    {
+        if (obj == null) return null;
+        var breakable = obj.GetComponent<ObstacleBreakable>();
+        if (breakable == null) breakable = obj.AddComponent<ObstacleBreakable>();
+        breakable.SetObstacleCell(cell);
+        return breakable;
     }
 
     private static ChestOpenable GetOrAddChestOpenable(GameObject obj, Vector2Int cell)

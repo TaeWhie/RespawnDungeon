@@ -2,19 +2,24 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 격자 기반 맵에 최적화된 경량 A* 알고리즘.
-/// visited 상태와 무관하게 오직 '벽(장애물)'의 유무만으로 경로를 계산합니다.
+/// 격자 기반 맵에 최적화된 경로 탐색.
+/// 8방향(대각선 포함) 이동. 대각선은 두 인접 cardinal이 통과 가능할 때만 허용(벽/장애물 코너 관통 방지).
 /// </summary>
 public class Pathfinder : MonoBehaviour
 {
+    private static readonly float CostCardinal = 1f;
+    private static readonly float CostDiagonal = 1.41421356f; // sqrt(2)
+
     /// <summary>
     /// MapManager 기준으로 from → to 최단 경로를 반환합니다. 경로가 없으면 null.
-    /// 장애물(비이동가능)만 피하고, visited 여부는 사용하지 않습니다.
+    /// allowObstacles: true면 장애물 셀을 경로에 포함(리더가 부수며 진행), false면 장애물을 피해 경로 계산(동료용).
     /// </summary>
-    public List<Vector2Int> GetPath(MapManager mapManager, Vector2Int from, Vector2Int to)
+    public List<Vector2Int> GetPath(MapManager mapManager, Vector2Int from, Vector2Int to, bool allowObstacles = true)
     {
         if (mapManager == null || !mapManager.IsInitialized) return null;
-        if (!mapManager.IsWalkable(from) || !mapManager.IsWalkable(to)) return null;
+        bool fromOk = allowObstacles ? mapManager.IsPassableForPathfinding(from) : mapManager.IsWalkable(from);
+        bool toOk = allowObstacles ? mapManager.IsPassableForPathfinding(to) : mapManager.IsWalkable(to);
+        if (!fromOk || !toOk) return null;
         if (from == to) return new List<Vector2Int> { from };
 
         var open = new List<(Vector2Int pos, float f, float g)>();
@@ -23,7 +28,22 @@ public class Pathfinder : MonoBehaviour
 
         float Heuristic(Vector2Int a, Vector2Int b)
         {
-            return Mathf.Abs(a.x - b.x) + Mathf.Abs(a.y - b.y);
+            int dx = Mathf.Abs(b.x - a.x);
+            int dy = Mathf.Abs(b.y - a.y);
+            return Mathf.Sqrt((float)(dx * dx + dy * dy));
+        }
+
+        bool IsPassable(Vector2Int cell) => allowObstacles
+            ? mapManager.IsPassableForPathfinding(cell)
+            : mapManager.IsWalkable(cell);
+
+        /// <summary>대각선 이동 시 끼인 두 cardinal 셀이 바닥(walkable)인지. 코너에 장애물이 있으면 대각선 불가 → 장애물은 한 칸씩 밟고 부수도록.</summary>
+        bool CanMoveDiagonal(Vector2Int cur, Vector2Int diagDir)
+        {
+            if (diagDir.x == 0 || diagDir.y == 0) return true;
+            var c1 = cur + new Vector2Int(diagDir.x, 0);
+            var c2 = cur + new Vector2Int(0, diagDir.y);
+            return mapManager.IsWalkable(c1) && mapManager.IsWalkable(c2);
         }
 
         open.Add((from, Heuristic(from, to), 0f));
@@ -52,12 +72,15 @@ public class Pathfinder : MonoBehaviour
                 return path;
             }
 
-            foreach (var dir in Direction2D.cardinalDirectionsList)
+            foreach (var dir in Direction2D.eightDirectionsList)
             {
                 Vector2Int next = cur + dir;
-                if (!mapManager.IsWalkable(next)) continue;
+                if (!IsPassable(next)) continue;
+                if (!CanMoveDiagonal(cur, dir)) continue;
 
-                float tentativeG = (gScore.TryGetValue(cur, out float g) ? g : float.MaxValue) + 1f;
+                bool isDiagonal = dir.x != 0 && dir.y != 0;
+                float stepCost = isDiagonal ? CostDiagonal : CostCardinal;
+                float tentativeG = (gScore.TryGetValue(cur, out float g) ? g : float.MaxValue) + stepCost;
                 if (tentativeG >= (gScore.TryGetValue(next, out float ng) ? ng : float.MaxValue))
                     continue;
 

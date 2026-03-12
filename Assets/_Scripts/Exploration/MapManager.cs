@@ -32,6 +32,8 @@ public class MapManager : MonoBehaviour
     private bool[,] _visited;
     private bool[,] _unreachable;
 
+    private int _walkableVersion;
+
     /// <summary>현재 프레임에서 "1단계(전부 보임)" 시야 안에 있는 셀. 매 프레임 갱신.</summary>
     private HashSet<Vector2Int> _currentFullView = new HashSet<Vector2Int>();
     /// <summary>한 번이라도 1단계로 밝혀진 셀. 맵 재생성 시 초기화.</summary>
@@ -43,10 +45,17 @@ public class MapManager : MonoBehaviour
 
     /// <summary>보물/황금상자 셀 (던전 생성 시 등록). 비워커블이므로 이동 불가.</summary>
     private HashSet<Vector2Int> _chestCells = new HashSet<Vector2Int>();
+    /// <summary>장애물 셀 (던전 생성 시 등록). 비워커블이지만 시야는 막지 않음(뒤쪽 시야 보임).</summary>
+    private HashSet<Vector2Int> _obstacleCells = new HashSet<Vector2Int>();
+    /// <summary>셀 → ObstacleBreakable (부수기 시 Break 호출 후 제거용)</summary>
+    private Dictionary<Vector2Int, ObstacleBreakable> _obstacleViews = new Dictionary<Vector2Int, ObstacleBreakable>();
     /// <summary>이미 픽한 상자 셀</summary>
     private HashSet<Vector2Int> _pickedChests = new HashSet<Vector2Int>();
     /// <summary>셀 → ChestOpenable (Open 애니 후 제거용)</summary>
     private Dictionary<Vector2Int, ChestOpenable> _chestViews = new Dictionary<Vector2Int, ChestOpenable>();
+
+    /// <summary>입구(시작) 셀. 던전 생성 시 설정. 이동할 곳이 없을 때 목적지로 사용.</summary>
+    private Vector2Int? _startCell;
 
     /// <summary>맵 데이터가 준비되었는지</summary>
     public bool IsInitialized => _walkable != null && _width > 0 && _height > 0;
@@ -87,8 +96,9 @@ public class MapManager : MonoBehaviour
     /// <summary>
     /// 던전 생성기가 호출합니다. 이동 가능(바닥) 타일 집합으로 맵을 초기화하고,
     /// visited / unreachable 배열을 맵 크기에 맞게 생성합니다.
+    /// boundsExtension: 경계 계산에만 포함할 셀(장애물·상자 등). 이 셀들은 그리드에 포함되지만 walkable=false로 두어, 나중에 SetCellWalkable로 floor로 바꿀 수 있게 합니다.
     /// </summary>
-    public void SetWalkableTiles(HashSet<Vector2Int> walkableSet)
+    public void SetWalkableTiles(HashSet<Vector2Int> walkableSet, IEnumerable<Vector2Int> boundsExtension = null)
     {
         EnsureFloorTilemap();
         if (walkableSet == null || walkableSet.Count == 0)
@@ -102,6 +112,10 @@ public class MapManager : MonoBehaviour
             _chestCells?.Clear();
             _pickedChests?.Clear();
             _chestViews?.Clear();
+            _obstacleCells?.Clear();
+            _obstacleViews?.Clear();
+            _walkableVersion = 0;
+            _startCell = null;
             return;
         }
 
@@ -112,6 +126,16 @@ public class MapManager : MonoBehaviour
             if (c.y < minY) minY = c.y;
             if (c.x > maxX) maxX = c.x;
             if (c.y > maxY) maxY = c.y;
+        }
+        if (boundsExtension != null)
+        {
+            foreach (var c in boundsExtension)
+            {
+                if (c.x < minX) minX = c.x;
+                if (c.y < minY) minY = c.y;
+                if (c.x > maxX) maxX = c.x;
+                if (c.y > maxY) maxY = c.y;
+            }
         }
 
         _minX = minX;
@@ -124,6 +148,7 @@ public class MapManager : MonoBehaviour
         _unreachable = new bool[_width, _height];
         _everFullView?.Clear();
 
+        _walkableVersion = 0;
         WalkableCount = 0;
         VisitedCount = 0;
         foreach (var c in walkableSet)
@@ -157,17 +182,29 @@ public class MapManager : MonoBehaviour
         return _walkable[i, j];
     }
 
-    /// <summary>특정 셀을 이동 가능/불가로 설정. 상자 제거 시 해당 셀을 다시 floor로 쓸 때 사용.</summary>
+    /// <summary>경로 탐색 시 통과 가능한 셀 (이동 가능 + 장애물). 경로가 장애물을 지나가며 부술 수 있게 할 때 사용.</summary>
+    public bool IsPassableForPathfinding(Vector2Int cell) => IsWalkable(cell) || IsObstacleCell(cell) || IsChestCell(cell);
+
+    /// <summary>특정 셀을 이동 가능/불가로 설정. 상자/장애물 제거 시 해당 셀을 다시 floor로 쓸 때 사용.</summary>
     public void SetCellWalkable(Vector2Int cell, bool walkable)
     {
         if (!CellToIndex(cell, out int i, out int j)) return;
         bool wasWalkable = _walkable[i, j];
         _walkable[i, j] = walkable;
         if (walkable && !wasWalkable)
+        {
             WalkableCount++;
+            _walkableVersion++;
+        }
         else if (!walkable && wasWalkable)
+        {
             WalkableCount--;
+            _walkableVersion++;
+        }
     }
+
+    /// <summary>맵 이동 가능 상태가 바뀐 횟수. 장애물/상자 부숴질 때 증가. 동료가 경로 재계산할 때 사용.</summary>
+    public int WalkableVersion => _walkableVersion;
 
     public bool IsVisited(Vector2Int cell)
     {
@@ -221,7 +258,8 @@ public class MapManager : MonoBehaviour
             {
                 if (IsWalkable(cell) && !IsVisited(cell) && HasLineOfSight(center, cell))
                     MarkVisited(cell);
-                else if (!IsWalkable(cell) && !IsVisited(cell) && HasLineOfSightToCell(center, cell))
+                // 장애물·상자 셀은 풀 뷰(가까운 거리)에 들어올 때만 방문 처리. 멀리 있으면 3단계 안개 유지.
+                else if (!IsWalkable(cell) && !IsVisited(cell) && HasLineOfSightToCell(center, cell) && inFull)
                     MarkVisited(cell);
             }
 
@@ -287,7 +325,7 @@ public class MapManager : MonoBehaviour
         return count;
     }
 
-    /// <summary>목표 셀까지 라인 오브 사이트. 목표 셀 자체는 비워커블(장애물)이어도 true 가능.</summary>
+    /// <summary>목표 셀까지 라인 오브 사이트. 장애물·보물상자 셀은 시야를 막지 않음.</summary>
     private bool HasLineOfSightToCell(Vector2Int from, Vector2Int to)
     {
         int x0 = from.x, y0 = from.y;
@@ -303,28 +341,35 @@ public class MapManager : MonoBehaviour
             int cy = Mathf.RoundToInt(y0 + t * (y1 - y0));
             var cur = new Vector2Int(cx, cy);
             if (cur == to) continue;
-            if (!IsWalkable(cur))
-                return false;
+            if (!CellToIndex(cur, out _, out _)) return false;
+            if (IsWalkable(cur)) continue;
+            if (IsObstacleCell(cur)) continue;
+            if (IsChestCell(cur)) continue;
+            return false;
         }
         return true;
     }
 
-    /// <summary>두 셀 사이에 벽이 없으면 true. 그리드 직선 경로상 비-워커블(벽) 셀이 있으면 false.</summary>
+    /// <summary>두 셀 사이에 벽이 없으면 true. 장애물·보물상자 셀은 시야를 막지 않아 뒤쪽이 보임.</summary>
     public bool HasLineOfSight(Vector2Int from, Vector2Int to)
     {
         int x0 = from.x, y0 = from.y;
         int x1 = to.x, y1 = to.y;
         int steps = Mathf.Max(Mathf.Abs(x1 - x0), Mathf.Abs(y1 - y0));
         if (steps == 0)
-            return IsWalkable(from);
+            return IsWalkable(from) || IsObstacleCell(from) || IsChestCell(from);
 
         for (int i = 0; i <= steps; i++)
         {
             float t = (float)i / steps;
             int cx = Mathf.RoundToInt(x0 + t * (x1 - x0));
             int cy = Mathf.RoundToInt(y0 + t * (y1 - y0));
-            if (!IsWalkable(new Vector2Int(cx, cy)))
-                return false;
+            var cur = new Vector2Int(cx, cy);
+            if (!CellToIndex(cur, out _, out _)) return false;
+            if (IsWalkable(cur)) continue;
+            if (IsObstacleCell(cur)) continue;
+            if (IsChestCell(cur)) continue;
+            return false;
         }
         return true;
     }
@@ -349,6 +394,15 @@ public class MapManager : MonoBehaviour
     {
         _globalTargetCell = cell;
     }
+
+    /// <summary>입구(시작) 셀 설정. 던전 생성기가 호출. 이동할 곳이 없을 때 목적지로 사용.</summary>
+    public void SetStartCell(Vector2Int cell)
+    {
+        _startCell = cell;
+    }
+
+    /// <summary>입구(시작) 셀. 등록되지 않았으면 null.</summary>
+    public Vector2Int? GetStartCell() => _startCell;
 
     /// <summary>던전 생성 후 보물/황금상자 셀·뷰 등록. SetWalkableTiles 이후에 호출.</summary>
     public void RegisterChests(IEnumerable<(Vector2Int cell, ChestOpenable openable)> chests)
@@ -376,6 +430,47 @@ public class MapManager : MonoBehaviour
         if (cells == null) return;
         _chestCells = new HashSet<Vector2Int>(cells);
     }
+
+    /// <summary>던전 생성 후 장애물 셀 등록. SetWalkableTiles 이후에 호출. 장애물은 이동 불가이지만 시야(LOS)는 막지 않음.</summary>
+    public void RegisterObstacleCells(IEnumerable<Vector2Int> cells)
+    {
+        _obstacleCells?.Clear();
+        _obstacleViews?.Clear();
+        if (cells == null) return;
+        _obstacleCells = new HashSet<Vector2Int>(cells);
+    }
+
+    /// <summary>던전 생성 후 장애물 셀·뷰 등록. 부수기 시 Break 호출용. 호출 시 _obstacleCells도 함께 설정됩니다.</summary>
+    public void RegisterObstacles(IEnumerable<(Vector2Int cell, ObstacleBreakable breakable)> obstacles)
+    {
+        _obstacleCells?.Clear();
+        _obstacleViews?.Clear();
+        if (obstacles == null) return;
+        _obstacleCells = new HashSet<Vector2Int>();
+        _obstacleViews = new Dictionary<Vector2Int, ObstacleBreakable>();
+        foreach (var t in obstacles)
+        {
+            _obstacleCells.Add(t.cell);
+            if (t.breakable != null)
+                _obstacleViews[t.cell] = t.breakable;
+        }
+    }
+
+    /// <summary>장애물 셀을 부순 처리. 해당 셀을 이동 가능으로 바꾸고 ObstacleBreakable.Break() 호출 후 목록에서 제거.</summary>
+    public void MarkObstacleBroken(Vector2Int cell)
+    {
+        _obstacleCells?.Remove(cell);
+        if (_obstacleViews != null && _obstacleViews.TryGetValue(cell, out var view))
+        {
+            _obstacleViews.Remove(cell);
+            view?.Break();
+        }
+        else
+            SetCellWalkable(cell, true);
+    }
+
+    /// <summary>해당 셀이 장애물 셀인지 (시야는 막지 않음)</summary>
+    public bool IsObstacleCell(Vector2Int cell) => _obstacleCells != null && _obstacleCells.Contains(cell);
 
     /// <summary>해당 셀이 상자 셀인지</summary>
     public bool IsChestCell(Vector2Int cell) => _chestCells != null && _chestCells.Contains(cell);
@@ -410,10 +505,16 @@ public class MapManager : MonoBehaviour
     /// <summary>상자 셀에 인접한 이동 가능(서 있을 수 있는) 셀 목록. 상하좌우만.</summary>
     public List<Vector2Int> GetStandCellsNextToChest(Vector2Int chestCell)
     {
+        return GetWalkableNeighbors(chestCell);
+    }
+
+    /// <summary>해당 셀에 인접한 이동 가능 셀 목록 (상하좌우). 장애물 셀을 목적지로 할 때 서 있을 칸을 고를 때 사용.</summary>
+    public List<Vector2Int> GetWalkableNeighbors(Vector2Int cell)
+    {
         var list = new List<Vector2Int>(4);
         foreach (var dir in Direction2D.cardinalDirectionsList)
         {
-            var adj = chestCell + dir;
+            var adj = cell + dir;
             if (IsWalkable(adj)) list.Add(adj);
         }
         return list;

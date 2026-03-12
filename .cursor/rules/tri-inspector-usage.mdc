@@ -1,0 +1,37 @@
+---
+description: 인스펙터 작성 시 Tri-Inspector 속성 활용 규칙
+globs: "**/*.cs"
+alwaysApply: false
+---
+
+# Tri-Inspector 사용 규칙
+
+이 프로젝트는 **Tri Inspector** 패키지(`com.codewriter.triinspector`)를 사용한다.  
+인스펙터가 붙는 스크립트(MonoBehaviour, ScriptableObject, SerializeReference 대상 등)를 작성·수정할 때 아래를 따른다.
+
+## 원칙
+
+- **해당 상황에 Tri-Inspector 속성으로 처리할 수 있으면 반드시 사용한다.**  
+  기본 Unity 속성만 쓰지 말고, 가독성·검증·UX 개선이 가능한 경우 Tri-Inspector를 우선 적용한다.
+
+## 적용 예시
+
+| 상황 | 적용할 속성 |
+|------|-------------|
+| 필드가 많아 구역을 나누고 싶을 때 | `[Title]`, `[Group]`, `[DeclareFoldoutGroup]`, `[DeclareTabGroup]` + `[Tab]` |
+| 수치를 범위로 제한할 때 | `[Slider]`, `[MinMaxSlider]` |
+| null이면 안 되는 참조 | `[Required]`, 필요 시 `FixAction` |
+| 조건에 따라 보이기/숨기기/비활성화 | `[ShowIf]`, `[HideIf]`, `[EnableIf]`, `[DisableIf]` |
+| 인스펙터에서 메서드 실행(테스트·초기화) | `[Button]` |
+| enum을 버튼처럼 선택 | `[EnumToggleButtons]` |
+| 커스텀 검증·안내 메시지 | `[ValidateInput]`, `[InfoBox]` |
+| 읽기 전용 표시 | `[ReadOnly]` |
+| 에셋/씬 오브젝트만 할당되게 | `[AssetsOnly]`, `[SceneObjectsOnly]` |
+| 드롭다운·에셋 선택 UI | `[Dropdown]`, `[AssetDropdown]`, `[Scene]`, `[Layer]` |
+
+## 참조
+
+- **기능 정리·활용 가이드**: [Docs/Tri-Inspector-Guide.md](Docs/Tri-Inspector-Guide.md)  
+- **상세 예제**: 패키지 [README](Packages/com.codewriter.triinspector/README.md), Unity 메뉴 **Tools → Tri Inspector → Samples**
+
+코드 작성·리뷰 시 위 문서를 참고해, 적용 가능한 속성이 있으면 누락 없이 사용한다.

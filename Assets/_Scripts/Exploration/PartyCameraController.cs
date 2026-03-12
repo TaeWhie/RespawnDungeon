@@ -51,7 +51,7 @@ public class PartyCameraController : MonoBehaviour
         if (_targets.Count == 0)
             return;
 
-        // Bounds 계산
+        // Bounds 계산 (파티 전체가 화면에 들어오도록)
         Vector3 firstPos = _targets[0].position;
         Bounds bounds = new Bounds(firstPos, Vector3.zero);
         for (int i = 1; i < _targets.Count; i++)
@@ -60,8 +60,16 @@ public class PartyCameraController : MonoBehaviour
             bounds.Encapsulate(_targets[i].position);
         }
 
-        // 카메라 위치: 파티 중심을 따라감
+        // 카메라 위치: 리더(Player)를 중심으로, 동료는 줌으로 포함
         Vector3 targetPos = bounds.center;
+        foreach (var t in _targets)
+        {
+            if (t != null && t.CompareTag("Player"))
+            {
+                targetPos = t.position;
+                break;
+            }
+        }
         targetPos.z = transform.position.z;
         transform.position = Vector3.Lerp(transform.position, targetPos, _moveSmoothTime * Time.deltaTime);
 
@@ -119,7 +127,16 @@ public class PartyCameraController : MonoBehaviour
             bounds.Encapsulate(_targets[i].position);
         }
 
+        // 초기 스냅도 리더를 중심으로
         Vector3 center = bounds.center;
+        foreach (var t in _targets)
+        {
+            if (t != null && t.CompareTag("Player"))
+            {
+                center = t.position;
+                break;
+            }
+        }
         center.z = transform.position.z;
         transform.position = center;
 

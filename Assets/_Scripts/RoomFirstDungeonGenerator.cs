@@ -63,6 +63,8 @@ public class RoomFirstDungeonGenerator : SimpleRandomWalkDungeonGenerator
         var (startObj, exitObj) = tilemapVisualizer.PlaceSpecialObjects(start, exit);
         tilemapVisualizer.PlacePerlinObstaclesAndTreasures(floor, start, exit, LastUsedSeed);
         SetMapManagerWalkable(floor);
+        SetStartCellToMapManager(start);
+        RegisterObstacleCellsToMapManager();
         RegisterChestCellsToMapManager();
         Debug.Log($"[RoomFirst] Special objects placed. Start: {startObj != null}, Exit: {exitObj != null}");
     }
