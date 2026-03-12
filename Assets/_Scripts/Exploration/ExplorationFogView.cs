@@ -5,8 +5,8 @@ using UnityEngine.Tilemaps;
 using TriInspector;
 
 /// <summary>
-/// MapManager의 탐색/시야 단계에 따라 안개를 그리고, 3단계 셀에서는 바닥·벽을 렌더링하지 않습니다.
-/// 3단계=짙은 안개만 표시(바닥/벽/오브젝트 미렌더), 2단계=옅은 안개, 1단계=안개 없음.
+/// MapManager의 탐색/시야 단계에 따라 안개만 그립니다.
+/// 3단계=짙은 안개 + 바닥/벽 타일 제거(안 보임), 2단계=옅은 안개 + 구조 복원, 1단계=안개 제거.
 /// </summary>
 [RequireComponent(typeof(Tilemap))]
 public class ExplorationFogView : MonoBehaviour
@@ -16,11 +16,11 @@ public class ExplorationFogView : MonoBehaviour
     [SerializeField] private MapManager _mapManager;
     [Tooltip("안개 타일. 3단계에서 짙게, 2단계에서 옅게 같은 타일로 색상만 조절합니다.")]
     [SerializeField] private TileBase _fogTile;
-    [Tooltip("3단계에서 렌더링 끄기 위해 필요. 비워두면 안개만 칠함")]
+    [Tooltip("3단계에서 바닥/벽을 숨기고 복원할 때 필요. 비워두면 TilemapVisualizer에서 자동 검색")]
     [SerializeField] private Tilemap _floorTilemap;
-    [Tooltip("바닥 타일 (복원용). _floorTilemap 쓸 때 할당")]
+    [Tooltip("바닥 타일 (복원용)")]
     [SerializeField] private TileBase _floorTile;
-    [Tooltip("3단계에서 벽 렌더링 끄기. 비워두면 벽은 그대로 그림")]
+    [Tooltip("벽 타일맵. 3단계에서 숨기고 2/1단계에서 복원")]
     [SerializeField] private Tilemap _wallTilemap;
 
     [Title("안개 강도")]
@@ -33,11 +33,17 @@ public class ExplorationFogView : MonoBehaviour
     [Tooltip("매 프레임 안개/바닥/벽을 갱신할 반경(파티 기준). 이 구역만 갱신해 프레임 절약. 맵 전체 갱신은 초기화 시 1회만.")]
     [Slider(5, 30)]
     [SerializeField] private int _viewUpdateRadius = 10;
+    [Tooltip("맵 그리드 밖 가장자리(벽 셀 등)까지 안개를 칠할 여유 칸 수. 0이면 그리드만, 1~2면 끝자락까지 짙은 안개 적용")]
+    [Slider(0, 5)]
+    [SerializeField] private int _edgeFogPadding = 2;
 
     private Tilemap _fogTilemap;
     private Dictionary<Vector2Int, TileBase> _wallTilesCache = new Dictionary<Vector2Int, TileBase>();
     private HashSet<Vector2Int> _cellsToUpdate = new HashSet<Vector2Int>();
     private VisibilityByViewStage[] _cachedVisibilityObjects = Array.Empty<VisibilityByViewStage>();
+
+    /// <summary>갱신할 때 floor만이 아니라 벽 셀도 포함. 벽은 인접 floor 단계에 따라 표시.</summary>
+    private static readonly Vector2Int[] Cardinal4 = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
 
     private void Awake()
     {
@@ -99,8 +105,9 @@ public class ExplorationFogView : MonoBehaviour
     {
         _cellsToUpdate.Clear();
         int r = _viewUpdateRadius;
-        int minX = _mapManager.MinX, maxX = _mapManager.MinX + _mapManager.Width - 1;
-        int minY = _mapManager.MinY, maxY = _mapManager.MinY + _mapManager.Height - 1;
+        int pad = _edgeFogPadding;
+        int minX = _mapManager.MinX - pad, maxX = _mapManager.MinX + _mapManager.Width - 1 + pad;
+        int minY = _mapManager.MinY - pad, maxY = _mapManager.MinY + _mapManager.Height - 1 + pad;
 
         var player = GameObject.FindWithTag("Player");
         if (player != null)
@@ -111,6 +118,19 @@ public class ExplorationFogView : MonoBehaviour
             if (allies[i] != null)
                 AddCellsInRadius(_cellsToUpdate, _mapManager.WorldToCell(allies[i].transform.position), r, minX, maxX, minY, maxY);
         }
+
+        // wall 셀도 갱신: 반경 안 셀들의 인접(상하좌우) 추가
+        var withWalls = new HashSet<Vector2Int>(_cellsToUpdate);
+        foreach (var c in _cellsToUpdate)
+        {
+            foreach (var dir in Cardinal4)
+            {
+                var n = c + dir;
+                if (n.x >= minX && n.x <= maxX && n.y >= minY && n.y <= maxY)
+                    withWalls.Add(n);
+            }
+        }
+        _cellsToUpdate = withWalls;
 
         foreach (var cell in _cellsToUpdate)
             RefreshFogSingleCell(cell);
@@ -129,35 +149,98 @@ public class ExplorationFogView : MonoBehaviour
 
     private void RefreshFogSingleCell(Vector2Int cell)
     {
-        bool stage3 = !_mapManager.IsVisited(cell);
         var pos = new Vector3Int(cell.x, cell.y, 0);
+        bool isWallCell = _wallTilesCache.TryGetValue(cell, out var cachedWallTile);
 
-        if (stage3)
+        if (isWallCell)
         {
-            SetFog(cell, _thickFogAlpha);
-            if (_floorTilemap != null && _mapManager.IsWalkable(cell))
-                _floorTilemap.SetTile(pos, null);
-            if (_wallTilemap != null && _wallTilesCache.TryGetValue(cell, out _))
-                _wallTilemap.SetTile(pos, null);
-        }
-        else
-        {
-            if (_mapManager.IsInFullView(cell))
+            // 벽 셀: 인접 floor의 단계로 표시 여부 결정
+            bool anyVisited = false;
+            bool anyFullView = false;
+            foreach (var dir in Cardinal4)
+            {
+                var n = cell + dir;
+                if (!_mapManager.CellToIndex(n, out _, out _)) continue;
+                if (_mapManager.IsVisited(n)) anyVisited = true;
+                if (_mapManager.IsInFullView(n)) anyFullView = true;
+            }
+            if (!anyVisited)
+            {
+                SetFog(cell, _thickFogAlpha);
+                if (_wallTilemap != null) _wallTilemap.SetTile(pos, null);
+            }
+            else if (anyFullView)
             {
                 _fogTilemap.SetTile(pos, null);
-                if (_floorTilemap != null && _floorTile != null && _mapManager.IsWalkable(cell))
-                    _floorTilemap.SetTile(pos, _floorTile);
-                if (_wallTilemap != null && _wallTilesCache.TryGetValue(cell, out var wt))
-                    _wallTilemap.SetTile(pos, wt);
+                if (_wallTilemap != null) _wallTilemap.SetTile(pos, cachedWallTile);
             }
             else
             {
                 SetFog(cell, _lightFogAlpha);
-                if (_floorTilemap != null && _floorTile != null && _mapManager.IsWalkable(cell))
-                    _floorTilemap.SetTile(pos, _floorTile);
-                if (_wallTilemap != null && _wallTilesCache.TryGetValue(cell, out var wt))
-                    _wallTilemap.SetTile(pos, wt);
+                if (_wallTilemap != null) _wallTilemap.SetTile(pos, cachedWallTile);
             }
+            return;
+        }
+
+        // 오브젝트(장애물·상자) 셀: 밟지 않으므로 방문 안 됨. 인접 floor 방문 시 2단계 적용 → 바닥은 보이고, 오브젝트는 1단계일 때만 보임(RefreshObjectsVisibility).
+        if (_mapManager.CellToIndex(cell, out _, out _) && (_mapManager.IsObstacleCell(cell) || _mapManager.IsChestCell(cell)))
+        {
+            bool anyVisited = false;
+            bool anyFullView = false;
+            foreach (var dir in Cardinal4)
+            {
+                var n = cell + dir;
+                if (!_mapManager.CellToIndex(n, out _, out _)) continue;
+                if (_mapManager.IsVisited(n)) anyVisited = true;
+                if (_mapManager.IsInFullView(n)) anyFullView = true;
+            }
+            if (!anyVisited)
+            {
+                SetFog(cell, _thickFogAlpha);
+                if (_floorTilemap != null) _floorTilemap.SetTile(pos, null);
+            }
+            else if (anyFullView)
+            {
+                _fogTilemap.SetTile(pos, null);
+                if (_floorTilemap != null && _floorTile != null)
+                    _floorTilemap.SetTile(pos, _floorTile);
+            }
+            else
+            {
+                SetFog(cell, _lightFogAlpha);
+                if (_floorTilemap != null && _floorTile != null)
+                    _floorTilemap.SetTile(pos, _floorTile);
+            }
+            return;
+        }
+
+        // floor 셀
+        bool inBounds = _mapManager.CellToIndex(cell, out _, out _);
+        bool stage3 = !inBounds || !_mapManager.IsVisited(cell);
+
+        if (stage3)
+        {
+            SetFog(cell, _thickFogAlpha);
+            if (_floorTilemap != null)
+                _floorTilemap.SetTile(pos, null);
+            if (_wallTilemap != null)
+                _wallTilemap.SetTile(pos, null);
+        }
+        else if (_mapManager.IsInFullView(cell))
+        {
+            _fogTilemap.SetTile(pos, null);
+            if (_floorTilemap != null && _floorTile != null && (_mapManager.IsWalkable(cell) || _mapManager.IsObstacleCell(cell) || _mapManager.IsChestCell(cell)))
+                _floorTilemap.SetTile(pos, _floorTile);
+            if (_wallTilemap != null && _wallTilesCache.TryGetValue(cell, out var wt))
+                _wallTilemap.SetTile(pos, wt);
+        }
+        else
+        {
+            SetFog(cell, _lightFogAlpha);
+            if (_floorTilemap != null && _floorTile != null && (_mapManager.IsWalkable(cell) || _mapManager.IsObstacleCell(cell) || _mapManager.IsChestCell(cell)))
+                _floorTilemap.SetTile(pos, _floorTile);
+            if (_wallTilemap != null && _wallTilesCache.TryGetValue(cell, out var wt))
+                _wallTilemap.SetTile(pos, wt);
         }
     }
 
@@ -187,8 +270,11 @@ public class ExplorationFogView : MonoBehaviour
     {
         _wallTilesCache.Clear();
         if (_wallTilemap == null || !_mapManager.IsInitialized) return;
-        for (int x = _mapManager.MinX; x <= _mapManager.MinX + _mapManager.Width - 1; x++)
-        for (int y = _mapManager.MinY; y <= _mapManager.MinY + _mapManager.Height - 1; y++)
+        int pad = _edgeFogPadding;
+        int minX = _mapManager.MinX - pad, maxX = _mapManager.MinX + _mapManager.Width - 1 + pad;
+        int minY = _mapManager.MinY - pad, maxY = _mapManager.MinY + _mapManager.Height - 1 + pad;
+        for (int x = minX; x <= maxX; x++)
+        for (int y = minY; y <= maxY; y++)
         {
             var cell = new Vector2Int(x, y);
             var pos = new Vector3Int(cell.x, cell.y, 0);
@@ -198,7 +284,7 @@ public class ExplorationFogView : MonoBehaviour
         }
     }
 
-    /// <summary>맵 전체 안개 + 3단계 셀 바닥/벽 미렌더.</summary>
+    /// <summary>맵 전체 안개 + 3단계 셀은 바닥/벽 제거(안 보이게), 2/1단계는 복원.</summary>
     private void RefreshFogAll()
     {
         if (_mapManager == null || _fogTilemap == null || _fogTile == null)
@@ -206,60 +292,126 @@ public class ExplorationFogView : MonoBehaviour
 
         _fogTilemap.ClearAllTiles();
 
-        for (int x = _mapManager.MinX; x <= _mapManager.MinX + _mapManager.Width - 1; x++)
-        for (int y = _mapManager.MinY; y <= _mapManager.MinY + _mapManager.Height - 1; y++)
+        int pad = _edgeFogPadding;
+        int minX = _mapManager.MinX - pad, maxX = _mapManager.MinX + _mapManager.Width - 1 + pad;
+        int minY = _mapManager.MinY - pad, maxY = _mapManager.MinY + _mapManager.Height - 1 + pad;
+
+        for (int x = minX; x <= maxX; x++)
+        for (int y = minY; y <= maxY; y++)
         {
             var cell = new Vector2Int(x, y);
-            bool stage3 = !_mapManager.IsVisited(cell);
+            var pos = new Vector3Int(cell.x, cell.y, 0);
+            bool isWallCell = _wallTilesCache.TryGetValue(cell, out var cachedWallTile);
 
-            if (stage3)
+            if (isWallCell)
             {
-                SetFog(cell, _thickFogAlpha);
-                if (_floorTilemap != null && _mapManager.IsWalkable(cell))
-                    _floorTilemap.SetTile(new Vector3Int(cell.x, cell.y, 0), null);
-                if (_wallTilemap != null && _wallTilesCache.TryGetValue(cell, out _))
-                    _wallTilemap.SetTile(new Vector3Int(cell.x, cell.y, 0), null);
-            }
-            else
-            {
-                if (_mapManager.IsInFullView(cell))
+                bool anyVisited = false;
+                bool anyFullView = false;
+                foreach (var dir in Cardinal4)
                 {
-                    if (_floorTilemap != null && _floorTile != null && _mapManager.IsWalkable(cell))
-                        _floorTilemap.SetTile(new Vector3Int(cell.x, cell.y, 0), _floorTile);
-                    if (_wallTilemap != null && _wallTilesCache.TryGetValue(cell, out var wt))
-                        _wallTilemap.SetTile(new Vector3Int(cell.x, cell.y, 0), wt);
+                    var n = cell + dir;
+                    if (!_mapManager.CellToIndex(n, out _, out _)) continue;
+                    if (_mapManager.IsVisited(n)) anyVisited = true;
+                    if (_mapManager.IsInFullView(n)) anyFullView = true;
+                }
+                if (!anyVisited)
+                {
+                    SetFog(cell, _thickFogAlpha);
+                    if (_wallTilemap != null) _wallTilemap.SetTile(pos, null);
+                }
+                else if (anyFullView)
+                {
+                    _fogTilemap.SetTile(pos, null);
+                    if (_wallTilemap != null) _wallTilemap.SetTile(pos, cachedWallTile);
                 }
                 else
                 {
                     SetFog(cell, _lightFogAlpha);
-                    if (_floorTilemap != null && _floorTile != null && _mapManager.IsWalkable(cell))
-                        _floorTilemap.SetTile(new Vector3Int(cell.x, cell.y, 0), _floorTile);
-                    if (_wallTilemap != null && _wallTilesCache.TryGetValue(cell, out var wt))
-                        _wallTilemap.SetTile(new Vector3Int(cell.x, cell.y, 0), wt);
+                    if (_wallTilemap != null) _wallTilemap.SetTile(pos, cachedWallTile);
                 }
+                continue;
+            }
+
+            bool inBounds = _mapManager.CellToIndex(cell, out _, out _);
+            // 오브젝트(장애물·상자) 셀: 인접 floor 방문 시 2단계 적용
+            if (inBounds && (_mapManager.IsObstacleCell(cell) || _mapManager.IsChestCell(cell)))
+            {
+                bool anyVisited = false;
+                bool anyFullView = false;
+                foreach (var dir in Cardinal4)
+                {
+                    var n = cell + dir;
+                    if (!_mapManager.CellToIndex(n, out _, out _)) continue;
+                    if (_mapManager.IsVisited(n)) anyVisited = true;
+                    if (_mapManager.IsInFullView(n)) anyFullView = true;
+                }
+                if (!anyVisited)
+                {
+                    SetFog(cell, _thickFogAlpha);
+                    if (_floorTilemap != null) _floorTilemap.SetTile(pos, null);
+                }
+                else if (anyFullView)
+                {
+                    _fogTilemap.SetTile(pos, null);
+                    if (_floorTilemap != null && _floorTile != null)
+                        _floorTilemap.SetTile(pos, _floorTile);
+                }
+                else
+                {
+                    SetFog(cell, _lightFogAlpha);
+                    if (_floorTilemap != null && _floorTile != null)
+                        _floorTilemap.SetTile(pos, _floorTile);
+                }
+                continue;
+            }
+
+            bool stage3 = !inBounds || !_mapManager.IsVisited(cell);
+
+            if (stage3)
+            {
+                SetFog(cell, _thickFogAlpha);
+                if (_floorTilemap != null)
+                    _floorTilemap.SetTile(pos, null);
+                if (_wallTilemap != null)
+                    _wallTilemap.SetTile(pos, null);
+            }
+            else if (_mapManager.IsInFullView(cell))
+            {
+                _fogTilemap.SetTile(pos, null);
+                if (_floorTilemap != null && _floorTile != null && (_mapManager.IsWalkable(cell) || _mapManager.IsObstacleCell(cell) || _mapManager.IsChestCell(cell)))
+                    _floorTilemap.SetTile(pos, _floorTile);
+                if (_wallTilemap != null && _wallTilesCache.TryGetValue(cell, out var wt))
+                    _wallTilemap.SetTile(pos, wt);
+            }
+            else
+            {
+                SetFog(cell, _lightFogAlpha);
+                if (_floorTilemap != null && _floorTile != null && (_mapManager.IsWalkable(cell) || _mapManager.IsObstacleCell(cell) || _mapManager.IsChestCell(cell)))
+                    _floorTilemap.SetTile(pos, _floorTile);
+                if (_wallTilemap != null && _wallTilesCache.TryGetValue(cell, out var wt))
+                    _wallTilemap.SetTile(pos, wt);
             }
         }
     }
 
-    /// <summary>개발용: 시야/안개를 무시하고 맵 전체 바닥·벽을 항상 보이게 합니다.</summary>
+    /// <summary>개발용: 안개 제거 + 바닥/벽 전부 복원.</summary>
     private void RefreshFogAllDebugReveal()
     {
         if (_mapManager == null || _fogTilemap == null)
             return;
-
         _fogTilemap.ClearAllTiles();
-
         for (int x = _mapManager.MinX; x <= _mapManager.MinX + _mapManager.Width - 1; x++)
         for (int y = _mapManager.MinY; y <= _mapManager.MinY + _mapManager.Height - 1; y++)
         {
             var cell = new Vector2Int(x, y);
             var pos = new Vector3Int(cell.x, cell.y, 0);
-
-            // 안개 없음 + 바닥/벽 항상 표시
-            if (_floorTilemap != null && _floorTile != null && _mapManager.IsWalkable(cell))
+            if (_floorTilemap != null && _floorTile != null && (_mapManager.IsWalkable(cell) || _mapManager.IsObstacleCell(cell) || _mapManager.IsChestCell(cell)))
                 _floorTilemap.SetTile(pos, _floorTile);
-            if (_wallTilemap != null && _wallTilesCache.TryGetValue(cell, out var wt))
-                _wallTilemap.SetTile(pos, wt);
+        }
+        if (_wallTilemap != null)
+        {
+            foreach (var kv in _wallTilesCache)
+                _wallTilemap.SetTile(new Vector3Int(kv.Key.x, kv.Key.y, 0), kv.Value);
         }
     }
 

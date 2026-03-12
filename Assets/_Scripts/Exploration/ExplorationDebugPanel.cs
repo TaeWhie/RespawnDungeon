@@ -3,6 +3,7 @@ using UnityEngine;
 /// <summary>
 /// 탐험 관련 디버그 기능을 한 곳에서 모아 관리하는 패널입니다.
 /// - Reveal Map (Dev): 시야/안개를 무시하고 전체 맵을 항상 보이게 토글
+/// - Simulation Speed: Time.timeScale로 게임 재생 속도 조절 (빠른 시뮬레이션용)
 /// 에디터 / Development 빌드에서만 동작합니다.
 /// </summary>
 public class ExplorationDebugPanel : MonoBehaviour
@@ -12,6 +13,11 @@ public class ExplorationDebugPanel : MonoBehaviour
     private ExplorationFogView _fogView;
     private ExplorerAI _explorerAI;
     private bool _showAdventurousness;
+    private bool _showFogStageNumbers;
+    private int _fogStageNumbersRadius = 12;
+
+    private const float SIM_SPEED_MIN = 0.25f;
+    private const float SIM_SPEED_MAX = 8f;
 
     private void Awake()
     {
@@ -66,9 +72,43 @@ public class ExplorationDebugPanel : MonoBehaviour
         if (newDrawGizmos != drawGizmos)
             _mapManager.DrawGizmos = newDrawGizmos;
 
+        GUILayout.Space(3);
+
+        // 안개 단계 숫자 표시 (1=풀뷰, 2=구조만, 3=미탐험)
+        _showFogStageNumbers = GUILayout.Toggle(_showFogStageNumbers, "Show Fog Stage (1/2/3)");
+        if (_showFogStageNumbers)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("Radius:", GUILayout.Width(40));
+            int r = (int)GUILayout.HorizontalSlider(_fogStageNumbersRadius, 5, 25, GUILayout.Width(80));
+            GUILayout.Label(r.ToString(), GUILayout.Width(20));
+            GUILayout.EndHorizontal();
+            _fogStageNumbersRadius = Mathf.Clamp(r, 5, 25);
+        }
+
         GUILayout.Space(5);
 
-        // Adventurousness (토글 펼치면 모험심 슬라이더 + 점수 가중치)
+        // Simulation Speed (빠른 시뮬레이션용)
+        GUILayout.Label("Simulation Speed");
+        GUILayout.BeginHorizontal();
+        float currentScale = Time.timeScale;
+        float newScale = GUILayout.HorizontalSlider(currentScale, SIM_SPEED_MIN, SIM_SPEED_MAX, GUILayout.Width(120));
+        GUILayout.Label($"{newScale:F2}x", GUILayout.Width(36));
+        GUILayout.EndHorizontal();
+        if (Mathf.Abs(newScale - currentScale) > 0.01f)
+            Time.timeScale = Mathf.Clamp(newScale, SIM_SPEED_MIN, SIM_SPEED_MAX);
+
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("0.5x", GUILayout.Width(40))) Time.timeScale = 0.5f;
+        if (GUILayout.Button("1x", GUILayout.Width(40))) Time.timeScale = 1f;
+        if (GUILayout.Button("2x", GUILayout.Width(40))) Time.timeScale = 2f;
+        if (GUILayout.Button("4x", GUILayout.Width(40))) Time.timeScale = 4f;
+        if (GUILayout.Button("8x", GUILayout.Width(40))) Time.timeScale = 8f;
+        GUILayout.EndHorizontal();
+
+        GUILayout.Space(5);
+
+        // Adventurousness
         _showAdventurousness = GUILayout.Toggle(_showAdventurousness, "Adventurousness");
         if (_showAdventurousness && _explorerAI != null)
         {
@@ -92,6 +132,48 @@ public class ExplorationDebugPanel : MonoBehaviour
         }
 
         GUILayout.EndArea();
+    }
+
+#if UNITY_EDITOR
+    private void OnDrawGizmos()
+    {
+        if (!_showFogStageNumbers || _mapManager == null || !_mapManager.IsInitialized)
+            return;
+
+        var player = GameObject.FindWithTag("Player");
+        Vector2Int centerCell = player != null
+            ? _mapManager.WorldToCell(player.transform.position)
+            : new Vector2Int(_mapManager.MinX + _mapManager.Width / 2, _mapManager.MinY + _mapManager.Height / 2);
+
+        int r = _fogStageNumbersRadius;
+        int minX = centerCell.x - r, maxX = centerCell.x + r;
+        int minY = centerCell.y - r, maxY = centerCell.y + r;
+
+        for (int x = minX; x <= maxX; x++)
+        for (int y = minY; y <= maxY; y++)
+        {
+            var cell = new Vector2Int(x, y);
+            if (!_mapManager.CellToIndex(cell, out _, out _))
+                continue;
+
+            int stage = _mapManager.GetFogStage(cell);
+            Vector3 worldPos = _mapManager.CellToWorld(cell);
+
+            // 단계별 색: 1=초록, 2=노랑, 3=빨강
+            switch (stage)
+            {
+                case 1: UnityEditor.Handles.color = Color.green; break;
+                case 2: UnityEditor.Handles.color = Color.yellow; break;
+                default: UnityEditor.Handles.color = Color.red; break;
+            }
+            UnityEditor.Handles.Label(worldPos + Vector3.up * 0.3f, stage.ToString());
+        }
+    }
+#endif
+
+    private void OnDestroy()
+    {
+        Time.timeScale = 1f;
     }
 
     private void SliderWeight(string label, System.Func<float> getVal, System.Action<float> setVal, float min, float max)

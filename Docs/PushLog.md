@@ -59,6 +59,10 @@
 
 ## 기록
 
+### 2025-03-11 — 안개 2단계 벽·오브젝트 셀 적용, 디버그 기즈모
+- **ExplorationFogView**: 갱신 대상에 wall 셀 포함(반경 내 셀의 인접 4방 추가). 벽 셀은 인접 floor 방문 여부로 단계 결정해 2/1단계에서 벽 표시. 오브젝트(장애물·상자) 셀도 인접 floor 방문 시 2단계 적용(바닥만 표시, 오브젝트는 1단계에서만 RefreshObjectsVisibility로 표시). RefreshFogAll 동일 로직. DebugReveal 시 장애물/상자 셀에도 바닥 복원.
+- **ExplorationDebugPanel**: 안개 단계(1/2/3) 기즈모 표시(Show Fog Stage 토글, Handles.Label, 단계별 색상·반경 슬라이더).
+
 ### 2025-03-11 — 모험심·점수 가중치·경로 거리·디버그 패널
 - **ExplorerAI 모험심**: 모험심 0일 때 목적지 = 안개 2단계 셀만, 모험심 1일 때 = 2+3단계 풀 합침. 거리와 밝히는 양 둘 다 반영한 가중 점수(brightWeight·distWeight) 사용, 0은 거리 비중·1은 밝히는 양 비중.
 - **점수 가중치 필드**: ScoreBrightWeightAdv0/Adv1, ScoreDistWeightAdv0/Adv1, ScoreTotalBrightWeightAdv1 추가(Inspector·런타임 조절). 모험심 0/1 사이는 Lerp로 보간.
