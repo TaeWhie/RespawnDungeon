@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using TriInspector;
 
 /// <summary>
 /// MapManager의 탐색/시야 단계에 따라 안개를 그리고, 3단계 셀에서는 바닥·벽을 렌더링하지 않습니다.
@@ -10,7 +11,7 @@ using UnityEngine.Tilemaps;
 [RequireComponent(typeof(Tilemap))]
 public class ExplorationFogView : MonoBehaviour
 {
-    [Header("참조")]
+    [Title("참조")]
     [Tooltip("비워두면 씬에서 자동 검색")]
     [SerializeField] private MapManager _mapManager;
     [Tooltip("안개 타일. 3단계에서 짙게, 2단계에서 옅게 같은 타일로 색상만 조절합니다.")]
@@ -22,12 +23,15 @@ public class ExplorationFogView : MonoBehaviour
     [Tooltip("3단계에서 벽 렌더링 끄기. 비워두면 벽은 그대로 그림")]
     [SerializeField] private Tilemap _wallTilemap;
 
-    [Header("안개 강도")]
+    [Title("안개 강도")]
     [Tooltip("3단계(미탐험) 안개 알파. 1=완전 불투명")]
-    [SerializeField, Range(0f, 1f)] private float _thickFogAlpha = 1f;
+    [Slider(0f, 1f)]
+    [SerializeField] private float _thickFogAlpha = 1f;
     [Tooltip("2단계(구조만) 안개 알파. 0에 가까울수록 옅음")]
-    [SerializeField, Range(0f, 1f)] private float _lightFogAlpha = 0.45f;
+    [Slider(0f, 1f)]
+    [SerializeField] private float _lightFogAlpha = 0.45f;
     [Tooltip("매 프레임 안개/바닥/벽을 갱신할 반경(파티 기준). 이 구역만 갱신해 프레임 절약. 맵 전체 갱신은 초기화 시 1회만.")]
+    [Slider(5, 30)]
     [SerializeField] private int _viewUpdateRadius = 10;
 
     private Tilemap _fogTilemap;

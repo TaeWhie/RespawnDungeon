@@ -4,10 +4,13 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
+using TriInspector;
 
 public class SimpleRandomWalkDungeonGenerator : AbstractDungeonGenerator
 {
 
+    [Title("Random Walk 데이터")]
+    [Required]
     [SerializeField]
     protected SimpleRandomWalkSO randomWalkParameters;
 

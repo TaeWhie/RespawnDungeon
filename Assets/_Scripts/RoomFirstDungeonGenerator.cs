@@ -3,15 +3,19 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Random = UnityEngine.Random;
+using TriInspector;
 
 public class RoomFirstDungeonGenerator : SimpleRandomWalkDungeonGenerator
 {
+    [Title("방 크기")]
+    [Slider(2, 20)]
     [SerializeField]
     private int minRoomWidth = 4, minRoomHeight = 4;
+    [Slider(10, 100)]
     [SerializeField]
     private int dungeonWidth = 20, dungeonHeight = 20;
+    [Slider(0, 10)]
     [SerializeField]
-    [Range(0,10)]
     private int offset = 1;
     [SerializeField]
     private bool randomWalkRooms = false;

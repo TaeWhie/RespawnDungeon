@@ -1,4 +1,5 @@
 using UnityEngine;
+using TriInspector;
 
 /// <summary>
 /// 보물상자 픽 시 Open 애니메이션 재생 후 오브젝트를 제거합니다.
@@ -7,7 +8,9 @@ using UnityEngine;
 /// </summary>
 public class ChestOpenable : MonoBehaviour
 {
+    [Title("상자 설정")]
     [Tooltip("Open 애니 재생 후 제거까지 대기 시간(초). Animator Open 클립 길이에 맞추세요.")]
+    [Slider(0.1f, 5f)]
     [SerializeField] private float _openThenDestroyDelay = 1.2f;
 
     [SerializeField] private Animator _animator;

@@ -59,6 +59,12 @@
 
 ## 기록
 
+### 2025-03-11 — 모험심·점수 가중치·경로 거리·디버그 패널
+- **ExplorerAI 모험심**: 모험심 0일 때 목적지 = 안개 2단계 셀만, 모험심 1일 때 = 2+3단계 풀 합침. 거리와 밝히는 양 둘 다 반영한 가중 점수(brightWeight·distWeight) 사용, 0은 거리 비중·1은 밝히는 양 비중.
+- **점수 가중치 필드**: ScoreBrightWeightAdv0/Adv1, ScoreDistWeightAdv0/Adv1, ScoreTotalBrightWeightAdv1 추가(Inspector·런타임 조절). 모험심 0/1 사이는 Lerp로 보간.
+- **거리 정의**: 로컬 이동(PickFromCandidatesWithTieBreak)에서 Manhattan 대신 **실제 경로 길이**(GetPath().Count) 사용. 재타겟팅은 기존대로 path.Count 사용.
+- **ExplorationDebugPanel**: Adventurousness 토글로 펼치면 모험심 슬라이더 + 점수 가중치 5개 슬라이더 표시. ExplorerAI.Adventurousness 및 가중치 프로퍼티로 런타임 조절.
+
 ### 2025-03-11 — 문 배치·황금방 시도 롤백, 디버그 패널/기즈모 통합
 - **TilemapVisualizer / 던전 구조**: 황금 방 경계 벽/장애물 실험 코드 제거, 상자/장애물/문 배치만 남기고 맵 구조는 원래대로 유지.
 - **문 배치**: 출구·황금상자 필수 경로에서 "양옆이 복도인 복도 셀"만 문 후보로 사용하는 필터 유지, Door 프리팹 추가.

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using TriInspector;
 
 /// <summary>
 /// 격자 기반 맵의 탐험 상태(visited)와 도달 불가 타일(unreachable)을 관리합니다.
@@ -8,19 +9,20 @@ using UnityEngine.Tilemaps;
 /// </summary>
 public class MapManager : MonoBehaviour
 {
-    [Header("Tilemap 연동")]
+    [Title("Tilemap 연동")]
     [Tooltip("바닥 타일맵. 비워두면 TilemapVisualizer에서 자동 검색합니다. 맵 크기 계산에 사용됩니다.")]
     [SerializeField] private Tilemap _floorTilemap;
 
-    [Header("시각화 (Gizmos)")]
+    [Title("시각화 (Gizmos)")]
     [Tooltip("체크 해제하면 Gizmo 그리기를 끄고 프레임이 안정됩니다. 디버깅할 때만 켜세요.")]
     [SerializeField] private bool _drawGizmos = true;
     [SerializeField] private Color _visitedColor = new Color(0.2f, 0.4f, 0.9f, 0.35f);
     [SerializeField] private Color _unreachableColor = Color.red;
     [SerializeField] private Color _globalTargetColor = Color.yellow;
+    [Slider(0.3f, 1.5f)]
     [SerializeField] private float _gizmoCellSize = 0.9f;
 
-    [Header("Debug")]
+    [Title("Debug")]
     [Tooltip("개발용: 시야/안개 무시하고 맵 전체를 항상 보이게 할지 여부")]
     [SerializeField] private bool _debugRevealAll = false;
 
@@ -250,6 +252,39 @@ public class MapManager : MonoBehaviour
     public bool IsInCurrentFullView(Vector2Int cell)
     {
         return _currentFullView != null && _currentFullView.Contains(cell);
+    }
+
+    /// <summary>
+    /// 안개 단계(1/2/3)를 반환합니다.
+    /// - 3: 아직 한 번도 방문하지 않은 셀 (미탐험)
+    /// - 2: 방문했지만 full view는 아닌 셀 (구조만 보이는 링)
+    /// - 1: 현재/과거에 full view 안에 들어온 적 있는 셀 (전부 보임)
+    /// </summary>
+    public int GetFogStage(Vector2Int cell)
+    {
+        if (!IsVisited(cell)) return 3;
+        if (IsInFullView(cell)) return 1;
+        return 2;
+    }
+
+    /// <summary>
+    /// 주어진 중심 셀 기준 반경 내에서, 안개 2단계 셀(visited 이지만 full view가 아닌 셀) 개수를 셉니다.
+    /// 리더/동료가 이동했을 때 구조만 보이는 링(2단계)을 얼마나 많이 1단계로 바꿀 수 있을지 평가할 때 사용합니다.
+    /// </summary>
+    public int GetStage2CountInRadius(Vector2Int center, int viewRadius)
+    {
+        if (!IsInitialized) return 0;
+        int count = 0;
+        for (int dx = -viewRadius; dx <= viewRadius; dx++)
+        for (int dy = -viewRadius; dy <= viewRadius; dy++)
+        {
+            var cell = new Vector2Int(center.x + dx, center.y + dy);
+            if (!CellToIndex(cell, out _, out _)) continue;
+            // 안개 2단계 셀만 대상으로, 라인 오브 사이트가 보장되는 경우만 센다.
+            if (GetFogStage(cell) == 2 && HasLineOfSight(center, cell))
+                count++;
+        }
+        return count;
     }
 
     /// <summary>목표 셀까지 라인 오브 사이트. 목표 셀 자체는 비워커블(장애물)이어도 true 가능.</summary>

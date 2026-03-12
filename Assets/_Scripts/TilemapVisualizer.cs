@@ -3,52 +3,60 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using TriInspector;
 
 public class TilemapVisualizer : MonoBehaviour
 {
+    [Title("타일맵·타일")]
+    [Required]
     [SerializeField]
     private Tilemap floorTilemap, wallTilemap;
     [SerializeField]
-    private TileBase floorTile, wallTop, wallSideRight, wallSiderLeft, wallBottom, wallFull, 
-        wallInnerCornerDownLeft, wallInnerCornerDownRight, 
+    private TileBase floorTile, wallTop, wallSideRight, wallSiderLeft, wallBottom, wallFull,
+        wallInnerCornerDownLeft, wallInnerCornerDownRight,
         wallDiagonalCornerDownRight, wallDiagonalCornerDownLeft, wallDiagonalCornerUpRight, wallDiagonalCornerUpLeft;
     [SerializeField]
     private GameObject startPrefab, exitPrefab;
 
-    [Header("펄린 노이즈 배치 (장애물·보물상자)")]
+    [Title("펄린 노이즈 배치 (장애물·보물상자)")]
     [Tooltip("노이즈 조밀도. 작을수록 군집이 커짐")]
+    [Slider(0.01f, 0.5f)]
     [SerializeField] private float _perlinScale = 0.1f;
     [Tooltip("이 값 이상인 구역에 장애물 배치 (군집)")]
-    [SerializeField] [Range(0f, 1f)] private float _obstacleThreshold = 0.6f;
-    [Tooltip("이 값 이상인 구역에 보물상자 배치 (희귀)")]
-    [SerializeField] [Range(0f, 1f)] private float _treasureThreshold = 0.85f;
+    [Slider(0f, 1f)]
+    [SerializeField] private float _obstacleThreshold = 0.6f;
     [Tooltip("장애물 프리팹 (바위, 나무 등). 비우면 장애물 미배치")]
     [SerializeField] private GameObject _obstaclePrefab;
     [Tooltip("보물상자 프리팹. 비우면 보물상자 미배치")]
     [SerializeField] private GameObject _treasureChestPrefab;
     [Tooltip("황금상자 프리팹. 비우면 황금상자 미배치. 시야 확인 어렵거나 고립된 곳에만 배치")]
     [SerializeField] private GameObject _goldenChestPrefab;
-    [Tooltip("황금상자 배치 확률(노이즈 기준). 이 값 이상일 때만 후보 셀에 배치")]
-    [SerializeField] [Range(0f, 1f)] private float _goldenChestThreshold = 0.92f;
     [Tooltip("황금상자 후보: 최장 경로에서 이 거리 이상 떨어진 셀 또는 막다른 길(인접 floor 1개)")]
+    [Slider(1, 15)]
     [SerializeField] private int _goldenChestMinPathDistance = 3;
     [Tooltip("황금상자 개수 (고립/막다른 길 후보에서 최소 간격 유지하며 배치)")]
+    [Slider(0, 20)]
     [SerializeField] private int _goldenChestCount = 3;
     [Tooltip("일반 보물상자 개수 (최소 간격 유지하며 배치)")]
+    [Slider(0, 30)]
     [SerializeField] private int _treasureChestCount = 8;
     [Tooltip("상자 간 최소 맨해튼 거리 (이 값 미만이면 뭉침으로 간주)")]
+    [Slider(1, 15)]
     [SerializeField] private int _chestMinSpacing = 4;
 
-    [Header("문 배치")]
+    [Title("문 배치")]
     [Tooltip("중요 복도(출구/황금상자/고립 방 경로)에 배치할 문 프리팹. 비우면 문 미배치")]
     [SerializeField] private GameObject _doorPrefab;
     [Tooltip("최대 문 개수")]
+    [Slider(0, 15)]
     [SerializeField] private int _doorCount = 4;
     [Tooltip("문 간 최소 맨해튼 거리")]
+    [Slider(1, 15)]
     [SerializeField] private int _doorMinSpacing = 5;
 
-    [Header("파티 스폰")]
+    [Title("파티 스폰")]
     [Tooltip("던전 생성 시 리더(플레이어) 포함 파티 인원 수. 1이면 리더만 스폰합니다.")]
+    [Slider(1, 10)]
     [SerializeField] private int _partyCount = 1;
 
     [Tooltip("리더와 동료 모두에 사용할 공용 캐릭터 프리팹 (예: Assets/Character).")]

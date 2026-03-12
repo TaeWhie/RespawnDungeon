@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using TriInspector;
 
 /// <summary>
 /// 파티 전체를 화면에 담도록 카메라를 자동으로 위치/줌 조절합니다.
@@ -9,19 +10,25 @@ using UnityEngine;
 [RequireComponent(typeof(Camera))]
 public class PartyCameraController : MonoBehaviour
 {
+    [Title("카메라 설정")]
     [Tooltip("파티원을 다시 스캔하는 주기(초). 0이면 매 프레임 스캔.")]
+    [Slider(0f, 5f)]
     [SerializeField] private float _rescanInterval = 1f;
 
     [Tooltip("파티 주변에 둘 여백 (유닛). 값이 클수록 카메라가 더 멀어집니다.")]
+    [Slider(0f, 5f)]
     [SerializeField] private float _padding = 1.5f;
 
     [Tooltip("카메라 이동 스무딩 속도.")]
+    [Slider(0.1f, 20f)]
     [SerializeField] private float _moveSmoothTime = 5f;
 
     [Tooltip("카메라 줌(Orthographic Size) 스무딩 속도.")]
+    [Slider(0.1f, 20f)]
     [SerializeField] private float _zoomSmoothTime = 5f;
 
     [Tooltip("카메라가 따라갈 최소/최대 줌 범위.")]
+    [MinMaxSlider(2f, 20f)]
     [SerializeField] private Vector2 _zoomLimits = new Vector2(3f, 12f);
 
     private Camera _cam;

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using TriInspector;
 
 /// <summary>
 /// 동료(Ally)가 리더(Player)를 자연스럽게 따라가도록 합니다.
@@ -9,7 +10,7 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class PartyFollower : MonoBehaviour
 {
-    [Header("참조")]
+    [Title("참조")]
     [Tooltip("비워두면 씬에서 Tag 'Player' 오브젝트를 자동 검색")]
     [SerializeField] private Transform _leader;
     [Tooltip("걷기/뛰기 애니메이션용. 비워두면 같은 오브젝트·자식의 Animator 사용")]
@@ -19,40 +20,54 @@ public class PartyFollower : MonoBehaviour
     [Tooltip("비워두면 씬에서 자동 검색")]
     [SerializeField] private Pathfinder _pathfinder;
 
-    [Header("포메이션")]
+    [Title("포메이션")]
     [Tooltip("리더와의 유지 거리 (월드 단위). 리더 이동 방향 반대쪽으로 이만큼 떨어짐")]
+    [Slider(0.1f, 5f)]
     [SerializeField] private float _followDistance = 1f;
     [Tooltip("맨앞 동료가 리더를 따르는 거리. 뒤쪽 동료도 앞 동료를 이 거리로 따라감 (0이면 _followDistance 사용)")]
+    [Slider(0f, 3f)]
     [SerializeField] private float _firstFollowerDistance = 0.5f;
     [Tooltip("이 동료의 포메이션 슬롯 (0=리더 바로 뒤, 1=그 다음, …). 뒤쪽은 앞쪽 동료를 이 거리로 따라감")]
     [SerializeField] private int _slotIndex = 0;
     [Tooltip("이동 속도. 리더와 비슷하거나 약간 낮추면 자연스러움")]
+    [Slider(0.5f, 8f)]
     [SerializeField] private float _speed = 2f;
     [Tooltip("뛸 때 속도 배율 (걷기=1배, 리더와 비슷하게 1.5 등)")]
+    [Slider(1f, 3f)]
     [SerializeField] private float _runSpeedMultiplier = 1.5f;
     [Tooltip("웨이포인트 도착 판정 반경 (경로 따라갈 때)")]
+    [Slider(0.1f, 2f)]
     [SerializeField] private float _waypointReachRadius = 0.35f;
     [Tooltip("목표 지점 도착으로 보는 반경. 이 안이면 멈춤")]
+    [Slider(0.1f, 2f)]
     [SerializeField] private float _arrivalRadius = 0.35f;
     [Tooltip("리더가 멈춰 있을 때 사용할 기본 방향 (월드). 예: (0,-1)=아래쪽 뒤")]
     [SerializeField] private Vector2 _idleFormationDirection = new Vector2(0f, -1f);
     [Tooltip("동료끼리 겹치지 않도록 포메이션 직선의 좌우로 번갈아 밀어내는 거리 (월드 단위). 0이면 오프셋 없음")]
+    [Slider(0f, 2f)]
     [SerializeField] private float _formationSpread = 0.35f;
     [Tooltip("뒤쪽 동료의 포메이션 방향을 이 시간만큼 부드럽게 보간 (커브 시 자연스러운 곡선). 0이면 즉시 반영")]
+    [Slider(0f, 1f)]
     [SerializeField] private float _formationDirSmoothTime = 0.1f;
     [Tooltip("슬롯별 거리 미세 변동 (0~0.1). 0이면 균일 간격")]
+    [Slider(0f, 0.2f)]
     [SerializeField] private float _distanceVariation = 0.05f;
     [Tooltip("동료마다 랜덤한 좌우 오프셋 범위 (일자 감소). 0이면 없음")]
+    [Slider(0f, 1f)]
     [SerializeField] private float _personalSpreadRange = 0.25f;
     [Tooltip("목표 위치를 이 시간만큼 부드럽게 보간 (궤적이 휘어져 보임). 0이면 즉시")]
+    [Slider(0f, 0.5f)]
     [SerializeField] private float _targetSmoothTime = 0.15f;
     [Tooltip("리더 또는 앞쪽 동료와 이 거리보다 가까우면 멈춤 (동선 겹침 시 뒤쪽이 서서 간격 벌어짐). 0이면 비활성")]
+    [Slider(0f, 2f)]
     [SerializeField] private float _overlapStopRadius = 0.5f;
 
-    [Header("시야 (파티 공유)")]
+    [Title("시야 (파티 공유)")]
     [Tooltip("현재 위치 기준 시야 반경(타일 수). 이 범위 내 타일을 파티 공유 맵에 방문 처리합니다.")]
+    [Slider(1, 10)]
     [SerializeField] private int _viewRadius = 2;
     [Tooltip("2단계 시야 반경(구조만 보임). 이 범위까지 벽/바닥이 보이고, _viewRadius 안에서만 장애물 등 전부 보임")]
+    [Slider(1, 15)]
     [SerializeField] private int _viewRadiusStructure = 4;
 
     private Rigidbody2D _rigidbody;
@@ -249,6 +264,14 @@ public class PartyFollower : MonoBehaviour
         else
         {
             // 경로가 없으면 직선 이동 금지(벽 뚫림 방지). 경로를 다 따라오면 해당 셀에서 정지.
+        }
+
+        // 목표 지점에 충분히 가까워지면 도착으로 보고 멈춤
+        if (_arrivalRadius > 0f)
+        {
+            Vector2 toTargetWorld = targetWorld - (Vector2)transform.position;
+            if (toTargetWorld.sqrMagnitude <= _arrivalRadius * _arrivalRadius)
+                desiredVelocity = Vector2.zero;
         }
 
         // 동선 겹침 시 뒤쪽이 멈춤: 리더 또는 더 앞 슬롯 동료와 너무 가까우면 정지

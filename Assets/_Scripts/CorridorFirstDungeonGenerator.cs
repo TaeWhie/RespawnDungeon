@@ -3,13 +3,16 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
+using TriInspector;
 
 public class CorridorFirstDungeonGenerator : SimpleRandomWalkDungeonGenerator
 {
+    [Title("복도 설정")]
+    [Slider(5, 50)]
     [SerializeField]
     private int corridorLength = 14, corridorCount = 5;
+    [Slider(0.1f, 1f)]
     [SerializeField]
-    [Range(0.1f,1)]
     private float roomPercent = 0.8f;
 
     protected override void RunProceduralGeneration()

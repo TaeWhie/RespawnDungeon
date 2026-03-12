@@ -1,4 +1,5 @@
 using UnityEngine;
+using TriInspector;
 
 /// <summary>
 /// 2단계 시야(구조만)에서는 렌더러만 끄고, 1단계 시야(전부 보임)에서만 표시합니다.
@@ -6,6 +7,7 @@ using UnityEngine;
 /// </summary>
 public class VisibilityByViewStage : MonoBehaviour
 {
+    [Title("참조")]
     [Tooltip("비워두면 씬에서 자동 검색")]
     [SerializeField] private MapManager _mapManager;
 

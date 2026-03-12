@@ -1,9 +1,13 @@
 using System;
 using UnityEngine;
+using TriInspector;
 
 public class CameraFollow : MonoBehaviour
 {
+    [Title("따라가기 설정")]
     [SerializeField] private Transform target;
+    [Tooltip("0에 가까울수록 부드럽게 따라감")]
+    [Slider(0.01f, 1f)]
     [SerializeField] private float smoothSpeed = 0.125f;
     [SerializeField] private Vector3 offset = new Vector3(0, 0, -10);
 
