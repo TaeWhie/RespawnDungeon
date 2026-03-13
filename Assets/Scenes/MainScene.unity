@@ -342,6 +342,83 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 6a9389baf99b9cd47b131864087df7df, type: 2}
   - {fileID: 11400000, guid: 3eb624445e47a904c9aa5695c87924d8, type: 2}
   - {fileID: 11400000, guid: 32ac3bdf217c795448dfdee392b80625, type: 2}
+--- !u!1 &457328405
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 457328408}
+  - component: {fileID: 457328407}
+  - component: {fileID: 457328406}
+  m_Layer: 0
+  m_Name: InventoryManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &457328406
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 457328405}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5aae9d5b811fbf546bdadafc66409c3b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TaeWhie.RPG.Inventory.InventoryManager
+  inventoryUIDocument: {fileID: 457328407}
+  inventoryViewTemplate: {fileID: 9197481963319205126, guid: 7454cff32b15fc64390d7b562fcca352, type: 3}
+  characterDataTemplate: {fileID: 0}
+  testItems:
+  - {fileID: 11400000, guid: e5474300f3dc49f4d86e93a5ad78b85a, type: 2}
+  - {fileID: 11400000, guid: 9f01f6b9f39b69641b9dbdbdee71f9c7, type: 2}
+  - {fileID: 11400000, guid: 3bcc4817b11805645bfe371e8671351a, type: 2}
+  - {fileID: 11400000, guid: 3fbdccc033266e940b1494d278d946a2, type: 2}
+  - {fileID: 11400000, guid: 7bd7fa154c31e534eaa42e5f3fd4c81f, type: 2}
+--- !u!114 &457328407
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 457328405}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
+  m_PanelSettings: {fileID: 11400000, guid: 16b815e1924334f418b3e49c2853a2df, type: 2}
+  m_ParentUI: {fileID: 0}
+  sourceAsset: {fileID: 9197481963319205126, guid: 7454cff32b15fc64390d7b562fcca352, type: 3}
+  m_SortingOrder: 0
+  m_Position: 0
+  m_WorldSpaceSizeMode: 1
+  m_WorldSpaceWidth: 1920
+  m_WorldSpaceHeight: 1080
+  m_PivotReferenceSize: 0
+  m_Pivot: 0
+  m_WorldSpaceCollider: {fileID: 0}
+--- !u!4 &457328408
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 457328405}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &519420028
 GameObject:
   m_ObjectHideFlags: 0
@@ -474,7 +551,7 @@ Transform:
   m_GameObject: {fileID: 519420028}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 30.78, z: -10}
+  m_LocalPosition: {x: 9.9, y: 51.3, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -34369,3 +34446,4 @@ SceneRoots:
   - {fileID: 2050850801}
   - {fileID: 1345371000}
   - {fileID: 298135823}
+  - {fileID: 457328408}

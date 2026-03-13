@@ -1,134 +1,111 @@
-<?xml version="1.0" encoding="utf-8"?>
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
-    <Style src="project:/Assets/UI/Inventory/Inventory.uss" />
-    <ui:VisualElement name="InventoryRoot" style="flex-grow: 1; justify-content: flex-start; align-items: center; padding-top: 10px; background-color: rgba(0, 0, 0, 0);" picking-mode="Ignore">
-        <ui:VisualElement name="InventoryWindow" class="inventory-window" picking-mode="Position">
+    <Style src="project://database/Assets/UI/Inventory/Inventory.uss?fileID=7433441132597879392&amp;guid=ac868181d9be5524f97f79696061d56d&amp;type=3#Inventory"/>
+    <ui:VisualElement name="InventoryRoot" picking-mode="Ignore" style="flex-grow: 1; justify-content: flex-start; align-items: center; padding-top: 10px; background-color: rgba(0, 0, 0, 0); display: none;">
+        <ui:VisualElement name="InventoryWindow" picking-mode="Position" class="inventory-window">
             <ui:VisualElement name="Header" class="inventory-header">
-                <ui:Label name="CharacterNameLabel" text="Character Name" class="header-title" />
-                <ui:Button name="CloseButton" text="X" class="close-button" />
+                <ui:Label name="CharacterNameLabel" text="Character Name" class="header-title"/>
+                <ui:Button name="CloseButton" text="X" class="close-button"/>
             </ui:VisualElement>
-            
             <ui:VisualElement name="MainContent" style="flex-direction: row; flex-grow: 1; padding: 15px;">
-                <!-- 장비창 영역 (Diablo Layout) -->
                 <ui:VisualElement name="EquipmentSection" class="equipment-section">
-                    <ui:VisualElement style="flex-direction: row; justify-content: center; align-items: flex-start;">
-                        
-                        <!-- Left Column: Glove L, Weapon -->
-                        <ui:VisualElement style="flex-direction: column; align-items: center; margin-right: 2px;">
-                            <!-- Spacer for Helmet level -->
-                            <ui:VisualElement style="height: 44px;" /> 
-                            <ui:VisualElement name="Slot_Gloves_0" class="equipment-slot-container slot-1x2" data-type="Gloves" data-index="0">
-                                <ui:Label text="팔" class="equipment-slot-label" />
-                                <ui:VisualElement name="Icon" class="equipment-slot-icon" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="Slot_Weapon" class="equipment-slot-container slot-1x3" data-type="Weapon">
-                                <ui:Label text="무기" class="equipment-slot-label" />
-                                <ui:VisualElement name="Icon" class="equipment-slot-icon" />
-                            </ui:VisualElement>
+                    <ui:VisualElement style="justify-content: center; align-items: center; width: 100%; margin-left: 0; margin-top: -10px;">
+                        <ui:VisualElement name="Slot_Helmet" data-type="Helmet" class="equipment-slot-container slot-1x1">
+                            <ui:Label text="헬멧" class="equipment-slot-label"/>
+                            <ui:VisualElement name="Icon" class="equipment-slot-icon"/>
                         </ui:VisualElement>
-
-                        <!-- Center Column: Helmet, Armor, Legs -->
-                        <ui:VisualElement style="flex-direction: column; align-items: center;">
-                            <ui:VisualElement name="Slot_Helmet" class="equipment-slot-container slot-1x1" data-type="Helmet">
-                                <ui:Label text="헬멧" class="equipment-slot-label" />
-                                <ui:VisualElement name="Icon" class="equipment-slot-icon" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="Slot_Armor" class="equipment-slot-container slot-2x2" data-type="Armor">
-                                <ui:Label text="갑옷" class="equipment-slot-label" />
-                                <ui:VisualElement name="Icon" class="equipment-slot-icon" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="Slot_Boots" class="equipment-slot-container slot-1x2" data-type="Boots">
-                                <ui:Label text="다리" class="equipment-slot-label" />
-                                <ui:VisualElement name="Icon" class="equipment-slot-icon" />
-                            </ui:VisualElement>
-                        </ui:VisualElement>
-
-                        <!-- Right Column: Glove R, Shield, Accessories -->
-                        <ui:VisualElement style="flex-direction: column; align-items: flex-start; margin-left: 2px;">
-                            <!-- Spacer for Helmet level -->
-                            <ui:VisualElement style="height: 58px;" />
-                            <ui:VisualElement name="Slot_Gloves_1" class="equipment-slot-container slot-1x2" data-type="Gloves" data-index="1">
-                                <ui:Label text="팔" class="equipment-slot-label" />
-                                <ui:VisualElement name="Icon" class="equipment-slot-icon" />
-                            </ui:VisualElement>
-                            <ui:VisualElement name="Slot_Shield" class="equipment-slot-container slot-2x2" data-type="Shield" style="margin-left: 0;">
-                                <ui:Label text="방패" class="equipment-slot-label" />
-                                <ui:VisualElement name="Icon" class="equipment-slot-icon" />
-                            </ui:VisualElement>
-                            <ui:VisualElement style="flex-direction: row; margin-top: 4px; margin-left: -50px;">
-                                <ui:VisualElement name="Slot_Accessory_0" class="equipment-slot-container slot-1x1" data-type="Accessory" data-index="0">
-                                    <ui:Label text="치장" class="equipment-slot-label" />
-                                    <ui:VisualElement name="Icon" class="equipment-slot-icon" />
-                                </ui:VisualElement>
-                                <ui:VisualElement name="Slot_Accessory_1" class="equipment-slot-container slot-1x1" data-type="Accessory" data-index="1">
-                                    <ui:Label text="치장" class="equipment-slot-label" />
-                                    <ui:VisualElement name="Icon" class="equipment-slot-icon" />
-                                </ui:VisualElement>
-                            </ui:VisualElement>
-                        </ui:VisualElement>
-
                     </ui:VisualElement>
-
-                    <!-- 스탯 표시 영역 (2단 구성으로 세로 길이 단축) -->
-                    <ui:VisualElement name="StatPanel" class="stat-panel">
+                    <ui:VisualElement name="BodyContainer" style="flex-direction: row; justify-content: center; align-items: flex-start; margin-left: 40px;">
+                        <ui:VisualElement style="flex-direction: column; align-items: center; margin-right: 6px; translate: -6px 0;">
+                            <ui:VisualElement name="Slot_Gloves_0" data-type="Gloves" data-index="0" class="equipment-slot-container slot-1x2">
+                                <ui:Label text="팔" class="equipment-slot-label"/>
+                                <ui:VisualElement name="Icon" class="equipment-slot-icon"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="Slot_Weapon" data-type="Weapon" class="equipment-slot-container slot-1x3">
+                                <ui:Label text="무기" class="equipment-slot-label"/>
+                                <ui:VisualElement name="Icon" class="equipment-slot-icon"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement style="flex-direction: column; align-items: center; translate: 0 0;">
+                            <ui:VisualElement name="Slot_Armor" data-type="Armor" class="equipment-slot-container slot-2x2">
+                                <ui:Label text="갑옷" class="equipment-slot-label"/>
+                                <ui:VisualElement name="Icon" class="equipment-slot-icon"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="Slot_Boots" data-type="Boots" class="equipment-slot-container slot-1x2">
+                                <ui:Label text="다리" class="equipment-slot-label"/>
+                                <ui:VisualElement name="Icon" class="equipment-slot-icon"/>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                        <ui:VisualElement style="flex-direction: column; align-items: center; margin-left: 0; padding-left: 0; margin-top: 0; margin-right: 0; margin-bottom: 0; padding-top: 0; padding-right: 0; padding-bottom: 0; translate: -12px 0;">
+                            <ui:VisualElement name="Slot_Gloves_1" data-type="Gloves" data-index="1" class="equipment-slot-container slot-1x2">
+                                <ui:Label text="팔" class="equipment-slot-label"/>
+                                <ui:VisualElement name="Icon" class="equipment-slot-icon"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="Slot_Shield" data-type="Shield" class="equipment-slot-container slot-2x2">
+                                <ui:Label text="방패" class="equipment-slot-label"/>
+                                <ui:VisualElement name="Icon" class="equipment-slot-icon"/>
+                            </ui:VisualElement>
+                            <ui:VisualElement name="AccStack" style="flex-direction: row; justify-content: center; width: 100%;">
+                                <ui:VisualElement name="Slot_Accessory_0" data-type="Accessory" data-index="0" class="equipment-slot-container slot-1x1" style="margin: 2px;">
+                                    <ui:Label text="치장" class="equipment-slot-label"/>
+                                    <ui:VisualElement name="Icon" class="equipment-slot-icon"/>
+                                </ui:VisualElement>
+                                <ui:VisualElement name="Slot_Accessory_1" data-type="Accessory" data-index="1" class="equipment-slot-container slot-1x1" style="margin: 2px;">
+                                    <ui:Label text="치장" class="equipment-slot-label"/>
+                                    <ui:VisualElement name="Icon" class="equipment-slot-icon"/>
+                                </ui:VisualElement>
+                            </ui:VisualElement>
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                    <ui:VisualElement name="StatPanel" class="stat-panel" style="translate: 0 6px;">
                         <ui:VisualElement style="flex-direction: row; justify-content: space-between;">
-                            <!-- 왼쪽 단: 핵심 전투 스탯 및 포인트 -->
                             <ui:VisualElement style="width: 46%;">
                                 <ui:VisualElement class="stat-row">
-                                    <ui:Label text="공격력" class="stat-label" />
-                                    <ui:Label name="Stat_ATK" text="10" class="stat-value" />
-                                    <ui:Button name="Btn_Add_ATK" class="add-button" text="+" />
+                                    <ui:Label text="공격력" class="stat-label"/>
+                                    <ui:Label name="Stat_ATK" text="10" class="stat-value"/>
+                                    <ui:Button name="Btn_Add_ATK" text="+" class="add-button"/>
                                 </ui:VisualElement>
                                 <ui:VisualElement class="stat-row">
-                                    <ui:Label text="방어력" class="stat-label" />
-                                    <ui:Label name="Stat_DEF" text="5" class="stat-value" />
-                                    <ui:Button name="Btn_Add_DEF" class="add-button" text="+" />
+                                    <ui:Label text="방어력" class="stat-label"/>
+                                    <ui:Label name="Stat_DEF" text="5" class="stat-value"/>
+                                    <ui:Button name="Btn_Add_DEF" text="+" class="add-button"/>
                                 </ui:VisualElement>
-                                <ui:VisualElement class="stat-row" style="margin-top: 4px; border-top-width: 1px; border-color: rgba(255,255,255,0.1); padding-top: 2px;">
-                                    <ui:Label text="포인트" class="stat-label" />
-                                    <ui:Label name="Stat_Points" text="0" class="stat-value" />
-                                    <ui:VisualElement style="width: 14px; height: 14px; margin-left: 3px;" />
+                                <ui:VisualElement class="stat-row" style="margin-top: 4px; border-top-width: 1px; border-color: rgba(255, 255, 255, 0.1); padding-top: 2px;">
+                                    <ui:Label text="포인트" class="stat-label"/>
+                                    <ui:Label name="Stat_Points" text="0" class="stat-value"/>
+                                    <ui:VisualElement style="width: 14px; height: 14px; margin-left: 3px;"/>
                                 </ui:VisualElement>
                             </ui:VisualElement>
-
-                            <!-- 오른쪽 단: 1차 속성 (STR/DEX/INT) -->
                             <ui:VisualElement style="width: 50%;">
                                 <ui:VisualElement class="stat-row">
-                                    <ui:Label text="힘(STR)" class="stat-label" />
-                                    <ui:Label name="Stat_STR" text="8" class="stat-value" />
-                                    <ui:Button name="Btn_Add_STR" class="add-button" text="+" />
+                                    <ui:Label text="힘(STR)" class="stat-label"/>
+                                    <ui:Label name="Stat_STR" text="8" class="stat-value"/>
+                                    <ui:Button name="Btn_Add_STR" text="+" class="add-button"/>
                                 </ui:VisualElement>
                                 <ui:VisualElement class="stat-row">
-                                    <ui:Label text="민첩(DEX)" class="stat-label" />
-                                    <ui:Label name="Stat_DEX" text="12" class="stat-value" />
-                                    <ui:Button name="Btn_Add_DEX" class="add-button" text="+" />
+                                    <ui:Label text="민첩(DEX)" class="stat-label"/>
+                                    <ui:Label name="Stat_DEX" text="12" class="stat-value"/>
+                                    <ui:Button name="Btn_Add_DEX" text="+" class="add-button"/>
                                 </ui:VisualElement>
                                 <ui:VisualElement class="stat-row">
-                                    <ui:Label text="지능(INT)" class="stat-label" />
-                                    <ui:Label name="Stat_INT" text="6" class="stat-value" />
-                                    <ui:Button name="Btn_Add_INT" class="add-button" text="+" />
+                                    <ui:Label text="지능(INT)" class="stat-label"/>
+                                    <ui:Label name="Stat_INT" text="6" class="stat-value"/>
+                                    <ui:Button name="Btn_Add_INT" text="+" class="add-button"/>
                                 </ui:VisualElement>
                             </ui:VisualElement>
                         </ui:VisualElement>
                     </ui:VisualElement>
                 </ui:VisualElement>
-
-                <!-- 가방 영역 -->
                 <ui:VisualElement name="GridContainer" class="inventory-grid-container">
-                    <ui:VisualElement name="GridBackground" class="grid-background" />
-                    <ui:VisualElement name="PlacementGuide" class="placement-guide" />
-                    <ui:VisualElement name="ItemContainer" style="position: absolute; width: 100%; height: 100%;" />
+                    <ui:VisualElement name="GridBackground" class="grid-background"/>
+                    <ui:VisualElement name="PlacementGuide" class="placement-guide"/>
+                    <ui:VisualElement name="ItemContainer" style="position: absolute; width: 100%; height: 100%;"/>
                 </ui:VisualElement>
             </ui:VisualElement>
-
-            <!-- 드래그/토글 시 아이템이 모든 패널 위에 보이도록 하는 레이어 -->
-            <ui:VisualElement name="DragOverlay" style="position: absolute; width: 100%; height: 100%; picking-mode: ignore;" />
-
-            <!-- 아이템 상세 정보를 표시하는 툴팁 -->
+            <ui:VisualElement name="DragOverlay" style="position: absolute; width: 100%; height: 100%; picking-mode: ignore;"/>
             <ui:VisualElement name="Tooltip" class="tooltip-container" style="display: none;">
-                <ui:Label name="Tooltip_Name" text="Item Name" class="tooltip-name" />
-                <ui:Label name="Tooltip_Stats" text="ATK: 0" class="tooltip-stats" />
-                <ui:Label name="Tooltip_Description" text="Item Description" class="tooltip-description" />
+                <ui:Label name="Tooltip_Name" text="Item Name" class="tooltip-name"/>
+                <ui:Label name="Tooltip_Stats" text="ATK: 0" class="tooltip-stats"/>
+                <ui:Label name="Tooltip_Description" text="Item Description" class="tooltip-description"/>
             </ui:VisualElement>
         </ui:VisualElement>
     </ui:VisualElement>

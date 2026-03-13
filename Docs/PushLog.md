@@ -59,6 +59,14 @@
 
 ## 기록
 
+### 2026-03-13 — 인벤토리 UI 개선, 장비 레이아웃 리팩터, 아이템 데이터 보강
+- **InventoryView.uxml 리팩터**: 장비창(EquipmentSection) 레이아웃 재배치 — 헬멧을 상단 중앙으로 분리, BodyContainer에 팔·갑옷·방패를 가로 배치, 악세서리 슬롯을 AccStack으로 묶음. 불필요한 주석·spacer 제거, translate로 미세 위치 조정. InventoryRoot 초기 display를 none으로 설정.
+- **InventoryManager**: InventoryRoot 요소를 직접 Q로 찾아 display 제어 추가 (열기·닫기 시 InventoryRoot + root 둘 다 토글).
+- **InventoryUIController**: 장비 장착/해제 시 `HideTooltip()` 호출 추가 — 장착·해제 후 툴팁이 남아 있던 문제 수정.
+- **아이템 데이터**: Sword(높이 2→3, 설명·스탯 추가), Armor/Potion/Ring/Shield 등 SO에 description·atk/def/str/dex/int 필드 값 채움.
+- **KnightData**: 캐릭터 데이터 에셋 업데이트.
+- **씬**: MainScene 오브젝트 추가/조정.
+
 ### 2026-03-13 — 인벤토리 시스템 신규, HUD UI Toolkit, 에디터 도구
 - **인벤토리 시스템** (`_Scripts/Inventory/`): `InventoryManager`(싱글턴, 캐릭터별 가방 생성·열기·닫기, 테스트 아이템 자동 배치), `InventoryData`(그리드 기반 점유·배치·이동), `ItemData`(SO 아이템 원형), `InventoryUIController`(UI Toolkit 그리드 인벤토리 UI), `CharacterEquipment`(장비 슬롯). 아이템 드래그→다른 캐릭터 초상화에 드롭 시 가방 전환·아이템 전송(Follow Drag & Portrait Drop).
 - **HUD** (`_Scripts/UI/`, `UI/HUD/`): `CharacterData`(이름·초상화·HP/MP), `UI_CharacterUnit`(유닛별 초상화·HP/MP 바·인벤토리 버튼, 이벤트 기반), `HUDManager`(동적 생성·이벤트 구독), `HUDTestSetup`(테스트 데이터 자동 세팅). UXML/USS로 하단 파티 HUD 레이아웃·스타일 정의(`HUDMain.uxml`, `CharacterUnit.uxml`, `RPG_HUD.uss`).

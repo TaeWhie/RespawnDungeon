@@ -18,3 +18,9 @@ MonoBehaviour:
   maxHP: 100
   currentMP: 50
   maxMP: 50
+  atk: 13
+  def: 5
+  str: 8
+  dex: 12
+  int: 6
+  statPoints: 0

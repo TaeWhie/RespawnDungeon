@@ -17,4 +17,9 @@ MonoBehaviour:
   icon: {fileID: -8183618978423376395, guid: b39eeec3fdbd0fa44949f3387a9b35a8, type: 3}
   width: 1
   height: 1
-  description: 
+  description: "HP 10\uC744 \uD68C\uBCF5\uD560 \uC218 \uC788\uB2E4."
+  atk: 0
+  def: 0
+  str: 0
+  dex: 0
+  int: 0

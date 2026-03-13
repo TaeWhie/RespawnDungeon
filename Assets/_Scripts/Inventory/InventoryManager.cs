@@ -36,7 +36,9 @@ namespace TaeWhie.RPG.Inventory
             if (inventoryUIDocument == null) inventoryUIDocument = GetComponent<UIDocument>();
             
             root = inventoryUIDocument.rootVisualElement;
-            root.style.display = DisplayStyle.None; // 초기에는 숨김
+            var inventoryRoot = root.Q<VisualElement>("InventoryRoot");
+            if (inventoryRoot != null) inventoryRoot.style.display = DisplayStyle.None;
+            root.style.display = DisplayStyle.None; // 레이어 전체 숨김
 
             uiController = new InventoryUIController(root);
             uiController.OnCloseRequested += () => CloseInventory();
@@ -112,6 +114,10 @@ namespace TaeWhie.RPG.Inventory
             }
 
             uiController.DisplayInventory(characterName, inventoryData);
+            
+            // UI 표시
+            var inventoryRoot = root.Q<VisualElement>("InventoryRoot");
+            if (inventoryRoot != null) inventoryRoot.style.display = DisplayStyle.Flex;
             root.style.display = DisplayStyle.Flex;
         }
 
@@ -122,6 +128,9 @@ namespace TaeWhie.RPG.Inventory
             if (characterInventories.TryGetValue(characterName, out var data))
             {
                 uiController.DisplayInventory(characterName, data);
+                
+                var inventoryRoot = root.Q<VisualElement>("InventoryRoot");
+                if (inventoryRoot != null) inventoryRoot.style.display = DisplayStyle.Flex;
                 root.style.display = DisplayStyle.Flex;
             }
             else
@@ -132,6 +141,8 @@ namespace TaeWhie.RPG.Inventory
 
         public void CloseInventory()
         {
+            var inventoryRoot = root.Q<VisualElement>("InventoryRoot");
+            if (inventoryRoot != null) inventoryRoot.style.display = DisplayStyle.None;
             root.style.display = DisplayStyle.None;
         }
 

@@ -13,8 +13,13 @@ MonoBehaviour:
   m_Name: Ring
   m_EditorClassIdentifier: Assembly-CSharp::TaeWhie.RPG.Inventory.ItemData
   itemName: Magic Ring
-  itemType: 5
+  itemType: 7
   icon: {fileID: -3208815788325294869, guid: ac1472f190ec720419b1c703ee9f9ebc, type: 3}
   width: 1
   height: 1
-  description: 
+  description: "\uBC84\uB824\uC9C4 \uB204\uAD70\uAC00\uC758 \uC791\uC740 \uBC18\uC9C0"
+  atk: 0
+  def: 0
+  str: 0
+  dex: 10
+  int: 0

@@ -17,4 +17,9 @@ MonoBehaviour:
   icon: {fileID: -1293453384219562008, guid: bcb6b7132a9a2494bac09581100e3a66, type: 3}
   width: 2
   height: 2
-  description: 
+  description: "\uAC00\uC7A5 \uAE30\uBCF8\uC774 \uB418\uB294 \uAC11\uC637"
+  atk: 0
+  def: 15
+  str: 0
+  dex: 0
+  int: 0

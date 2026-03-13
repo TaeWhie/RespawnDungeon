@@ -528,6 +528,7 @@ namespace TaeWhie.RPG.Inventory
                 if (currentData.AddItemToFirstAvailableSlot(equipped))
                 {
                     currentData.equipment.Unequip(type, index);
+                    HideTooltip(); // 장착 해제 시 툴팁 숨김
                     RefreshUI();
                 }
                 else
@@ -730,6 +731,7 @@ namespace TaeWhie.RPG.Inventory
                 }
             }
 
+            HideTooltip(); // 장착 시 툴팁 숨김
             RefreshUI();
         }
 

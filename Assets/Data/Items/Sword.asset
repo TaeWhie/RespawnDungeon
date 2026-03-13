@@ -16,5 +16,10 @@ MonoBehaviour:
   itemType: 3
   icon: {fileID: -41285419919962610, guid: 7ded0b57e47a85647a9b9c0e4b4df803, type: 3}
   width: 1
-  height: 2
-  description: 
+  height: 3
+  description: "\uAC00\uC7A5 \uAE30\uBCF8\uC774 \uB418\uB294 \uAC80"
+  atk: 10
+  def: 0
+  str: 0
+  dex: 0
+  int: 0
