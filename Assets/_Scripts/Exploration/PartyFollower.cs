@@ -71,7 +71,7 @@ public class PartyFollower : MonoBehaviour
     [SerializeField] private float _targetSmoothTime = 0.15f;
     [Tooltip("리더 또는 앞쪽 동료와 이 거리보다 가까우면 멈춤 (동선 겹침 시 뒤쪽이 서서 간격 벌어짐). 0이면 비활성")]
     [Slider(0f, 2f)]
-    [SerializeField] private float _overlapStopRadius = 0.5f;
+    [SerializeField] private float _overlapStopRadius = 0.8f;
 
     [Title("시야 (파티 공유)")]
     [Tooltip("현재 위치 기준 시야 반경(타일 수). 이 범위 내 타일을 파티 공유 맵에 방문 처리합니다.")]

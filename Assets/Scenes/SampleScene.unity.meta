@@ -1,7 +1,14 @@
 fileFormatVersion: 2
-guid: 35fdeb24b400ce54798a016792a68603
+guid: d6b9e3fc428363947969b63211902b8f
 DefaultImporter:
   externalObjects: {}
   userData: 
   assetBundleName: 
   assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 277551
+  packageName: Free Food Pixel Asset
+  packageVersion: 1.0
+  assetPath: Assets/Scenes/SampleScene.unity
+  uploadId: 645070

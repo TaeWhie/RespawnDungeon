@@ -1,0 +1,98 @@
+/* RPG HUD 스타일 시트 */
+
+.screen-root {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+}
+
+.hud-container {
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-end;
+    width: 100%;
+    height: 100%;
+    padding-bottom: 20px;
+    /* 레이아웃 디버깅을 위해 투명 배경 유지 */
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.character-unit {
+    flex-direction: row;
+    /* GUID 기반 참조 사용 */
+    background-image: url('project:/Assets/Sprites/UI/UI_Frame_Pixel.png?guid=61c0ff7bdbca644479317955a8e8c7be');
+    -unity-background-scale-mode: stretch-to-fill;
+    /* 9-slice 설정: 슬라이스 값을 조금 더 보수적으로 조정 (10px) */
+    -unity-slice-left: 10;
+    -unity-slice-top: 10;
+    -unity-slice-right: 10;
+    -unity-slice-bottom: 10;
+    /* 충분한 공간 확보: 상단/하단 패딩 15px, 좌우 12px */
+    padding: 15px 12px;
+    margin: 5px 10px;
+    min-width: 320px;
+    height: 100px;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.5); /* 프레임 뒤쪽을 채움 */
+}
+
+.portrait {
+    width: 64px;
+    height: 64px;
+    background-color: #222;
+    border-width: 2px;
+    border-color: #444;
+    margin-right: 10px;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.status-bars-container {
+    flex-grow: 1;
+    justify-content: space-around;
+    padding: 5px 0;
+}
+
+.status-bar {
+    height: 18px;
+    background-color: #111;
+    border-width: 1px;
+    border-color: #333;
+    flex-direction: row;
+    overflow: hidden;
+}
+
+.hp-bar-fill {
+    height: 100%;
+    background-color: #e74c3c;
+}
+
+.mp-bar-fill {
+    height: 100%;
+    background-color: #3498db;
+}
+
+.status-text {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -unity-text-align: middle-center;
+    font-size: 10px;
+    color: white;
+    -unity-font-style: bold;
+}
+
+.inventory-button {
+    width: 48px;
+    height: 48px;
+    align-self: center;
+    margin-left: 10px;
+    background-image: url('project:/Assets/Sprites/UI/Icon_Inventory_Bag.png?guid=e10138a6544b9d041b2980c34f9ec2cf');
+    -unity-background-scale-mode: scale-to-fit;
+    background-color: rgba(0, 0, 0, 0.4);
+    border-width: 1px;
+    border-color: #444;
+}
+
+.inventory-button:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}

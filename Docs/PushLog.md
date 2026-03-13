@@ -59,6 +59,21 @@
 
 ## 기록
 
+### 2026-03-13 — 인벤토리 시스템 신규, HUD UI Toolkit, 에디터 도구
+- **인벤토리 시스템** (`_Scripts/Inventory/`): `InventoryManager`(싱글턴, 캐릭터별 가방 생성·열기·닫기, 테스트 아이템 자동 배치), `InventoryData`(그리드 기반 점유·배치·이동), `ItemData`(SO 아이템 원형), `InventoryUIController`(UI Toolkit 그리드 인벤토리 UI), `CharacterEquipment`(장비 슬롯). 아이템 드래그→다른 캐릭터 초상화에 드롭 시 가방 전환·아이템 전송(Follow Drag & Portrait Drop).
+- **HUD** (`_Scripts/UI/`, `UI/HUD/`): `CharacterData`(이름·초상화·HP/MP), `UI_CharacterUnit`(유닛별 초상화·HP/MP 바·인벤토리 버튼, 이벤트 기반), `HUDManager`(동적 생성·이벤트 구독), `HUDTestSetup`(테스트 데이터 자동 세팅). UXML/USS로 하단 파티 HUD 레이아웃·스타일 정의(`HUDMain.uxml`, `CharacterUnit.uxml`, `RPG_HUD.uss`).
+- **인벤토리 UI** (`UI/Inventory/`): `InventoryView.uxml`, `Inventory.uss` — UI Toolkit 기반 그리드 인벤토리 뷰.
+- **에디터 도구** (`Editor/`): `ItemAssetCreator`(샘플 아이템 SO 일괄 생성, 스프라이트 Point Filter 자동 설정), `HUDFixer`(HUD 수정 유틸).
+- **PartyFollower**: `_overlapStopRadius` 기본값 0.5→0.8 조정.
+- **씬**: MainScene에 PartyHUD_Canvas·HUDManager 오브젝트 추가.
+- **버그 수정**: `ItemAssetCreator`에 `using System.IO` 누락 수정, `InventoryManager.AddInitialTestItems` 오버로드 추가로 CS1501 해결.
+
+### 2026-03-12 — 파티 포메이션 리팩터링, 카메라/동료 이동 조정
+- **PartyFormationProvider**: 리더에 부착되는 새 컴포넌트. 리더가 새 셀에 2칸 이상 이동했을 때만 슬롯별 포메이션 목표 셀/월드 좌표를 계산하고, 여기서 **비틀기(jitter)**·슬롯 간 충돌 방지(앞 슬롯이 쓴 셀/목표를 뒤 슬롯이 재사용하지 않도록)까지 모두 처리함. 동료는 더 이상 스스로 포메이션을 계산하지 않고, 리더가 준 셀만 따라감.
+- **PartyFollower**: 목표 셀 계산을 `PartyFormationProvider`에 완전히 위임. Provider가 줄 때마다 그 셀을 향해 A* 경로를 잡고, 웨이포인트 도착/스냅 로직은 리더와 동일한 작은 반경 기반으로 통일. 달리기 조건을 `_runDistanceThreshold`(기본 2칸 이상) + 리더 속도(리더가 충분히 빠르면 같이 뛰기) 기반으로 조정.
+- **PartyCameraController**: 카메라 중심을 항상 파티 중심이 아니라 **리더(Player)** 위치를 우선 사용하도록 변경. 줌(OrthographicSize)은 기존처럼 파티 전체 Bounds + 패딩을 기준으로 맞춰, 리더는 중앙에 두되 동료도 한 화면에 들어오도록 함. `SnapToPartyImmediate`도 동일 규칙 적용.
+- **기타/규칙 정리**: Pathfinder의 reserved 셀 기반 경로 분리 실험 코드는 롤백해 기존 시그니처·동작으로 되돌림. 푸시 규칙대로 이번 변경 사항을 PushLog에 기록함(이전 커밋에서 바로 기록하지 않은 점은 이후부터 주의).*** End Patch***} />
+
 ### 2025-03-11 — 안개 2단계 벽·오브젝트 셀 적용, 디버그 기즈모
 - **ExplorationFogView**: 갱신 대상에 wall 셀 포함(반경 내 셀의 인접 4방 추가). 벽 셀은 인접 floor 방문 여부로 단계 결정해 2/1단계에서 벽 표시. 오브젝트(장애물·상자) 셀도 인접 floor 방문 시 2단계 적용(바닥만 표시, 오브젝트는 1단계에서만 RefreshObjectsVisibility로 표시). RefreshFogAll 동일 로직. DebugReveal 시 장애물/상자 셀에도 바닥 복원.
 - **ExplorationDebugPanel**: 안개 단계(1/2/3) 기즈모 표시(Show Fog Stage 토글, Handles.Label, 단계별 색상·반경 슬라이더).

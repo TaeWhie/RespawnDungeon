@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project:/Assets/UI/HUD/RPG_HUD.uss" />
+    <ui:VisualElement name="CharacterUnit" class="character-unit">
+        <ui:VisualElement name="Portrait" class="portrait" />
+        <ui:VisualElement name="StatusBars" class="status-bars-container">
+            <ui:VisualElement name="HPBar" class="status-bar">
+                <ui:VisualElement name="HPFill" class="hp-bar-fill" />
+                <ui:Label name="HPText" text="100/100" class="status-text" />
+            </ui:VisualElement>
+            <ui:VisualElement name="MPBar" class="status-bar">
+                <ui:VisualElement name="MPFill" class="mp-bar-fill" />
+                <ui:Label name="MPText" text="50/50" class="status-text" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+        <ui:Button name="InventoryButton" class="inventory-button" />
+    </ui:VisualElement>
+</ui:UXML>

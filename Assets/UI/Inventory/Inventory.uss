@@ -1,0 +1,280 @@
+/* 인벤토리 시스템 스타일 시트 - 호환성 극대화 버전 */
+
+.inventory-window {
+    width: 1100px; 
+    height: 560px;
+    background-color: rgba(15, 15, 15, 0.95);
+    border-left-width: 4px;
+    border-right-width: 4px;
+    border-top-width: 4px;
+    border-bottom-width: 4px;
+    border-left-color: rgb(85, 85, 85);
+    border-right-color: rgb(85, 85, 85);
+    border-top-color: rgb(85, 85, 85);
+    border-bottom-color: rgb(85, 85, 85);
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.inventory-header {
+    height: 40px;
+    background-color: rgb(34, 34, 34);
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-bottom-width: 2px;
+    border-bottom-color: rgb(68, 68, 68);
+}
+
+.header-title {
+    color: rgb(255, 255, 255);
+    font-size: 18px;
+    -unity-font-style: bold;
+}
+
+.close-button {
+    width: 30px;
+    height: 30px;
+    background-color: rgb(128, 0, 0);
+    color: rgb(255, 255, 255);
+    border-left-width: 0px;
+    border-right-width: 0px;
+    border-top-width: 0px;
+    border-bottom-width: 0px;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-bottom-right-radius: 4px;
+}
+
+.equipment-section {
+    width: 400px;
+    padding: 15px;
+    background-color: rgba(30, 30, 30, 0.5);
+    margin-right: 20px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.equipment-slot-container {
+    background-color: rgba(20, 20, 20, 0.8);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(68, 68, 68);
+    border-right-color: rgb(68, 68, 68);
+    border-top-color: rgb(68, 68, 68);
+    border-bottom-color: rgb(68, 68, 68);
+    margin-left: 4px;
+    margin-right: 4px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+.slot-1x1 { width: 50px; height: 50px; }
+.slot-1x2 { width: 50px; height: 100px; }
+.slot-1x3 { width: 50px; height: 150px; }
+.slot-2x2 { width: 100px; height: 100px; }
+
+.equipment-slot-label {
+    position: absolute;
+    bottom: 2px;
+    font-size: 9px;
+    color: rgb(102, 102, 102);
+    -unity-text-align: middle-center;
+    width: 100%;
+}
+
+.equipment-slot-icon {
+    width: 90%;
+    height: 90%;
+    -unity-background-scale-mode: scale-to-fit;
+}
+
+.inventory-grid-container {
+    flex-direction: column;
+    background-color: rgb(26, 26, 26);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(51, 51, 51);
+    border-right-color: rgb(51, 51, 51);
+    border-top-color: rgb(51, 51, 51);
+    border-bottom-color: rgb(51, 51, 51);
+    overflow: hidden;
+    position: relative;
+}
+
+.grid-background {
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+
+.inventory-slot {
+    width: 50px;
+    height: 50px;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(42, 42, 42);
+    border-right-color: rgb(42, 42, 42);
+    border-top-color: rgb(42, 42, 42);
+    border-bottom-color: rgb(42, 42, 42);
+    background-image: url('project:/Assets/Sprites/Inventory/UI_Inventory_Slot.png');
+}
+
+.inventory-item-ui {
+    position: absolute;
+    background-color: rgba(255, 255, 255, 0.01);
+}
+
+.inventory-item-icon {
+    width: 100%;
+    height: 100%;
+    -unity-background-scale-mode: scale-to-fit;
+    picking-mode: ignore;
+}
+
+.dragging {
+    opacity: 0.8;
+    background-color: rgba(241, 196, 15, 0.2);
+    border-left-color: rgb(241, 196, 15);
+    border-right-color: rgb(241, 196, 15);
+    border-top-color: rgb(241, 196, 15);
+    border-bottom-color: rgb(241, 196, 15);
+}
+
+.placement-guide {
+    position: absolute;
+    background-color: rgba(0, 255, 0, 0.2);
+    border-left-width: 2px;
+    border-right-width: 2px;
+    border-top-width: 2px;
+    border-bottom-width: 2px;
+    border-left-color: rgb(0, 255, 0);
+    border-right-color: rgb(0, 255, 0);
+    border-top-color: rgb(0, 255, 0);
+    border-bottom-color: rgb(0, 255, 0);
+    display: none;
+}
+
+.placement-invalid {
+    background-color: rgba(255, 0, 0, 0.2);
+    border-left-color: rgb(255, 0, 0);
+    border-right-color: rgb(255, 0, 0);
+    border-top-color: rgb(255, 0, 0);
+    border-bottom-color: rgb(255, 0, 0);
+}
+
+.stat-panel {
+    margin-top: 5px;
+    padding: 6px 10px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-top-width: 1px;
+    border-bottom-width: 1px;
+    border-left-color: rgb(68, 68, 68);
+    border-right-color: rgb(68, 68, 68);
+    border-top-color: rgb(68, 68, 68);
+    border-bottom-color: rgb(68, 68, 68);
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    width: 100%;
+}
+
+.stat-row {
+    flex-direction: row;
+    justify-content: flex-start;
+    margin-bottom: 2px;
+    align-items: center;
+}
+
+.add-button {
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    margin: 0;
+    margin-left: 3px;
+    font-size: 11px;
+    background-color: rgba(60, 60, 60, 0.8);
+    border-color: rgba(100, 100, 100, 0.5);
+    color: #ffd700;
+}
+
+.add-button:hover {
+    background-color: rgba(100, 100, 100, 1);
+}
+
+.add-button:active {
+    background-color: #ffd700;
+    color: black;
+}
+
+.stat-label {
+    flex-grow: 1;
+    color: rgb(170, 170, 170);
+    font-size: 11px;
+}
+
+.stat-value {
+    color: rgb(255, 255, 255);
+    font-size: 12px;
+    -unity-font-style: bold;
+    width: 35px;
+    -unity-text-align: middle-right;
+    margin-right: 8px;
+}
+
+/* --- Tooltip Styles --- */
+.tooltip-container {
+    position: absolute;
+    background-color: rgba(5, 5, 5, 0.95);
+    border-color: rgb(150, 150, 150);
+    border-width: 1px;
+    padding: 10px;
+    border-radius: 4px;
+    min-width: 180px;
+    max-width: 250px;
+    pointer-events: none;
+}
+
+.tooltip-name {
+    color: #ffd700;
+    font-size: 16px;
+    -unity-font-style: bold;
+    margin-bottom: 4px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgba(255, 255, 255, 0.2);
+    padding-bottom: 4px;
+}
+
+.tooltip-stats {
+    color: #aaddff;
+    font-size: 13px;
+    margin-bottom: 8px;
+    white-space: normal;
+}
+
+.tooltip-description {
+    color: #cccccc;
+    font-size: 12px;
+    white-space: normal;
+    -unity-font-style: italic;
+}

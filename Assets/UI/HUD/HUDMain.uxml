@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project:/Assets/UI/HUD/RPG_HUD.uss" />
+    <ui:VisualElement name="ScreenRoot" class="screen-root">
+        <ui:VisualElement name="HUDContainer" class="hud-container" />
+    </ui:VisualElement>
+</ui:UXML>
