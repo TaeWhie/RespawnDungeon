@@ -1,4 +1,5 @@
 using UnityEngine;
+using UniRx;
 
 /// <summary>
 /// 탐험 관련 디버그 기능을 한 곳에서 모아 관리하는 패널입니다.
@@ -12,9 +13,11 @@ public class ExplorationDebugPanel : MonoBehaviour
     private MapManager _mapManager;
     private ExplorationFogView _fogView;
     private ExplorerAI _explorerAI;
+    private Transform _playerTransform;
     private bool _showAdventurousness;
     private bool _showFogStageNumbers;
     private int _fogStageNumbersRadius = 12;
+    private readonly CompositeDisposable _subscriptions = new CompositeDisposable();
 
     private const float SIM_SPEED_MIN = 0.25f;
     private const float SIM_SPEED_MAX = 8f;
@@ -22,6 +25,16 @@ public class ExplorationDebugPanel : MonoBehaviour
     private void Awake()
     {
         CacheRefs();
+    }
+
+    private void OnEnable()
+    {
+        SetupSubscriptions();
+    }
+
+    private void OnDisable()
+    {
+        _subscriptions.Clear();
     }
 
     private void CacheRefs()
@@ -32,6 +45,24 @@ public class ExplorationDebugPanel : MonoBehaviour
             _fogView = FindFirstObjectByType<ExplorationFogView>();
         if (_explorerAI == null)
             _explorerAI = FindFirstObjectByType<ExplorerAI>();
+    }
+
+    private void SetupSubscriptions()
+    {
+        _subscriptions.Clear();
+        Observable.Interval(System.TimeSpan.FromMilliseconds(300))
+            .StartWith(0L)
+            .Subscribe(_ => TryCachePlayer())
+            .AddTo(_subscriptions);
+    }
+
+    private void TryCachePlayer()
+    {
+        if (_playerTransform != null)
+            return;
+
+        ExplorationPartyCache.RefreshIfStale(0.3f);
+        _playerTransform = ExplorationPartyCache.Leader;
     }
 
     private void OnGUI()
@@ -140,9 +171,11 @@ public class ExplorationDebugPanel : MonoBehaviour
         if (!_showFogStageNumbers || _mapManager == null || !_mapManager.IsInitialized)
             return;
 
-        var player = GameObject.FindWithTag("Player");
-        Vector2Int centerCell = player != null
-            ? _mapManager.WorldToCell(player.transform.position)
+        if (_playerTransform == null)
+            TryCachePlayer();
+
+        Vector2Int centerCell = _playerTransform != null
+            ? _mapManager.WorldToCell(_playerTransform.position)
             : new Vector2Int(_mapManager.MinX + _mapManager.Width / 2, _mapManager.MinY + _mapManager.Height / 2);
 
         int r = _fogStageNumbersRadius;

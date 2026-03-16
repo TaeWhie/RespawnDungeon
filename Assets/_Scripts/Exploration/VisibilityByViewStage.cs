@@ -1,5 +1,6 @@
 using UnityEngine;
 using TriInspector;
+using UniRx;
 
 /// <summary>
 /// 2단계 시야(구조만)에서는 렌더러만 끄고, 1단계 시야(전부 보임)에서만 표시합니다.
@@ -13,21 +14,28 @@ public class VisibilityByViewStage : MonoBehaviour
 
     private Renderer[] _renderers;
     private bool _lastVisible = true;
+    private readonly CompositeDisposable _subscriptions = new CompositeDisposable();
 
-    private void Start()
+    private void OnEnable()
     {
         if (_mapManager == null)
             _mapManager = FindFirstObjectByType<MapManager>();
-        _renderers = GetComponentsInChildren<Renderer>(true);
+        if (_renderers == null || _renderers.Length == 0)
+            _renderers = GetComponentsInChildren<Renderer>(true);
+
+        _subscriptions.Clear();
+        Observable.EveryUpdate()
+            .Where(_ => _mapManager != null && _mapManager.IsInitialized && _renderers != null)
+            .Subscribe(_ => UpdateVisibility())
+            .AddTo(_subscriptions);
+
         _lastVisible = false;
         UpdateVisibility();
     }
 
-    private void Update()
+    private void OnDisable()
     {
-        if (_mapManager == null || !_mapManager.IsInitialized || _renderers == null)
-            return;
-        UpdateVisibility();
+        _subscriptions.Clear();
     }
 
     private void UpdateVisibility()

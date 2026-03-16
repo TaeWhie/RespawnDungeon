@@ -59,6 +59,11 @@
 
 ## 기록
 
+### 2026-03-16
+- 탐험 이동/로그 구조를 `MCPLogHub` 중심으로 통합하고, `mcp_log_hub` 커스텀 MCP 툴(채널/이슈 토글, 프리셋 적용)을 추가해 디버깅 자동화를 강화했습니다.
+- `ExplorerAI`/`PartyFollower`/카메라·안개·시야 갱신 흐름에 UniRx 및 공용 캐시를 적용해 중복 폴링을 줄이고 수명 관리(구독 해제)를 정리했습니다.
+- 리더 경로 시작 앵커링에서 위치 스냅을 제거해 순간이동 문제를 완화하고, Draw Map Gizmos에 코너 곡선 경로 시각화를 추가했습니다.
+
 ### 2026-03-13 — 인벤토리 UI 개선, 장비 레이아웃 리팩터, 아이템 데이터 보강
 - **InventoryView.uxml 리팩터**: 장비창(EquipmentSection) 레이아웃 재배치 — 헬멧을 상단 중앙으로 분리, BodyContainer에 팔·갑옷·방패를 가로 배치, 악세서리 슬롯을 AccStack으로 묶음. 불필요한 주석·spacer 제거, translate로 미세 위치 조정. InventoryRoot 초기 display를 none으로 설정.
 - **InventoryManager**: InventoryRoot 요소를 직접 Q로 찾아 display 제어 추가 (열기·닫기 시 InventoryRoot + root 둘 다 토글).

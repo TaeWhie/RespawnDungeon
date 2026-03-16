@@ -32,6 +32,12 @@ namespace TaeWhie.RPG.UI
             InitializeHUD();
         }
 
+        private void OnDisable()
+        {
+            UnbindUnitEvents();
+            unitLogics.Clear();
+        }
+
         /// <summary>
         /// 파티 데이터를 기반으로 HUD를 초기화하고 캐릭터 유닛들을 생성합니다.
         /// </summary>
@@ -46,7 +52,8 @@ namespace TaeWhie.RPG.UI
 
             if (container == null || characterUnitTemplate == null) return;
 
-            // 기존 요소 제거
+            // 기존 요소 제거 + 이전 이벤트 정리
+            UnbindUnitEvents();
             container.Clear();
             unitLogics.Clear();
 
@@ -69,10 +76,6 @@ namespace TaeWhie.RPG.UI
         }
 
         /// <summary>
-        /// 인벤토리 열기 요청을 처리합니다 (기획 요구사항: Debug.Log 구현).
-        /// </summary>
-        /// <param name="characterName">인벤토리를 열 캐릭터 이름</param>
-        /// <summary>
         /// 인벤토리 열기 요청을 처리합니다.
         /// </summary>
         /// <param name="memberData">인벤토리를 열 캐릭터 데이터</param>
@@ -86,6 +89,15 @@ namespace TaeWhie.RPG.UI
             if (TaeWhie.RPG.Inventory.InventoryManager.Instance != null)
             {
                 TaeWhie.RPG.Inventory.InventoryManager.Instance.OpenInventory(memberData);
+            }
+        }
+
+        private void UnbindUnitEvents()
+        {
+            for (int i = 0; i < unitLogics.Count; i++)
+            {
+                if (unitLogics[i] != null)
+                    unitLogics[i].OnInventoryOpenRequested -= HandleInventoryOpen;
             }
         }
 

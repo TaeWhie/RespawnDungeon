@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using TriInspector;
+using UniRx;
 
 /// <summary>
 /// 파티 전체를 화면에 담도록 카메라를 자동으로 위치/줌 조절합니다.
@@ -33,7 +34,7 @@ public class PartyCameraController : MonoBehaviour
 
     private Camera _cam;
     private readonly List<Transform> _targets = new List<Transform>();
-    private float _lastScanTime;
+    private readonly CompositeDisposable _subscriptions = new CompositeDisposable();
 
     private void Awake()
     {
@@ -43,11 +44,32 @@ public class PartyCameraController : MonoBehaviour
         ScanTargetsNow();
     }
 
+    private void OnEnable()
+    {
+        _subscriptions.Clear();
+
+        if (_rescanInterval <= 0f)
+        {
+            Observable.EveryLateUpdate()
+                .Subscribe(_ => ScanTargetsNow())
+                .AddTo(_subscriptions);
+        }
+        else
+        {
+            Observable.Interval(System.TimeSpan.FromSeconds(_rescanInterval))
+                .StartWith(0L)
+                .Subscribe(_ => ScanTargetsNow())
+                .AddTo(_subscriptions);
+        }
+    }
+
+    private void OnDisable()
+    {
+        _subscriptions.Clear();
+    }
+
     private void LateUpdate()
     {
-        if (_rescanInterval <= 0f || Time.time - _lastScanTime >= _rescanInterval)
-            ScanTargetsNow();
-
         if (_targets.Count == 0)
             return;
 
@@ -105,8 +127,6 @@ public class PartyCameraController : MonoBehaviour
             if (go != null)
                 _targets.Add(go.transform);
         }
-
-        _lastScanTime = Time.time;
     }
 
     /// <summary>

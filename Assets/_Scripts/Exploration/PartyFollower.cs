@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using TriInspector;
+using UniRx;
 
 /// <summary>
 /// 동료(Ally)가 리더(Player)를 자연스럽게 따라가도록 합니다.
@@ -69,9 +70,36 @@ public class PartyFollower : MonoBehaviour
     [Tooltip("목표 위치를 이 시간만큼 부드럽게 보간 (궤적이 휘어져 보임). 0이면 즉시")]
     [Slider(0f, 0.5f)]
     [SerializeField] private float _targetSmoothTime = 0.15f;
+    [Title("코너 라운딩 이동")]
+    [Tooltip("코너에서 직각 꺾임 대신 호(arc) 형태로 회전합니다.")]
+    [SerializeField] private bool _useCornerArcSteering = true;
+    [Tooltip("이 각도(도) 이상 꺾일 때만 코너 라운딩을 적용합니다.")]
+    [Slider(5f, 120f)]
+    [SerializeField] private float _cornerArcMinAngle = 20f;
+    [Tooltip("코너 진입 전부터 곡선 회전을 시작하는 거리.")]
+    [Slider(0.1f, 2f)]
+    [SerializeField] private float _cornerArcStartDistance = 0.8f;
+    [Tooltip("최대 회전 속도(도/초). 낮을수록 더 큰 곡선.")]
+    [Slider(90f, 1080f)]
+    [SerializeField] private float _maxTurnRateDeg = 420f;
+    [Tooltip("코너 주변 장애물을 피하기 위한 옆 밀어내기 강도.")]
+    [Slider(0f, 1f)]
+    [SerializeField] private float _cornerObstacleBias = 0.35f;
+    [Tooltip("코너 양옆 안전도 샘플링 거리.")]
+    [Slider(0.1f, 1f)]
+    [SerializeField] private float _cornerProbeDistance = 0.35f;
+    [Tooltip("코너에 충분히 가까워지면 곡선 조향을 줄이고 목표점으로 강제 수렴합니다.")]
+    [Slider(0.05f, 1f)]
+    [SerializeField] private float _arcConvergeDistance = 0.3f;
+    [Tooltip("조향 벡터가 목표점 방향을 최소 이 정도 이상 포함하도록 보정합니다. (원형 오비팅 방지)")]
+    [Slider(0f, 1f)]
+    [SerializeField] private float _minApproachDot = 0.25f;
     [Tooltip("리더 또는 앞쪽 동료와 이 거리보다 가까우면 멈춤 (동선 겹침 시 뒤쪽이 서서 간격 벌어짐). 0이면 비활성")]
     [Slider(0f, 2f)]
     [SerializeField] private float _overlapStopRadius = 0.8f;
+    [Tooltip("리더/동료 캐시 재검색 주기(초). 0이면 매 프레임.")]
+    [Slider(0f, 2f)]
+    [SerializeField] private float _partyRescanInterval = 0.4f;
 
     [Title("시야 (파티 공유)")]
     [Tooltip("현재 위치 기준 시야 반경(타일 수). 이 범위 내 타일을 파티 공유 맵에 방문 처리합니다.")]
@@ -94,6 +122,15 @@ public class PartyFollower : MonoBehaviour
     private float _personalDistanceOffset;
     private int _lastPathMapVersion = -1;
     private PartyFormationProvider _formationProvider;
+    private Vector2 _steeringDirection;
+    private bool _hasSteeringDirection;
+    private float _debugTraceTimer;
+    private int _stuckWatchWaypointIndex = -1;
+    private float _stuckWatchElapsed;
+    private float _stuckWatchStartDistance;
+    private bool _stuckWarnedForCurrentWaypoint;
+    private readonly CompositeDisposable _subscriptions = new CompositeDisposable();
+    private const string FollowerTraceChannel = "FOLLOWER_NAV";
 
     private void Awake()
     {
@@ -142,8 +179,32 @@ public class PartyFollower : MonoBehaviour
         _personalDistanceOffset = Random.Range(-0.08f, 0.08f);
     }
 
+    private void OnEnable()
+    {
+        _subscriptions.Clear();
+        MCPLogHub.BindPeriodicMonitor(
+            _partyRescanInterval,
+            RefreshPartyCacheFromHub,
+            _subscriptions);
+    }
+
+    private void OnDisable()
+    {
+        _subscriptions.Clear();
+    }
+
+    private void RefreshPartyCacheFromHub()
+    {
+        ExplorationPartyCache.RefreshIfStale(_partyRescanInterval);
+        if (_leader == null)
+            TryAssignLeaderFromSharedCache();
+    }
+
     private void FixedUpdate()
     {
+        if (_leader == null)
+            TryAssignLeaderFromSharedCache();
+
         if (_leader == null || _rigidbody == null)
             return;
 
@@ -300,6 +361,7 @@ public class PartyFollower : MonoBehaviour
             _lastPathMapVersion = _mapManager.WalkableVersion;
             _currentPath = null;
             _pathIndex = 0;
+            ResetSteeringDirection();
         }
 
         // 목표 변경: 리더가 좌표를 줄 때는 무조건 그 좌표로 갱신. 리더 없으면 도착한 다음에만 새 목표로 전환
@@ -334,6 +396,7 @@ public class PartyFollower : MonoBehaviour
                 _lastTargetCell = targetCell;
             }
             _lastPathMapVersion = _mapManager.WalkableVersion;
+            ResetSteeringDirection();
         }
 
         Vector2 desiredVelocity = Vector2.zero;
@@ -343,29 +406,52 @@ public class PartyFollower : MonoBehaviour
             Vector2Int waypoint = _currentPath[_pathIndex];
             Vector3 waypointWorld = _mapManager.CellToWorld(waypoint);
             Vector2 toWaypoint = (Vector2)waypointWorld - (Vector2)transform.position;
-            float reachR = _destinationReachRadius;
+            bool isLastWaypoint = _pathIndex >= _currentPath.Count - 1;
+            float reachR = isLastWaypoint ? _destinationReachRadius : _waypointReachRadius;
             float r2 = reachR * reachR;
 
-            // 웨이포인트 도착 시 다음으로 (리더처럼 가까울 때만 전환 후 스냅 → 멀리서 튀지 않음)
-            while (toWaypoint.sqrMagnitude <= r2 && _pathIndex < _currentPath.Count)
+            // 중간 웨이포인트 근접 시 강제 패스스루(오비팅 방지)
+            if (!isLastWaypoint && toWaypoint.magnitude <= Mathf.Max(0.35f, _arcConvergeDistance * 1.2f))
             {
                 _pathIndex++;
-                Vector2Int reachedCell = _currentPath[_pathIndex - 1];
-                Vector3 reachedWorld = _mapManager.CellToWorld(reachedCell);
-                var pos = new Vector3(reachedWorld.x, reachedWorld.y, transform.position.z);
-                transform.position = pos;
-                if (_rigidbody != null)
-                    _rigidbody.position = new Vector2(pos.x, pos.y);
+                if (_pathIndex < _currentPath.Count)
+                {
+                    waypoint = _currentPath[_pathIndex];
+                    waypointWorld = _mapManager.CellToWorld(waypoint);
+                    toWaypoint = (Vector2)waypointWorld - (Vector2)transform.position;
+                    isLastWaypoint = _pathIndex >= _currentPath.Count - 1;
+                    reachR = isLastWaypoint ? _destinationReachRadius : _waypointReachRadius;
+                    r2 = reachR * reachR;
+                }
+            }
+
+            // 웨이포인트 도착 시 다음으로 (리더처럼 가까울 때만 전환 후 스냅 → 멀리서 튀지 않음)
+            bool reachedWaypoint = HasReachedWaypoint(_pathIndex, toWaypoint, reachR, isLastWaypoint);
+            while (reachedWaypoint && _pathIndex < _currentPath.Count)
+            {
+                bool wasLastWaypoint = _pathIndex >= _currentPath.Count - 1;
+                _pathIndex++;
+                if (wasLastWaypoint)
+                {
+                    var pos = new Vector3(waypointWorld.x, waypointWorld.y, transform.position.z);
+                    transform.position = pos;
+                    if (_rigidbody != null)
+                        _rigidbody.position = new Vector2(pos.x, pos.y);
+                }
                 if (_pathIndex >= _currentPath.Count)
                     break;
                 waypoint = _currentPath[_pathIndex];
                 waypointWorld = _mapManager.CellToWorld(waypoint);
                 toWaypoint = (Vector2)waypointWorld - (Vector2)transform.position;
+                isLastWaypoint = _pathIndex >= _currentPath.Count - 1;
+                reachR = isLastWaypoint ? _destinationReachRadius : _waypointReachRadius;
+                r2 = reachR * reachR;
+                reachedWaypoint = HasReachedWaypoint(_pathIndex, toWaypoint, reachR, isLastWaypoint);
             }
 
             if (_pathIndex < _currentPath.Count && toWaypoint.sqrMagnitude >= 0.0001f)
             {
-                bool isLastWaypoint = _pathIndex >= _currentPath.Count - 1;
+                isLastWaypoint = _pathIndex >= _currentPath.Count - 1;
                 if (isLastWaypoint && toWaypoint.sqrMagnitude <= 0.01f)
                 {
                     var pos = new Vector3(waypointWorld.x, waypointWorld.y, transform.position.z);
@@ -374,12 +460,16 @@ public class PartyFollower : MonoBehaviour
                         _rigidbody.position = new Vector2(pos.x, pos.y);
                 }
                 else
-                    desiredVelocity = toWaypoint.normalized * _speed;
+                {
+                    Vector2 moveDir = GetArcSteeringDirection(_pathIndex, toWaypoint);
+                    desiredVelocity = moveDir * _speed;
+                }
             }
         }
         else
         {
             // 경로가 없으면 직선 이동 금지(벽 뚫림 방지). 경로를 다 따라오면 해당 셀에서 정지.
+            ResetSteeringDirection();
         }
 
         // 목표 지점에 충분히 가까워지면 도착으로 보고 멈춤
@@ -387,7 +477,10 @@ public class PartyFollower : MonoBehaviour
         {
             Vector2 toTargetWorld = targetWorld - (Vector2)transform.position;
             if (toTargetWorld.sqrMagnitude <= _arrivalRadius * _arrivalRadius)
+            {
                 desiredVelocity = Vector2.zero;
+                ResetSteeringDirection();
+            }
         }
 
         // 동선 겹침 시 뒤쪽이 멈춤: 리더 또는 더 앞 슬롯 동료와 너무 가까우면 정지
@@ -428,6 +521,200 @@ public class PartyFollower : MonoBehaviour
 
         _rigidbody.linearVelocity = desiredVelocity;
         UpdateMovementAnimation(desiredVelocity, useRun);
+        UpdateFollowerStuckWatch(desiredVelocity);
+        LogFollowerTrace(myCell, desiredVelocity, targetCell);
+    }
+
+    private Vector2 GetArcSteeringDirection(int waypointIndex, Vector2 toTarget)
+    {
+        if (toTarget.sqrMagnitude < 0.0001f)
+            return Vector2.zero;
+
+        Vector2 desired = toTarget.normalized;
+        float distToTarget = toTarget.magnitude;
+        if (distToTarget <= _arcConvergeDistance)
+        {
+            // 근접 구간에서는 즉시 목표 방향 수렴으로 오비팅 방지
+            _steeringDirection = desired;
+            _hasSteeringDirection = true;
+            return desired;
+        }
+
+        Vector2 steering = desired;
+
+        bool canRoundCorner =
+            _useCornerArcSteering &&
+            _currentPath != null &&
+            waypointIndex > 0 &&
+            waypointIndex < _currentPath.Count - 1;
+
+        if (canRoundCorner)
+        {
+            Vector2 prev = _mapManager.CellToWorld(_currentPath[waypointIndex - 1]);
+            Vector2 corner = _mapManager.CellToWorld(_currentPath[waypointIndex]);
+            Vector2 next = _mapManager.CellToWorld(_currentPath[waypointIndex + 1]);
+
+            Vector2 inDir = (corner - prev).normalized;
+            Vector2 outDir = (next - corner).normalized;
+            float angle = Vector2.Angle(inDir, outDir);
+            if (angle >= _cornerArcMinAngle)
+            {
+                float distToCorner = Vector2.Distance(transform.position, corner);
+                float startDist = Mathf.Max(_cornerArcStartDistance, _waypointReachRadius * 2f);
+                float t = Mathf.Clamp01(1f - (distToCorner / Mathf.Max(0.001f, startDist)));
+                t = t * t * (3f - 2f * t);
+
+                steering = Vector2.Lerp(desired, outDir, t).normalized;
+
+                if (_cornerObstacleBias > 0f && t > 0f)
+                {
+                    Vector2 saferNormal = GetSaferNormal(corner, steering);
+                    steering = (steering + saferNormal * (_cornerObstacleBias * t)).normalized;
+                }
+            }
+        }
+
+        // 목표점 접근 성분이 너무 작아지면(코너에서 원형 오비팅) 강제로 목표 방향을 섞음.
+        float approachDot = Vector2.Dot(steering, desired);
+        if (approachDot < _minApproachDot)
+        {
+            float w = Mathf.InverseLerp(-1f, _minApproachDot, approachDot);
+            steering = Vector2.Lerp(desired, steering, w).normalized;
+        }
+
+        return ApplyTurnRateLimit(steering, Time.fixedDeltaTime);
+    }
+
+    private Vector2 GetSaferNormal(Vector2 center, Vector2 forwardDir)
+    {
+        Vector2 left = new Vector2(-forwardDir.y, forwardDir.x).normalized;
+        Vector2 right = -left;
+        float leftScore = SampleSideWalkableScore(center, left);
+        float rightScore = SampleSideWalkableScore(center, right);
+        return leftScore >= rightScore ? left : right;
+    }
+
+    private float SampleSideWalkableScore(Vector2 center, Vector2 normalDir)
+    {
+        float score = 0f;
+        for (int i = 1; i <= 3; i++)
+        {
+            Vector2 p = center + normalDir * (_cornerProbeDistance * i);
+            if (_mapManager.IsWalkable(_mapManager.WorldToCell(p)))
+                score += 1f;
+        }
+        return score;
+    }
+
+    private Vector2 ApplyTurnRateLimit(Vector2 targetDir, float deltaTime)
+    {
+        if (targetDir.sqrMagnitude < 0.0001f)
+            return Vector2.zero;
+
+        if (!_hasSteeringDirection)
+        {
+            _steeringDirection = targetDir.normalized;
+            _hasSteeringDirection = true;
+            return _steeringDirection;
+        }
+
+        if (_maxTurnRateDeg <= 0f)
+        {
+            _steeringDirection = targetDir.normalized;
+            return _steeringDirection;
+        }
+
+        float maxDeltaDeg = _maxTurnRateDeg * deltaTime;
+        float fromAngle = Mathf.Atan2(_steeringDirection.y, _steeringDirection.x) * Mathf.Rad2Deg;
+        float toAngle = Mathf.Atan2(targetDir.y, targetDir.x) * Mathf.Rad2Deg;
+        float newAngle = Mathf.MoveTowardsAngle(fromAngle, toAngle, maxDeltaDeg);
+        float rad = newAngle * Mathf.Deg2Rad;
+        _steeringDirection = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)).normalized;
+        return _steeringDirection;
+    }
+
+    private void ResetSteeringDirection()
+    {
+        _hasSteeringDirection = false;
+        _steeringDirection = Vector2.zero;
+    }
+
+    private void UpdateFollowerStuckWatch(Vector2 desiredVelocity)
+    {
+        bool active = _currentPath != null && _pathIndex >= 0 && _pathIndex < _currentPath.Count && _mapManager != null;
+        Vector2Int wp = active ? _currentPath[_pathIndex] : Vector2Int.zero;
+        float toWp = active ? ((Vector2)_mapManager.CellToWorld(wp) - (Vector2)transform.position).magnitude : 0f;
+        bool isLast = active && _pathIndex >= _currentPath.Count - 1;
+
+        MCPLogHub.UpdateStuckWatch(
+            ref _stuckWatchWaypointIndex,
+            ref _stuckWatchElapsed,
+            ref _stuckWatchStartDistance,
+            ref _stuckWarnedForCurrentWaypoint,
+            active,
+            _pathIndex,
+            _currentPath != null ? _currentPath.Count - 1 : -1,
+            toWp,
+            _destinationReachRadius,
+            isLast,
+            Time.fixedDeltaTime,
+            desiredVelocity,
+            _mapManager != null ? _mapManager.WorldToCell(transform.position) : Vector2Int.zero,
+            $"Follower:{name}");
+    }
+
+    private void ResetFollowerStuckWatch()
+    {
+        MCPLogHub.ResetStuckWatch(
+            ref _stuckWatchWaypointIndex,
+            ref _stuckWatchElapsed,
+            ref _stuckWatchStartDistance,
+            ref _stuckWarnedForCurrentWaypoint);
+    }
+
+    private bool HasReachedWaypoint(int waypointIndex, Vector2 toTarget, float reachRadius, bool isLastWaypoint)
+    {
+        if (toTarget.sqrMagnitude <= reachRadius * reachRadius)
+            return true;
+
+        if (isLastWaypoint || _currentPath == null || waypointIndex <= 0 || waypointIndex >= _currentPath.Count)
+            return false;
+
+        // 코너 라운딩 중 오비팅 방지: 중간 웨이포인트는 더 넓은 유효 반경으로 통과 허용.
+        float intermediateReach = Mathf.Max(reachRadius, _arcConvergeDistance * 1.2f, 0.25f);
+        if (toTarget.sqrMagnitude <= intermediateReach * intermediateReach)
+            return true;
+
+        Vector2 prev = _mapManager.CellToWorld(_currentPath[waypointIndex - 1]);
+        Vector2 curr = _mapManager.CellToWorld(_currentPath[waypointIndex]);
+        Vector2 seg = curr - prev;
+        float segLen = seg.magnitude;
+        if (segLen < 0.0001f)
+            return false;
+
+        Vector2 segDir = seg / segLen;
+        float along = Vector2.Dot((Vector2)transform.position - prev, segDir);
+        return along >= segLen;
+    }
+
+    private void LogFollowerTrace(Vector2Int myCell, Vector2 desiredVelocity, Vector2Int targetCell)
+    {
+        Vector2Int wp = (_currentPath != null && _pathIndex >= 0 && _pathIndex < _currentPath.Count) ? _currentPath[_pathIndex] : targetCell;
+        float toWp = ((Vector2)_mapManager.CellToWorld(wp) - (Vector2)transform.position).magnitude;
+        MCPLogHub.LogTraceIfChannelEnabled(
+            FollowerTraceChannel,
+            ref _debugTraceTimer,
+            Time.fixedDeltaTime,
+            $"Follower Trace:{name}",
+            transform.position,
+            myCell,
+            _pathIndex,
+            _currentPath != null ? _currentPath.Count - 1 : -1,
+            wp,
+            toWp,
+            _pathIndex >= (_currentPath != null ? _currentPath.Count - 1 : 0),
+            desiredVelocity,
+            targetCell);
     }
 
     private static int CellDistance(Vector2Int a, Vector2Int b)
@@ -465,15 +752,15 @@ public class PartyFollower : MonoBehaviour
         movementDirection = Vector2.zero;
         if (_slotIndex < 1) return false;
 
-        var allies = GameObject.FindGameObjectsWithTag("Ally");
-        foreach (var go in allies)
+        var followers = ExplorationPartyCache.Followers;
+        for (int i = followers.Count - 1; i >= 0; i--)
         {
-            if (go == null || go == gameObject) continue;
-            var other = go.GetComponent<PartyFollower>();
+            var other = followers[i];
+            if (other == null) continue;
+            if (other == this) continue;
             if (other == null || other.SlotIndex != _slotIndex - 1) continue;
-            position = go.transform.position;
-            var rb = go.GetComponent<Rigidbody2D>();
-            movementDirection = rb != null ? rb.linearVelocity : Vector2.zero;
+            position = other.transform.position;
+            movementDirection = other._rigidbody != null ? other._rigidbody.linearVelocity : Vector2.zero;
             return true;
         }
         return false;
@@ -488,16 +775,33 @@ public class PartyFollower : MonoBehaviour
         if (_leader != null && ((Vector2)_leader.position - myPos).sqrMagnitude < r2)
             return true;
 
-        var allies = GameObject.FindGameObjectsWithTag("Ally");
-        foreach (var go in allies)
+        var followers = ExplorationPartyCache.Followers;
+        for (int i = followers.Count - 1; i >= 0; i--)
         {
-            if (go == null || go == gameObject) continue;
-            var other = go.GetComponent<PartyFollower>();
+            var other = followers[i];
+            if (other == null) continue;
+            if (other == this) continue;
             if (other == null || other.SlotIndex >= _slotIndex) continue;
-            if (((Vector2)go.transform.position - myPos).sqrMagnitude < r2)
+            if (((Vector2)other.transform.position - myPos).sqrMagnitude < r2)
                 return true;
         }
         return false;
+    }
+
+    private void TryAssignLeaderFromSharedCache()
+    {
+        var leader = ExplorationPartyCache.Leader;
+        if (leader == null)
+            return;
+
+        _leader = leader;
+        _formationProvider = _leader.GetComponent<PartyFormationProvider>();
+        if (_formationProvider == null)
+            _formationProvider = _leader.gameObject.AddComponent<PartyFormationProvider>();
+        _lastLeaderPosition = _leader.position;
+        _lastLeaderDirection = _idleFormationDirection.normalized;
+        _hasStoredDirection = false;
+        _smoothedTargetWorld = _leader.position;
     }
 
     private void OnDrawGizmos()
@@ -513,10 +817,63 @@ public class PartyFollower : MonoBehaviour
             Gizmos.DrawLine(a, b);
         }
 
+        DrawCurvedPathGizmos();
+
         if (_lastTargetCell.HasValue)
         {
             Gizmos.color = Color.yellow;
             Gizmos.DrawSphere(_mapManager.CellToWorld(_lastTargetCell.Value), 0.08f);
+        }
+    }
+
+    private void DrawCurvedPathGizmos()
+    {
+        if (!_useCornerArcSteering || _currentPath == null || _currentPath.Count < 3)
+            return;
+
+        Gizmos.color = new Color(1f, 0.55f, 0.1f, 1f);
+        Vector2 last = _mapManager.CellToWorld(_currentPath[0]);
+
+        for (int i = 1; i < _currentPath.Count - 1; i++)
+        {
+            Vector2 prev = _mapManager.CellToWorld(_currentPath[i - 1]);
+            Vector2 curr = _mapManager.CellToWorld(_currentPath[i]);
+            Vector2 next = _mapManager.CellToWorld(_currentPath[i + 1]);
+
+            Vector2 inDir = (curr - prev).normalized;
+            Vector2 outDir = (next - curr).normalized;
+            float angle = Vector2.Angle(inDir, outDir);
+            if (angle < _cornerArcMinAngle)
+                continue;
+
+            float inLen = Vector2.Distance(prev, curr);
+            float outLen = Vector2.Distance(curr, next);
+            float pullback = Mathf.Min(_cornerArcStartDistance * 0.5f, inLen * 0.45f, outLen * 0.45f);
+            if (pullback <= 0.01f)
+                continue;
+
+            Vector2 entry = curr - inDir * pullback;
+            Vector2 exit = curr + outDir * pullback;
+
+            Gizmos.DrawLine(last, entry);
+            DrawQuadraticBezierGizmo(entry, curr, exit, 10);
+            last = exit;
+        }
+
+        Vector2 end = _mapManager.CellToWorld(_currentPath[_currentPath.Count - 1]);
+        Gizmos.DrawLine(last, end);
+    }
+
+    private static void DrawQuadraticBezierGizmo(Vector2 p0, Vector2 p1, Vector2 p2, int segments)
+    {
+        Vector2 prev = p0;
+        for (int i = 1; i <= segments; i++)
+        {
+            float t = i / (float)segments;
+            float omt = 1f - t;
+            Vector2 p = (omt * omt * p0) + (2f * omt * t * p1) + (t * t * p2);
+            Gizmos.DrawLine(prev, p);
+            prev = p;
         }
     }
 
@@ -533,6 +890,7 @@ public class PartyFollower : MonoBehaviour
         _currentPath = null;
         _pathIndex = 0;
         _lastTargetCell = null;
+        ResetSteeringDirection();
         _smoothedFormationDir = _idleFormationDirection.normalized;
         if (_leader != null)
             _smoothedTargetWorld = _leader.position;

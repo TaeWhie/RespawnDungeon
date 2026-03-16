@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using TriInspector;
+using UniRx;
 
 /// <summary>
 /// Frontier 기반 지능형 탐험 AI.
@@ -69,6 +70,33 @@ public class ExplorerAI : MonoBehaviour
     [Tooltip("경로 복귀(뛰기) 시 속도 배율. 탐험(걷기)=1배, 복귀=이 배율")]
     [Slider(1f, 3f)]
     [SerializeField] private float _runSpeedMultiplier = 1.5f;
+    [Title("코너 라운딩 이동")]
+    [Tooltip("코너에서 직각 꺾임 대신 호(arc) 형태로 회전합니다.")]
+    [SerializeField] private bool _useCornerArcSteering = true;
+    [Tooltip("이 각도(도) 이상 꺾일 때만 코너 라운딩을 적용합니다.")]
+    [Slider(5f, 120f)]
+    [SerializeField] private float _cornerArcMinAngle = 20f;
+    [Tooltip("코너 진입 전부터 곡선 회전을 시작하는 거리.")]
+    [Slider(0.1f, 2f)]
+    [SerializeField] private float _cornerArcStartDistance = 0.8f;
+    [Tooltip("최대 회전 속도(도/초). 낮을수록 더 큰 곡선.")]
+    [Slider(90f, 1080f)]
+    [SerializeField] private float _maxTurnRateDeg = 420f;
+    [Tooltip("코너 주변 장애물을 피하기 위한 옆 밀어내기 강도.")]
+    [Slider(0f, 1f)]
+    [SerializeField] private float _cornerObstacleBias = 0.35f;
+    [Tooltip("코너 양옆 안전도 샘플링 거리.")]
+    [Slider(0.1f, 1f)]
+    [SerializeField] private float _cornerProbeDistance = 0.35f;
+    [Tooltip("코너에 충분히 가까워지면 곡선 조향을 줄이고 목표점으로 강제 수렴합니다.")]
+    [Slider(0.05f, 1f)]
+    [SerializeField] private float _arcConvergeDistance = 0.3f;
+    [Tooltip("조향 벡터가 목표점 방향을 최소 이 정도 이상 포함하도록 보정합니다. (원형 오비팅 방지)")]
+    [Slider(0f, 1f)]
+    [SerializeField] private float _minApproachDot = 0.25f;
+    [Tooltip("파티(Ally) 캐시 재검색 주기(초). 0이면 매 프레임.")]
+    [Slider(0f, 2f)]
+    [SerializeField] private float _partyRescanInterval = 0.4f;
 
     [Title("출구")]
     [Tooltip("출구 셀에 도착했을 때 호출 (다음 씬 로드 등)")]
@@ -104,6 +132,15 @@ public class ExplorerAI : MonoBehaviour
     private Vector2Int? _pickingObstacleCell;
     /// <summary>장애물 부수기 후 경로 재개할지 (경로상 장애물이면 true)</summary>
     private bool _resumePathAfterObstacle;
+    private Vector2 _steeringDirection;
+    private bool _hasSteeringDirection;
+    private float _debugTraceTimer;
+    private int _stuckWatchWaypointIndex = -1;
+    private float _stuckWatchElapsed;
+    private float _stuckWatchStartDistance;
+    private bool _stuckWarnedForCurrentWaypoint;
+    private readonly CompositeDisposable _subscriptions = new CompositeDisposable();
+    private const string ExplorerTraceChannel = "EXPLORER_NAV";
 
     public State CurrentState => _state;
 
@@ -146,6 +183,25 @@ public class ExplorerAI : MonoBehaviour
         _rigidbody.constraints = RigidbodyConstraints2D.FreezeRotation;
     }
 
+    private void OnEnable()
+    {
+        _subscriptions.Clear();
+        MCPLogHub.BindPeriodicMonitor(
+            _partyRescanInterval,
+            RefreshPartyCacheFromHub,
+            _subscriptions);
+    }
+
+    private void OnDisable()
+    {
+        _subscriptions.Clear();
+    }
+
+    private void RefreshPartyCacheFromHub()
+    {
+        ExplorationPartyCache.RefreshIfStale(_partyRescanInterval);
+    }
+
     private void FixedUpdate()
     {
         _rigidbody.linearVelocity = _desiredVelocity;
@@ -177,13 +233,7 @@ public class ExplorerAI : MonoBehaviour
                 var pathToExit = _pathfinder.GetPath(_mapManager, myCell, exitCell.Value);
                 if (pathToExit != null && pathToExit.Count > 0)
                 {
-                    _globalTargetCell = exitCell.Value;
-                    _mapManager.SetGlobalTarget(exitCell);
-                    _currentPath = pathToExit;
-                    _pathIndex = 0;
-                    _state = State.Navigating;
-                    _currentTargetCell = null;
-                    _navigatingToChestCell = null;
+                    StartNavigatingWithPath(pathToExit, myCell, exitCell, null, "exit_path");
                 }
             }
         }
@@ -256,8 +306,7 @@ public class ExplorerAI : MonoBehaviour
                     var newPath = _pathfinder.GetPath(_mapManager, myCell, goal);
                     if (newPath != null && newPath.Count > 0)
                     {
-                        _currentPath = newPath;
-                        _pathIndex = 0;
+                        StartNavigatingWithPath(newPath, myCell, _globalTargetCell ?? goal, _navigatingToChestCell, "resume_after_obstacle");
                     }
                     else
                         _pathIndex++;
@@ -306,13 +355,7 @@ public class ExplorerAI : MonoBehaviour
                         var path = _pathfinder.GetPath(_mapManager, myCell, bestChest.Value);
                         if (path != null && path.Count > 0)
                         {
-                            _globalTargetCell = bestChest;
-                            _mapManager.SetGlobalTarget(bestChest);
-                            _currentPath = path;
-                            _pathIndex = 0;
-                            _state = State.Navigating;
-                            _currentTargetCell = null;
-                            _navigatingToChestCell = bestChest;
+                            StartNavigatingWithPath(path, myCell, bestChest, bestChest, "chest_path");
                         }
                     }
                 }
@@ -353,10 +396,63 @@ public class ExplorerAI : MonoBehaviour
             Gizmos.DrawLine(a, b);
         }
 
+        DrawCurvedPathGizmos();
+
         if (_globalTargetCell.HasValue)
         {
             Gizmos.color = Color.blue;
             Gizmos.DrawSphere(_mapManager.CellToWorld(_globalTargetCell.Value), 0.1f);
+        }
+    }
+
+    private void DrawCurvedPathGizmos()
+    {
+        if (!_useCornerArcSteering || _currentPath == null || _currentPath.Count < 3)
+            return;
+
+        Gizmos.color = new Color(1f, 0.55f, 0.1f, 1f);
+        Vector2 last = _mapManager.CellToWorld(_currentPath[0]);
+
+        for (int i = 1; i < _currentPath.Count - 1; i++)
+        {
+            Vector2 prev = _mapManager.CellToWorld(_currentPath[i - 1]);
+            Vector2 curr = _mapManager.CellToWorld(_currentPath[i]);
+            Vector2 next = _mapManager.CellToWorld(_currentPath[i + 1]);
+
+            Vector2 inDir = (curr - prev).normalized;
+            Vector2 outDir = (next - curr).normalized;
+            float angle = Vector2.Angle(inDir, outDir);
+            if (angle < _cornerArcMinAngle)
+                continue;
+
+            float inLen = Vector2.Distance(prev, curr);
+            float outLen = Vector2.Distance(curr, next);
+            float pullback = Mathf.Min(_cornerArcStartDistance * 0.5f, inLen * 0.45f, outLen * 0.45f);
+            if (pullback <= 0.01f)
+                continue;
+
+            Vector2 entry = curr - inDir * pullback;
+            Vector2 exit = curr + outDir * pullback;
+
+            Gizmos.DrawLine(last, entry);
+            DrawQuadraticBezierGizmo(entry, curr, exit, 10);
+            last = exit;
+        }
+
+        Vector2 end = _mapManager.CellToWorld(_currentPath[_currentPath.Count - 1]);
+        Gizmos.DrawLine(last, end);
+    }
+
+    private static void DrawQuadraticBezierGizmo(Vector2 p0, Vector2 p1, Vector2 p2, int segments)
+    {
+        Vector2 prev = p0;
+        for (int i = 1; i <= segments; i++)
+        {
+            float t = i / (float)segments;
+            float omt = 1f - t;
+            Vector2 p = (omt * omt * p0) + (2f * omt * t * p1) + (t * t * p2);
+            Gizmos.DrawLine(prev, p);
+            prev = p;
         }
     }
 
@@ -426,11 +522,12 @@ public class ExplorerAI : MonoBehaviour
     /// <summary>동료(Ally) 중 한 명이라도 출구를 시야 내에서 보면 true. 파티 공통 출구 발견 판정용.</summary>
     private bool AnyPartyMemberSeesExit(Vector2Int exitCell)
     {
-        var allies = GameObject.FindGameObjectsWithTag("Ally");
-        foreach (var go in allies)
+        var allies = ExplorationPartyCache.AllyTransforms;
+        for (int i = allies.Count - 1; i >= 0; i--)
         {
-            if (go == null) continue;
-            Vector2Int allyCell = _mapManager.WorldToCell(go.transform.position);
+            var ally = allies[i];
+            if (ally == null) continue;
+            Vector2Int allyCell = _mapManager.WorldToCell(ally.position);
             if (!_mapManager.IsWalkable(allyCell)) continue;
             if (IsExitVisible(allyCell, exitCell))
                 return true;
@@ -800,12 +897,7 @@ public class ExplorerAI : MonoBehaviour
 
         if (chosenPath != null && chosenTarget.HasValue)
         {
-            _globalTargetCell = chosenTarget;
-            _mapManager.SetGlobalTarget(chosenTarget);
-            _currentPath = chosenPath;
-            _pathIndex = 0;
-            _state = State.Navigating;
-            _currentTargetCell = null;
+            StartNavigatingWithPath(chosenPath, fromCell, chosenTarget, null, "retarget_path");
         }
         else
         {
@@ -816,12 +908,7 @@ public class ExplorerAI : MonoBehaviour
                 var pathToStart = _pathfinder.GetPath(_mapManager, fromCell, startCell.Value);
                 if (pathToStart != null && pathToStart.Count > 0)
                 {
-                    _globalTargetCell = startCell;
-                    _mapManager.SetGlobalTarget(startCell);
-                    _currentPath = pathToStart;
-                    _pathIndex = 0;
-                    _state = State.Navigating;
-                    _currentTargetCell = null;
+                    StartNavigatingWithPath(pathToStart, fromCell, startCell, null, "fallback_to_start");
                 }
             }
         }
@@ -848,6 +935,7 @@ public class ExplorerAI : MonoBehaviour
     {
         if (_currentPath == null || _pathIndex >= _currentPath.Count)
         {
+            ResetSteeringDirection();
             if (_globalTargetCell.HasValue && _mapManager.IsObstacleCell(_globalTargetCell.Value))
             {
                 _pickingObstacleCell = _globalTargetCell;
@@ -889,12 +977,37 @@ public class ExplorerAI : MonoBehaviour
         float reachR = isLastWaypoint ? _destinationReachRadius : _waypointReachRadius;
         float r2 = reachR * reachR;
 
-        // 웨이포인트 도착 시 다음으로 즉시 전환. 목적지(마지막)는 작은 반경으로 셀 중심까지 도달.
-        while (toTarget.sqrMagnitude <= r2)
+        // 중간 웨이포인트 근접 시 강제 패스스루(오비팅 방지)
+        if (!isLastWaypoint && toTarget.magnitude <= Mathf.Max(0.35f, _arcConvergeDistance * 1.2f))
         {
+            _pathIndex++;
+            if (_pathIndex < _currentPath.Count)
+            {
+                waypoint = _currentPath[_pathIndex];
+                targetWorld = _mapManager.CellToWorld(waypoint);
+                toTarget = (Vector2)(targetWorld - transform.position);
+                isLastWaypoint = _pathIndex >= _currentPath.Count - 1;
+                reachR = isLastWaypoint ? _destinationReachRadius : _waypointReachRadius;
+                r2 = reachR * reachR;
+            }
+        }
+
+        // 웨이포인트 도착 시 다음으로 즉시 전환. 목적지(마지막)는 작은 반경으로 셀 중심까지 도달.
+        bool reachedWaypoint = HasReachedWaypoint(_pathIndex, toTarget, reachR, isLastWaypoint);
+        while (reachedWaypoint)
+        {
+            bool wasLastWaypoint = _pathIndex >= _currentPath.Count - 1;
             _pathIndex++;
             if (_pathIndex >= _currentPath.Count)
             {
+                if (wasLastWaypoint)
+                {
+                    var finalPos = new Vector3(targetWorld.x, targetWorld.y, transform.position.z);
+                    transform.position = finalPos;
+                    if (_rigidbody != null)
+                        _rigidbody.position = new Vector2(finalPos.x, finalPos.y);
+                }
+                ResetSteeringDirection();
                 // 출구에 도착했으면 이벤트 호출 후 대기, 아니면 탐험 재개 또는 상자 픽
                 Vector2Int? exitCell = GetExitCell();
                 if (exitCell.HasValue && _globalTargetCell == exitCell.Value)
@@ -932,17 +1045,12 @@ public class ExplorerAI : MonoBehaviour
             }
             waypoint = _currentPath[_pathIndex];
             targetWorld = _mapManager.CellToWorld(waypoint);
-            // 방금 도달한 웨이포인트 위치로 스냅해 경로에서 틀어지지 않게 함
-            Vector2Int reachedCell = _currentPath[_pathIndex - 1];
-            Vector3 reachedWorld = _mapManager.CellToWorld(reachedCell);
-            var pos = new Vector3(reachedWorld.x, reachedWorld.y, transform.position.z);
-            transform.position = pos;
-            if (_rigidbody != null)
-                _rigidbody.position = new Vector2(pos.x, pos.y);
+            // 중간 웨이포인트에서는 스냅하지 않아 곡선 궤적을 유지.
             toTarget = (Vector2)(targetWorld - transform.position);
             isLastWaypoint = _pathIndex >= _currentPath.Count - 1;
             reachR = isLastWaypoint ? _destinationReachRadius : _waypointReachRadius;
             r2 = reachR * reachR;
+            reachedWaypoint = HasReachedWaypoint(_pathIndex, toTarget, reachR, isLastWaypoint);
         }
 
         if (toTarget.sqrMagnitude >= 0.0001f)
@@ -960,8 +1068,243 @@ public class ExplorerAI : MonoBehaviour
                 int distToGoal = _globalTargetCell.HasValue ? CellDistance(myCell, _globalTargetCell.Value) : 0;
                 int runThreshold = _viewRadius + 1;
                 float moveSpeed = distToGoal > runThreshold ? _speed * _runSpeedMultiplier : _speed;
-                _desiredVelocity = toTarget.normalized * moveSpeed;
+                Vector2 moveDir = GetArcSteeringDirection(_pathIndex, toTarget);
+                _desiredVelocity = moveDir * moveSpeed;
             }
         }
+        else
+            ResetSteeringDirection();
+
+        UpdateStuckWatch(toTarget, reachR, isLastWaypoint);
+        LogNavigationTrace(waypoint, toTarget, isLastWaypoint);
+    }
+
+    private void StartNavigatingWithPath(
+        List<Vector2Int> path,
+        Vector2Int currentCell,
+        Vector2Int? globalTarget,
+        Vector2Int? chestTarget,
+        string reason)
+    {
+        if (path == null || path.Count == 0)
+            return;
+
+        _globalTargetCell = globalTarget;
+        _mapManager.SetGlobalTarget(globalTarget);
+        _currentPath = path;
+        _pathIndex = 0;
+        _state = State.Navigating;
+        _currentTargetCell = null;
+        _navigatingToChestCell = chestTarget;
+        ResetSteeringDirection();
+        AnchorPathStart(currentCell, reason);
+    }
+
+    private void AnchorPathStart(Vector2Int currentCell, string reason)
+    {
+        if (_currentPath == null || _currentPath.Count == 0)
+            return;
+
+        int prevPathIndex = _pathIndex;
+        Vector2Int firstWaypoint = _currentPath[0];
+        float firstDistance = Vector2.Distance(transform.position, _mapManager.CellToWorld(firstWaypoint));
+        if (firstWaypoint == currentCell)
+        {
+            if (_currentPath.Count > 1)
+                _pathIndex = 1;
+        }
+
+        MCPLogHub.LogIssueStepIfEnabled(
+            "NAV_START",
+            reason,
+            $"cell={currentCell} first={firstWaypoint} firstDist={firstDistance:F3} idx={prevPathIndex}->{_pathIndex}");
+    }
+
+    private Vector2 GetArcSteeringDirection(int waypointIndex, Vector2 toTarget)
+    {
+        if (toTarget.sqrMagnitude < 0.0001f)
+            return Vector2.zero;
+
+        Vector2 desired = toTarget.normalized;
+        float distToTarget = toTarget.magnitude;
+        if (distToTarget <= _arcConvergeDistance)
+        {
+            // 근접 구간에서는 즉시 목표 방향 수렴으로 오비팅 방지
+            _steeringDirection = desired;
+            _hasSteeringDirection = true;
+            return desired;
+        }
+
+        Vector2 steering = desired;
+
+        bool canRoundCorner =
+            _useCornerArcSteering &&
+            _currentPath != null &&
+            waypointIndex > 0 &&
+            waypointIndex < _currentPath.Count - 1;
+
+        if (canRoundCorner)
+        {
+            Vector2 prev = _mapManager.CellToWorld(_currentPath[waypointIndex - 1]);
+            Vector2 corner = _mapManager.CellToWorld(_currentPath[waypointIndex]);
+            Vector2 next = _mapManager.CellToWorld(_currentPath[waypointIndex + 1]);
+
+            Vector2 inDir = (corner - prev).normalized;
+            Vector2 outDir = (next - corner).normalized;
+            float angle = Vector2.Angle(inDir, outDir);
+            if (angle >= _cornerArcMinAngle)
+            {
+                float distToCorner = Vector2.Distance(transform.position, corner);
+                float startDist = Mathf.Max(_cornerArcStartDistance, _waypointReachRadius * 2f);
+                float t = Mathf.Clamp01(1f - (distToCorner / Mathf.Max(0.001f, startDist)));
+                t = t * t * (3f - 2f * t); // smoothstep
+
+                steering = Vector2.Lerp(desired, outDir, t).normalized;
+
+                if (_cornerObstacleBias > 0f && t > 0f)
+                {
+                    Vector2 saferNormal = GetSaferNormal(corner, steering);
+                    steering = (steering + saferNormal * (_cornerObstacleBias * t)).normalized;
+                }
+            }
+        }
+
+        // 목표점 접근 성분이 너무 작아지면(코너에서 원형 오비팅) 강제로 목표 방향을 섞음.
+        float approachDot = Vector2.Dot(steering, desired);
+        if (approachDot < _minApproachDot)
+        {
+            float w = Mathf.InverseLerp(-1f, _minApproachDot, approachDot);
+            steering = Vector2.Lerp(desired, steering, w).normalized;
+        }
+
+        return ApplyTurnRateLimit(steering, Time.deltaTime);
+    }
+
+    private Vector2 GetSaferNormal(Vector2 center, Vector2 forwardDir)
+    {
+        Vector2 left = new Vector2(-forwardDir.y, forwardDir.x).normalized;
+        Vector2 right = -left;
+        float leftScore = SampleSideWalkableScore(center, left);
+        float rightScore = SampleSideWalkableScore(center, right);
+        return leftScore >= rightScore ? left : right;
+    }
+
+    private float SampleSideWalkableScore(Vector2 center, Vector2 normalDir)
+    {
+        float score = 0f;
+        for (int i = 1; i <= 3; i++)
+        {
+            Vector2 p = center + normalDir * (_cornerProbeDistance * i);
+            if (_mapManager.IsWalkable(_mapManager.WorldToCell(p)))
+                score += 1f;
+        }
+        return score;
+    }
+
+    private Vector2 ApplyTurnRateLimit(Vector2 targetDir, float deltaTime)
+    {
+        if (targetDir.sqrMagnitude < 0.0001f)
+            return Vector2.zero;
+
+        if (!_hasSteeringDirection)
+        {
+            _steeringDirection = targetDir.normalized;
+            _hasSteeringDirection = true;
+            return _steeringDirection;
+        }
+
+        if (_maxTurnRateDeg <= 0f)
+        {
+            _steeringDirection = targetDir.normalized;
+            return _steeringDirection;
+        }
+
+        float maxDeltaDeg = _maxTurnRateDeg * deltaTime;
+        float fromAngle = Mathf.Atan2(_steeringDirection.y, _steeringDirection.x) * Mathf.Rad2Deg;
+        float toAngle = Mathf.Atan2(targetDir.y, targetDir.x) * Mathf.Rad2Deg;
+        float newAngle = Mathf.MoveTowardsAngle(fromAngle, toAngle, maxDeltaDeg);
+        float rad = newAngle * Mathf.Deg2Rad;
+        _steeringDirection = new Vector2(Mathf.Cos(rad), Mathf.Sin(rad)).normalized;
+        return _steeringDirection;
+    }
+
+    private void ResetSteeringDirection()
+    {
+        _hasSteeringDirection = false;
+        _steeringDirection = Vector2.zero;
+    }
+
+    private void UpdateStuckWatch(Vector2 toTarget, float reachR, bool isLastWaypoint)
+    {
+        bool active = _state == State.Navigating && _currentPath != null && _pathIndex >= 0 && _pathIndex < _currentPath.Count;
+        MCPLogHub.UpdateStuckWatch(
+            ref _stuckWatchWaypointIndex,
+            ref _stuckWatchElapsed,
+            ref _stuckWatchStartDistance,
+            ref _stuckWarnedForCurrentWaypoint,
+            active,
+            _pathIndex,
+            _currentPath != null ? _currentPath.Count - 1 : -1,
+            toTarget.magnitude,
+            reachR,
+            isLastWaypoint,
+            Time.deltaTime,
+            _desiredVelocity,
+            _mapManager != null ? _mapManager.WorldToCell(transform.position) : Vector2Int.zero,
+            "ExplorerAI");
+    }
+
+    private void ResetStuckWatch()
+    {
+        MCPLogHub.ResetStuckWatch(
+            ref _stuckWatchWaypointIndex,
+            ref _stuckWatchElapsed,
+            ref _stuckWatchStartDistance,
+            ref _stuckWarnedForCurrentWaypoint);
+    }
+
+    private bool HasReachedWaypoint(int waypointIndex, Vector2 toTarget, float reachRadius, bool isLastWaypoint)
+    {
+        if (toTarget.sqrMagnitude <= reachRadius * reachRadius)
+            return true;
+
+        if (isLastWaypoint || _currentPath == null || waypointIndex <= 0 || waypointIndex >= _currentPath.Count)
+            return false;
+
+        // 코너 라운딩 중 오비팅 방지: 중간 웨이포인트는 더 넓은 유효 반경으로 통과 허용.
+        float intermediateReach = Mathf.Max(reachRadius, _arcConvergeDistance * 1.2f, 0.25f);
+        if (toTarget.sqrMagnitude <= intermediateReach * intermediateReach)
+            return true;
+
+        Vector2 prev = _mapManager.CellToWorld(_currentPath[waypointIndex - 1]);
+        Vector2 curr = _mapManager.CellToWorld(_currentPath[waypointIndex]);
+        Vector2 seg = curr - prev;
+        float segLen = seg.magnitude;
+        if (segLen < 0.0001f)
+            return false;
+
+        Vector2 segDir = seg / segLen;
+        float along = Vector2.Dot((Vector2)transform.position - prev, segDir);
+        return along >= segLen;
+    }
+
+    private void LogNavigationTrace(Vector2Int waypoint, Vector2 toTarget, bool isLastWaypoint)
+    {
+        if (_state != State.Navigating)
+            return;
+
+        MCPLogHub.LogTraceIfChannelEnabled(
+            ExplorerTraceChannel,
+            ref _debugTraceTimer,
+            Time.deltaTime,
+            "ExplorerAI Trace",
+            transform.position,
+            _mapManager != null ? _mapManager.WorldToCell(transform.position) : Vector2Int.zero,
+            _pathIndex,
+            _currentPath != null ? _currentPath.Count - 1 : -1,
+            waypoint,
+            toTarget.magnitude,
+            isLastWaypoint,
+            _desiredVelocity);
     }
 }

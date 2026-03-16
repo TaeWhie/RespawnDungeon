@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 using TriInspector;
+using UniRx;
 
 /// <summary>
 /// MapManager의 탐색/시야 단계에 따라 안개만 그립니다.
@@ -36,11 +37,16 @@ public class ExplorationFogView : MonoBehaviour
     [Tooltip("맵 그리드 밖 가장자리(벽 셀 등)까지 안개를 칠할 여유 칸 수. 0이면 그리드만, 1~2면 끝자락까지 짙은 안개 적용")]
     [Slider(0, 5)]
     [SerializeField] private int _edgeFogPadding = 2;
+    [Tooltip("파티 타깃(Player/Ally) 재검색 주기(초). 0이면 매 프레임.")]
+    [Slider(0f, 2f)]
+    [SerializeField] private float _partyTargetRescanInterval = 0.5f;
 
     private Tilemap _fogTilemap;
     private Dictionary<Vector2Int, TileBase> _wallTilesCache = new Dictionary<Vector2Int, TileBase>();
     private HashSet<Vector2Int> _cellsToUpdate = new HashSet<Vector2Int>();
     private VisibilityByViewStage[] _cachedVisibilityObjects = Array.Empty<VisibilityByViewStage>();
+    private readonly CompositeDisposable _subscriptions = new CompositeDisposable();
+    private readonly List<Transform> _partyTargets = new List<Transform>();
 
     /// <summary>갱신할 때 floor만이 아니라 벽 셀도 포함. 벽은 인접 floor 단계에 따라 표시.</summary>
     private static readonly Vector2Int[] Cardinal4 = { Vector2Int.up, Vector2Int.down, Vector2Int.left, Vector2Int.right };
@@ -75,20 +81,45 @@ public class ExplorationFogView : MonoBehaviour
             CacheWallTiles();
             RefreshFogAll();
         }
+
+        SetupRuntimeStreams();
     }
 
     private void OnDisable()
     {
         if (_mapManager != null)
             _mapManager.OnMapInitialized -= OnMapInitialized;
+        _subscriptions.Clear();
+        _partyTargets.Clear();
     }
 
-    private void Update()
+    private void SetupRuntimeStreams()
+    {
+        _subscriptions.Clear();
+        if (_partyTargetRescanInterval <= 0f)
+        {
+            Observable.EveryUpdate()
+                .Subscribe(_ => CachePartyTargets())
+                .AddTo(_subscriptions);
+        }
+        else
+        {
+            Observable.Interval(TimeSpan.FromSeconds(_partyTargetRescanInterval))
+                .StartWith(0L)
+                .Subscribe(_ => CachePartyTargets())
+                .AddTo(_subscriptions);
+        }
+
+        Observable.EveryUpdate()
+            .Subscribe(_ => TickFog())
+            .AddTo(_subscriptions);
+    }
+
+    private void TickFog()
     {
         if (_mapManager == null || !_mapManager.IsInitialized || _fogTilemap == null || _fogTile == null)
             return;
 
-        // 개발용: 전체 시야 보기 모드일 때는 맵 전체를 강제로 갱신
         if (_mapManager.DebugRevealAll)
         {
             RefreshFogAllDebugReveal();
@@ -100,6 +131,23 @@ public class ExplorationFogView : MonoBehaviour
         RefreshObjectsVisibility();
     }
 
+    private void CachePartyTargets()
+    {
+        ExplorationPartyCache.RefreshIfStale(_partyTargetRescanInterval);
+        _partyTargets.Clear();
+
+        var leader = ExplorationPartyCache.Leader;
+        if (leader != null)
+            _partyTargets.Add(leader);
+
+        var allies = ExplorationPartyCache.AllyTransforms;
+        for (int i = 0; i < allies.Count; i++)
+        {
+            if (allies[i] != null)
+                _partyTargets.Add(allies[i]);
+        }
+    }
+
     /// <summary>파티(Player+Ally) 위치 기준 시야 반경 안의 셀만 안개/바닥/벽 갱신. 전체 맵은 초기화 시 1회만.</summary>
     private void RefreshFogInViewRegion()
     {
@@ -109,14 +157,16 @@ public class ExplorationFogView : MonoBehaviour
         int minX = _mapManager.MinX - pad, maxX = _mapManager.MinX + _mapManager.Width - 1 + pad;
         int minY = _mapManager.MinY - pad, maxY = _mapManager.MinY + _mapManager.Height - 1 + pad;
 
-        var player = GameObject.FindWithTag("Player");
-        if (player != null)
-            AddCellsInRadius(_cellsToUpdate, _mapManager.WorldToCell(player.transform.position), r, minX, maxX, minY, maxY);
-        var allies = GameObject.FindGameObjectsWithTag("Ally");
-        for (int i = 0; i < allies.Length; i++)
+        for (int i = _partyTargets.Count - 1; i >= 0; i--)
         {
-            if (allies[i] != null)
-                AddCellsInRadius(_cellsToUpdate, _mapManager.WorldToCell(allies[i].transform.position), r, minX, maxX, minY, maxY);
+            var t = _partyTargets[i];
+            if (t == null)
+            {
+                _partyTargets.RemoveAt(i);
+                continue;
+            }
+
+            AddCellsInRadius(_cellsToUpdate, _mapManager.WorldToCell(t.position), r, minX, maxX, minY, maxY);
         }
 
         // wall 셀도 갱신: 반경 안 셀들의 인접(상하좌우) 추가
