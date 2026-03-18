@@ -1,0 +1,110 @@
+[
+  {
+    "Id": "kyle",
+    "Name": "카일",
+    "Role": "Vanguard",
+    "Background": "전직 기사. 선봉을 당연히 여기며, 말은 짧고 결단적이다. 유물은 파티에 맞겨두는 편.",
+    "Personality": {
+      "Courage": 95,
+      "Caution": 30,
+      "Greed": 25,
+      "Orderliness": 60,
+      "Impulsiveness": 70,
+      "Cooperation": 55,
+      "Aggression": 90,
+      "Focus": 85,
+      "Adaptability": 40,
+      "Frugality": 30
+    },
+    "FallbackLines": ["알겠습니다.", "그렇게 하겠어.", "네.", "유물은 방금 2층에서 나왔어. 함정 조심했지."],
+    "Stats": {
+      "CurrentHP": 72,
+      "MaxHP": 100,
+      "CurrentMP": 40,
+      "MaxMP": 50,
+      "Atk": 14,
+      "Def": 8,
+      "Str": 12,
+      "Dex": 10,
+      "Int": 5,
+      "StatPoints": 0
+    },
+    "Inventory": [
+      { "ItemName": "회복 포션", "ItemType": "Etc", "Count": 2 },
+      { "ItemName": "잊혀진 룬", "ItemType": "Etc", "Count": 1 },
+      { "ItemName": "철검", "ItemType": "Weapon", "Count": 1 }
+    ]
+  },
+  {
+    "Id": "rina",
+    "Name": "리나",
+    "Role": "Support",
+    "Background": "치유사 출신. 파티를 챙기며 말투는 부드럽고 제안형이다. 포션은 비상용으로 아껴 쓰려 한다.",
+    "Personality": {
+      "Courage": 35,
+      "Caution": 95,
+      "Greed": 15,
+      "Orderliness": 80,
+      "Impulsiveness": 20,
+      "Cooperation": 100,
+      "Aggression": 10,
+      "Focus": 75,
+      "Adaptability": 85,
+      "Frugality": 90
+    },
+    "FallbackLines": ["네, 도와줄게.", "알겠어요. 필요하면 말해.", "그렇게 할게.", "오늘 포션 한 번 썼어. 다음엔 아껴 볼게."],
+    "Stats": {
+      "CurrentHP": 100,
+      "MaxHP": 100,
+      "CurrentMP": 18,
+      "MaxMP": 50,
+      "Atk": 6,
+      "Def": 4,
+      "Str": 5,
+      "Dex": 8,
+      "Int": 14,
+      "StatPoints": 0
+    },
+    "Inventory": [
+      { "ItemName": "회복 포션", "ItemType": "Etc", "Count": 1 },
+      { "ItemName": "마나 포션", "ItemType": "Etc", "Count": 2 },
+      { "ItemName": "지팡이", "ItemType": "Weapon", "Count": 1 }
+    ]
+  },
+  {
+    "Id": "bram",
+    "Name": "브람",
+    "Role": "Scavenger",
+    "Background": "전직 밀수업자. 루팅과 인벤토리 정리에 강하다. 손익을 자주 언급한다.",
+    "Personality": {
+      "Courage": 40,
+      "Caution": 45,
+      "Greed": 100,
+      "Orderliness": 90,
+      "Impulsiveness": 55,
+      "Cooperation": 35,
+      "Aggression": 35,
+      "Focus": 80,
+      "Adaptability": 75,
+      "Frugality": 85
+    },
+    "FallbackLines": ["오케이. 그건 내가 챙길게.", "알겠어. 정리해 둘게.", "유물 나왔으면 나눠 가지자.", "가방 정리해 둘게."],
+    "Stats": {
+      "CurrentHP": 88,
+      "MaxHP": 100,
+      "CurrentMP": 45,
+      "MaxMP": 50,
+      "Atk": 10,
+      "Def": 6,
+      "Str": 8,
+      "Dex": 14,
+      "Int": 7,
+      "StatPoints": 2
+    },
+    "Inventory": [
+      { "ItemName": "회복 포션", "ItemType": "Etc", "Count": 3 },
+      { "ItemName": "던전 지도", "ItemType": "Etc", "Count": 1 },
+      { "ItemName": "가죽 갑옷", "ItemType": "Armor", "Count": 1 }
+    ]
+  }
+]

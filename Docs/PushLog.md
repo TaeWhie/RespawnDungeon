@@ -59,6 +59,9 @@
 
 ## 기록
 
+### 2026-03-17
+- MiniProjects/GuildDialogue: 던전 로그 기반 동료 대화 정리 — Ollama /api/chat 연동, 성격(Personality) 기반 주제 선정, 주제당 한 번 왔다 갔다·마지막 턴 마무리 규칙, 반복 감지 시 wrap-up 문장으로 치환, 다양한 캐릭터 조합 테스트(카일↔리나, 리나↔카일, 브람↔카일). TestData/Characters 성격 샘플·상황 문장·OpeningUtterance/RecentEvent 제거 반영.
+
 ### 2026-03-16
 - 탐험 이동/로그 구조를 `MCPLogHub` 중심으로 통합하고, `mcp_log_hub` 커스텀 MCP 툴(채널/이슈 토글, 프리셋 적용)을 추가해 디버깅 자동화를 강화했습니다.
 - `ExplorerAI`/`PartyFollower`/카메라·안개·시야 갱신 흐름에 UniRx 및 공용 캐시를 적용해 중복 폴링을 줄이고 수명 관리(구독 해제)를 정리했습니다.
