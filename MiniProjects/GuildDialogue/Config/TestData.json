@@ -1,85 +1,47 @@
 {
-    "CompanionDialogue": {
-        "CurrentSituation": "아지트 식당에서 식사 후 카일과 리나가 마주 앉아 있음.",
-        "MaxTurnsPerCharacter": 2
-    },
-    "DungeonLogs": {
-      "kyle": [
-        {
-          "DungeonName": "잊힌 묘지",
-          "FloorOrZone": "2층",
-          "Events": [
-            { "EventType": "Trap", "Order": 1, "TimeOffsetSeconds": 12.5, "Location": "동쪽 복도", "TargetId": "카일", "Damage": 15, "HpBefore": 100, "HpAfter": 85 },
-            { "EventType": "Artifact", "Order": 2, "TimeOffsetSeconds": 45.0, "ItemName": "잊혀진 룬", "Location": "보스방 직전 방" },
-            { "EventType": "Combat", "Order": 3, "TimeOffsetSeconds": 60.0, "Enemies": [ { "Name": "스켈레톤", "Count": 2 } ], "ActorId": "카일", "Turns": 2 },
-            { "EventType": "Heal", "Order": 4, "TimeOffsetSeconds": 75.0, "ActorId": "리나", "TargetId": "카일", "HpBefore": 85, "HpAfter": 100 }
-          ],
-          "Outcome": "2층 클리어",
-          "PartyMembers": [ "카일", "리나", "브람" ]
-        },
-        {
-          "DungeonName": "습지 동굴",
-          "FloorOrZone": "1층",
-          "Events": [
-            { "EventType": "Combat", "Order": 1, "TimeOffsetSeconds": 20.0, "Enemies": [ { "Name": "슬라임", "Count": 3 } ], "ActorId": "카일", "BlockCount": 2 },
-            { "EventType": "ConsumePotion", "Order": 2, "TimeOffsetSeconds": 35.0, "ActorId": "리나", "ItemName": "회복 포션", "ItemCount": 1, "MpBefore": 30, "MpAfter": 50 },
-            { "EventType": "ItemTransfer", "Order": 3, "TimeOffsetSeconds": 50.0, "FromId": "브람", "ToId": "카일", "ItemName": "회복 포션", "ItemCount": 2 },
-            { "EventType": "TrapAvoided", "Order": 4, "TimeOffsetSeconds": 70.0, "Location": "동굴 입구", "AvoidedCount": 1 }
-          ],
-          "Outcome": "1층 탐색 완료",
-          "PartyMembers": [ "카일", "리나", "브람" ]
-        },
-        {
-          "DungeonName": "잊힌 묘지",
-          "FloorOrZone": "1층",
-          "Events": [
-            { "EventType": "Combat", "Order": 1, "TimeOffsetSeconds": 10.0, "Enemies": [ { "Name": "스켈레톤", "Count": 1 } ], "Location": "입구 복도" },
-            { "EventType": "Loot", "Order": 2, "TimeOffsetSeconds": 25.0, "Location": "서쪽 방", "LootItems": [ { "ItemName": "골드", "Count": 120 }, { "ItemName": "끈 낡은 망토", "Count": 1 } ] },
-            { "EventType": "TrapAvoided", "Order": 3, "TimeOffsetSeconds": 40.0, "Location": "1층", "AvoidedCount": 0 }
-          ],
-          "Outcome": "1층 클리어",
-          "PartyMembers": [ "카일", "리나" ]
-        }
-      ],
-      "rina": [
-        {
-          "DungeonName": "잊힌 묘지",
-          "FloorOrZone": "2층",
-          "Events": [
-            { "EventType": "Heal", "Order": 1, "TimeOffsetSeconds": 15.0, "ActorId": "리나", "TargetId": "카일", "HpBefore": 85, "HpAfter": 100 },
-            { "EventType": "ConsumePotion", "Order": 2, "TimeOffsetSeconds": 30.0, "ActorId": "리나", "ItemName": "회복 포션", "ItemCount": 1, "MpBefore": 20, "MpAfter": 45 },
-            { "EventType": "PartyCheck", "Order": 3, "TimeOffsetSeconds": 50.0, "ActorId": "리나", "CheckType": "HpMp" },
-            { "EventType": "PartyCheck", "Order": 4, "TimeOffsetSeconds": 65.0, "ActorId": "리나", "CheckType": "PotionCount" }
-          ],
-          "Outcome": "2층 클리어",
-          "PartyMembers": [ "카일", "리나", "브람" ]
-        },
-        {
-          "DungeonName": "습지 동굴",
-          "FloorOrZone": "1층",
-          "Events": [
-            { "EventType": "DebuffClear", "Order": 1, "TimeOffsetSeconds": 22.0, "ActorId": "리나", "TargetId": "카일", "ClearCount": 1 },
-            { "EventType": "TrapAvoided", "Order": 2, "TimeOffsetSeconds": 38.0, "Location": "1층", "AvoidedCount": 1 },
-            { "EventType": "PartyCheck", "Order": 3, "TimeOffsetSeconds": 55.0, "ActorId": "리나", "CheckType": "PotionCount" }
-          ],
-          "Outcome": "1층 탐색 완료",
-          "PartyMembers": [ "카일", "리나", "브람" ]
-        }
-      ],
-      "bram": [
-        {
-          "DungeonName": "잊힌 묘지",
-          "FloorOrZone": "2층",
-          "Events": [
-            { "EventType": "Loot", "Order": 1, "TimeOffsetSeconds": 18.0, "Location": "2층 동쪽 복도 함정 방 근처", "LootItems": [ { "ItemName": "골드", "Count": 80 }, { "ItemName": "부러진 단검", "Count": 1 } ], "ActorId": "브람" },
-            { "EventType": "Artifact", "Order": 2, "TimeOffsetSeconds": 42.0, "ItemName": "잊혀진 룬", "Location": "보스방 직전" },
-            { "EventType": "ItemTransfer", "Order": 3, "TimeOffsetSeconds": 55.0, "FromId": "브람", "ToId": "카일", "ItemName": "잊혀진 룬", "ItemCount": 1 },
-            { "EventType": "InventorySort", "Order": 4, "TimeOffsetSeconds": 68.0, "ActorId": "브람", "Location": "보스방 앞 방" },
-            { "EventType": "TrapAvoided", "Order": 5, "TimeOffsetSeconds": 80.0, "Location": "2층", "AvoidedCount": 1 }
-          ],
-          "Outcome": "2층 클리어",
-          "PartyMembers": [ "카일", "리나", "브람" ]
-        }
-      ]
-    }
-  }
+  "ActionLog": [
+    { "Order": 1, "Type": "Base", "Location": "메인홀", "EventType": "income", "PartyMembers": ["카일", "리나"] },
+    { "Order": 2, "Type": "Base", "Location": "메인홀", "EventType": "partyForm", "PartyMembers": ["카일", "리나"] },
+
+    { "Order": 3, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나"], "EventType": "income", "TimeOffsetSeconds": 0 },
+    { "Order": 4, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나"], "EventType": "combat", "TimeOffsetSeconds": 10.0, "Enemies": [{ "Name": "스켈레톤", "Count": 1 }], "Location": "입구 복도" },
+    { "Order": 5, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나"], "EventType": "loot", "TimeOffsetSeconds": 25.0, "Location": "서쪽 방", "LootItems": [{ "ItemName": "골드", "Count": 120 }, { "ItemName": "끈 낡은 망토", "Count": 1 }] },
+    { "Order": 6, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나"], "EventType": "trapAvoided", "TimeOffsetSeconds": 40.0, "Location": "1층", "AvoidedCount": 0 },
+    { "Order": 7, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나"], "EventType": "outcome", "Outcome": "clear" },
+
+    { "Order": 8, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "income", "TimeOffsetSeconds": 0 },
+    { "Order": 9, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "trap", "TimeOffsetSeconds": 12.5, "Location": "동쪽 복도", "TargetId": "카일", "Damage": 15, "HpBefore": 100, "HpAfter": 85 },
+    { "Order": 10, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "heal", "TimeOffsetSeconds": 15.0, "ActorId": "리나", "TargetId": "카일", "HpBefore": 85, "HpAfter": 100 },
+    { "Order": 11, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "loot", "TimeOffsetSeconds": 18.0, "Location": "2층 동쪽 복도 함정 방 근처", "ActorId": "브람", "LootItems": [{ "ItemName": "골드", "Count": 80 }, { "ItemName": "부러진 단검", "Count": 1 }] },
+    { "Order": 12, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "consumePotion", "TimeOffsetSeconds": 30.0, "ActorId": "리나", "ItemName": "회복 포션", "ItemCount": 1, "MpBefore": 20, "MpAfter": 45 },
+    { "Order": 13, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "artifact", "TimeOffsetSeconds": 42.0, "ItemName": "잊혀진 룬", "Location": "보스방 직전" },
+    { "Order": 14, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "partyCheck", "TimeOffsetSeconds": 50.0, "ActorId": "리나", "CheckType": "HpMp" },
+    { "Order": 15, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "itemTransfer", "TimeOffsetSeconds": 55.0, "FromId": "브람", "ToId": "카일", "ItemName": "잊혀진 룬", "ItemCount": 1 },
+    { "Order": 16, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "combat", "TimeOffsetSeconds": 60.0, "Enemies": [{ "Name": "스켈레톤", "Count": 2 }], "ActorId": "카일", "Turns": 2 },
+    { "Order": 17, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "partyCheck", "TimeOffsetSeconds": 65.0, "ActorId": "리나", "CheckType": "PotionCount" },
+    { "Order": 18, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "inventorySort", "TimeOffsetSeconds": 68.0, "ActorId": "브람", "Location": "보스방 앞 방" },
+    { "Order": 19, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "heal", "TimeOffsetSeconds": 75.0, "ActorId": "리나", "TargetId": "카일", "HpBefore": 85, "HpAfter": 100 },
+    { "Order": 20, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "trapAvoided", "TimeOffsetSeconds": 80.0, "Location": "2층", "AvoidedCount": 1 },
+    { "Order": 21, "Type": "Dungeon", "DungeonName": "잊힌 묘지", "FloorOrZone": "2층", "PartyMembers": ["카일", "리나"], "EventType": "outcome", "Outcome": "clear" },
+
+    { "Order": 22, "Type": "Base", "Location": "메인홀", "EventType": "income", "PartyMembers": ["카일", "리나"] },
+    { "Order": 23, "Type": "Base", "Location": "접수대", "EventType": "adventurerRegister", "PartyMembers": ["브람"] },
+    { "Order": 24, "Type": "Base", "Location": "메인홀", "EventType": "partyForm", "PartyMembers": ["카일", "리나", "브람"] },
+
+    { "Order": 25, "Type": "Dungeon", "DungeonName": "습지 동굴", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나", "브람"], "EventType": "income", "TimeOffsetSeconds": 0 },
+    { "Order": 26, "Type": "Dungeon", "DungeonName": "습지 동굴", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나", "브람"], "EventType": "combat", "TimeOffsetSeconds": 20.0, "Enemies": [{ "Name": "슬라임", "Count": 3 }], "ActorId": "카일", "BlockCount": 2 },
+    { "Order": 27, "Type": "Dungeon", "DungeonName": "습지 동굴", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나", "브람"], "EventType": "debuffClear", "TimeOffsetSeconds": 22.0, "ActorId": "리나", "TargetId": "카일", "ClearCount": 1 },
+    { "Order": 28, "Type": "Dungeon", "DungeonName": "습지 동굴", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나", "브람"], "EventType": "consumePotion", "TimeOffsetSeconds": 35.0, "ActorId": "리나", "ItemName": "회복 포션", "ItemCount": 1, "MpBefore": 30, "MpAfter": 50 },
+    { "Order": 29, "Type": "Dungeon", "DungeonName": "습지 동굴", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나", "브람"], "EventType": "trapAvoided", "TimeOffsetSeconds": 38.0, "Location": "1층", "AvoidedCount": 1 },
+    { "Order": 30, "Type": "Dungeon", "DungeonName": "습지 동굴", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나", "브람"], "EventType": "itemTransfer", "TimeOffsetSeconds": 50.0, "FromId": "브람", "ToId": "카일", "ItemName": "회복 포션", "ItemCount": 2 },
+    { "Order": 31, "Type": "Dungeon", "DungeonName": "습지 동굴", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나", "브람"], "EventType": "partyCheck", "TimeOffsetSeconds": 55.0, "ActorId": "리나", "CheckType": "PotionCount" },
+    { "Order": 32, "Type": "Dungeon", "DungeonName": "습지 동굴", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나", "브람"], "EventType": "trapAvoided", "TimeOffsetSeconds": 70.0, "Location": "동굴 입구", "AvoidedCount": 1 },
+    { "Order": 33, "Type": "Dungeon", "DungeonName": "습지 동굴", "FloorOrZone": "1층", "PartyMembers": ["카일", "리나", "브람"], "EventType": "outcome", "Outcome": "retreat" },
+
+    { "Order": 34, "Type": "Base", "Location": "메인홀", "EventType": "income", "PartyMembers": ["카일", "리나", "브람"] },
+    { "Order": 35, "Type": "Base", "Location": "게시판", "EventType": "questAccept", "PartyMembers": ["카일", "리나", "브람"] },
+    { "Order": 36, "Type": "Base", "Location": "훈련장", "EventType": "training", "PartyMembers": ["카일", "리나", "브람"] },
+    { "Order": 37, "Type": "Base", "Location": "식당", "EventType": "meal", "PartyMembers": ["카일", "리나", "브람"] },
+    { "Order": 38, "Type": "Base", "Location": "식당", "EventType": "talk", "PartyMembers": ["카일", "리나", "브람"] }
+  ]
+}

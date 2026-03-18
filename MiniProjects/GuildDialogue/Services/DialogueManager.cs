@@ -1,158 +1,136 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using GuildDialogue.Data;
 
 namespace GuildDialogue.Services;
 
-/// <summary>
-/// 한 턴 흐름: RAG 컨텍스트 구성 → LLM 호출(또는 폴백) → 파싱 실패/반복/주제 이탈 시 리트라이 → 메모리 갱신.
-/// 모든 수치·목록은 설정에서 로드(하드 코딩 없음).
-/// </summary>
 public class DialogueManager
 {
+    private readonly DialogueConfigLoader _loader;
+    private readonly OllamaClient _ollama;
+    private readonly MemoryManager _memory;
     private readonly DialogueSettings _settings;
-    private readonly PromptBuilder _promptBuilder;
-    private readonly OllamaClient? _ollama;
-    private readonly MemoryManager _memoryManager;
-    private readonly List<DialogueTurn> _sessionTurns = new();
-    private LongTermSummary _longTerm = new();
+    
+    private List<Character> _characters = new();
+    private Dictionary<string, Character> _charMap = new();
 
-    public DialogueManager(DialogueSettings settings, bool useOllama = true)
+    public DialogueManager()
     {
-        _settings = settings;
-        _promptBuilder = new PromptBuilder(settings);
-        _ollama = useOllama ? new OllamaClient(settings) : null;
-        _memoryManager = new MemoryManager(settings);
+        _loader = new DialogueConfigLoader();
+        _settings = _loader.LoadSettings();
+        _ollama = new OllamaClient(_settings);
+        
+        var glossary = _loader.LoadLogGlossary();
+        _memory = new MemoryManager(glossary);
     }
 
-    public IReadOnlyList<DialogueTurn> SessionTurns => _sessionTurns;
-    public LongTermSummary LongTerm => _longTerm;
-
-    public void SetLongTerm(LongTermSummary summary) => _longTerm = summary;
-    public void SetDungeonLogs(string speakerId, List<DungeonLog> logs) => _dungeonLogsBySpeaker[speakerId] = logs;
-    private readonly Dictionary<string, List<DungeonLog>> _dungeonLogsBySpeaker = new();
-
-    public async Task<LlmResponse> GenerateTurnAsync(
-        Character speaker,
-        Character? other,
-        string otherId,
-        string lastUtterance,
-        string recentEvent,
-        string currentSituation,
-        List<Character> allCharacters,
-        bool isLastTurn = false,
-        CancellationToken ct = default)
+    public async Task InitializeAsync()
     {
-        var request = new DialogueRequest
+        _characters = _loader.LoadCharacters();
+        _charMap = _characters.ToDictionary(c => c.Name);
+        
+        var testData = _loader.LoadTestData();
+        if (testData?.ActionLog != null)
         {
-            SpeakerId = speaker.Id,
-            OtherId = otherId,
-            LastUtterance = lastUtterance,
-            RecentEvent = recentEvent,
-            CurrentSituation = currentSituation,
-            Speaker = speaker,
-            OtherCharacter = other,
-            DungeonLogs = _dungeonLogsBySpeaker.GetValueOrDefault(speaker.Id, new List<DungeonLog>()),
-            LongTerm = _longTerm,
-            RecentTurns = _sessionTurns.Take(_settings.MaxRecentTurns).ToList(),
-            IsLastTurn = isLastTurn
+            var parsedLogs = ActionLogBuilder.Build(testData.ActionLog);
+            var allDungeonLogs = parsedLogs.DungeonLogsByCharacter.SelectMany(kvp => kvp.Value).Distinct().ToList();
+            _memory.BuildEpisodicBuffer(allDungeonLogs);
+        }
+    }
+
+    public async Task RunInteractiveSessionAsync(CancellationToken ct = default)
+    {
+        Console.WriteLine("========== RAG 기반 지능형 길드 대화 세션 ==========\n");
+        if (_characters.Count < 2)
+        {
+            Console.WriteLine("캐릭터 데이터가 충분하지 않습니다.");
+            return;
+        }
+
+        var kyle = _charMap.GetValueOrDefault("카일");
+        var rena = _charMap.GetValueOrDefault("리나");
+        var bram = _charMap.GetValueOrDefault("브람");
+
+        if (kyle == null || rena == null || bram == null)
+        {
+            Console.WriteLine("필수 캐릭터(카일, 리나, 브람)를 찾을 수 없습니다.");
+            return;
+        }
+
+        string worldState = "장소: 길드 아지트 식당\n시간: 저녁\n함께 있는 동료: 카일, 리나, 브람\n상황: 던전 탐험을 무사히 마치고 식사하며 휴식 중입니다.";
+        
+        // 대화 순번 (턴제 진행) - 첫 턴부터 LLM이 동적 생성
+        var conversationFlow = new[]
+        {
+            (Speaker: kyle, Listener: rena),
+            (Speaker: rena, Listener: kyle),
+            (Speaker: bram, Listener: rena),
+            (Speaker: kyle, Listener: bram),
+            (Speaker: rena, Listener: bram),
+            (Speaker: bram, Listener: kyle)
         };
 
-        var prompt = _promptBuilder.BuildPrompt(request);
-        LlmResponse? response = null;
+        bool isFirstTurn = true;
+        string? randomTopic = _memory.GetRandomPastEvent();
 
-        // 간단한 필터만 둔 상태에서 LLM 응답을 사용한다.
-        if (_ollama != null)
+        foreach (var turn in conversationFlow)
         {
-            try
+            if (ct.IsCancellationRequested) break;
+
+            Console.WriteLine($"[시스템] {turn.Speaker.Name}의 응답을 생성하는 중... (Lorebook & 메모리 검색)");
+            
+            // RAG Context 병합
+            string workingMem = _memory.GetWorkingMemoryContext();
+            string archivalMem = _memory.RetrieveArchivalMemoryContext(workingMem);
+
+            string sysPrompt = PromptBuilder.BuildSystemPrompt(turn.Speaker, turn.Listener, worldState, _memory.EpisodicBuffer, archivalMem, _settings);
+            string userPrompt = PromptBuilder.BuildUserPrompt(workingMem, isFirstTurn ? randomTopic : null);
+            isFirstTurn = false;
+
+            string? responseText = await _ollama.GenerateResponseAsync(sysPrompt, userPrompt, ct);
+            
+            if (string.IsNullOrWhiteSpace(responseText))
             {
-                response = await _ollama.GenerateAsync(prompt, ct).ConfigureAwait(false);
+                Console.WriteLine("응답 생성 실패.");
+                break;
             }
-            catch
-            {
-                response = null; // 연결 실패 등 시 폴백
+
+            // JSON 파싱 전 마크다운 코드블록 제거
+            var cleanJson = responseText.Trim();
+            if (cleanJson.StartsWith("```json", StringComparison.OrdinalIgnoreCase)) 
+                cleanJson = cleanJson.Substring(7);
+            else if (cleanJson.StartsWith("```")) 
+                cleanJson = cleanJson.Substring(3);
+            if (cleanJson.EndsWith("```")) 
+                cleanJson = cleanJson.Substring(0, cleanJson.Length - 3);
+            cleanJson = cleanJson.Trim();
+
+            try {
+                using var doc = JsonDocument.Parse(cleanJson);
+                var root = doc.RootElement;
+                if (root.TryGetProperty("line", out var lineProp))
+                {
+                    string generatedLine = lineProp.GetString() ?? "";
+                    var intent = root.TryGetProperty("intent", out var intProp) ? intProp.GetString() : "";
+                    
+                    Console.WriteLine($"[{turn.Speaker.Name}] {generatedLine}");
+                    Console.WriteLine($"  -> (Intent: {intent})\n");
+                    
+                    _memory.AddWorkingMemory(turn.Speaker.Name, generatedLine);
+                }
+                else {
+                    Console.WriteLine($"파싱 에러: {responseText}\n");
+                }
+            }
+            catch {
+                Console.WriteLine($"JSON 규격 외 응답 발생:\n{responseText}\n");
             }
         }
-
-        if (response == null || string.IsNullOrWhiteSpace(response.Line))
-        {
-            response = Fallback(speaker, lastUtterance, recentEvent);
-        }
-        else if (IsRepeat(speaker.Id, response.Line))
-        {
-            // 같은 주제가 반복될 때는 대화를 마무리하는 한 마디로 정리해 준다.
-            response = new LlmResponse
-            {
-                Tone = response.Tone,
-                Intent = "wrap_up",
-                Line = "오늘 이야기는 여기까지 하자. 다음에 다른 얘기도 해보자.",
-                InnerThought = response.InnerThought
-            };
-        }
-
-        _sessionTurns.Add(new DialogueTurn { SpeakerId = speaker.Id, Text = response.Line });
-        _memoryManager.ApplyOffsetFromLine(response.Line, response.Intent, _longTerm);
-        _memoryManager.UpdateSummarySentence(_longTerm);
-
-        return response;
+        
+        Console.WriteLine("========== 대화 세션 종료 ==========");
     }
-
-    private bool IsRepeat(string speakerId, string line)
-    {
-        if (_sessionTurns.Count == 0) return false;
-
-        // 직전 전체 발화와 동일하면 반복으로 간주
-        var last = _sessionTurns[^1].Text;
-        if (string.Equals(line.Trim(), last.Trim(), StringComparison.Ordinal))
-            return true;
-
-        // 같은 화자가 직전에 했던 말과도 비교
-        var lastBySpeaker = _sessionTurns.LastOrDefault(t => t.SpeakerId == speakerId)?.Text;
-        if (!string.IsNullOrEmpty(lastBySpeaker) &&
-            string.Equals(line.Trim(), lastBySpeaker.Trim(), StringComparison.Ordinal))
-            return true;
-
-        var minLen = _settings.KeywordExtractMinLength;
-        var words = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
-            .Where(w => w.Length >= minLen).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var lastWords = last.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
-            .Where(w => w.Length >= minLen).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        // 같은 화자의 마지막 발화 단어들도 포함해서 비교
-        if (!string.IsNullOrEmpty(lastBySpeaker))
-        {
-            var speakerWords = lastBySpeaker.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
-                .Where(w => w.Length >= minLen).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            foreach (var w in speakerWords) lastWords.Add(w);
-        }
-
-        return words.Count > 0 && words.Overlaps(lastWords) && words.All(w => lastWords.Contains(w));
-    }
-
-    private bool IsTopicDrift(string line, DialogueRequest request)
-    {
-        var allowed = _settings.AllowedTopicKeywords.Select(x => x.Trim().ToLowerInvariant()).ToHashSet();
-        var context = (request.LastUtterance + " " + request.RecentEvent + " " + request.CurrentSituation).ToLowerInvariant();
-        var minLen = _settings.KeywordExtractMinLength;
-        var lineWords = line.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
-            .Where(w => w.Length >= minLen).Select(w => w.Trim().ToLowerInvariant()).ToList();
-        if (lineWords.Count == 0) return false;
-        var topWords = lineWords.Take(3).ToHashSet();
-        if (topWords.Any(w => allowed.Contains(w))) return false;
-        if (topWords.Any(w => context.Contains(w))) return false;
-        return true;
-    }
-
-    private LlmResponse Fallback(Character speaker, string lastUtterance, string recentEvent)
-    {
-        // 나중에 실제 폴백 대사를 구현하기 전까지는,
-        // 그냥 "fallback" 이라는 고정 텍스트만 내려준다.
-        return new LlmResponse
-        {
-            Tone = "fallback",
-            Intent = "fallback",
-            Line = "fallback",
-            InnerThought = ""
-        };
-    }
-
-    public void ClearSession() => _sessionTurns.Clear();
 }

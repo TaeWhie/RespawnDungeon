@@ -9,6 +9,7 @@ public class DungeonLog
     public string FloorOrZone { get; set; } = "";
     public List<DungeonEvent> Events { get; set; } = new();
     public DateTime? PlayedAt { get; set; }
+    /// <summary>런 결과: 클리어(다음 층 계단 발견·이동) | 탐색 후 복귀(자원/체력 부족으로 복귀) | 실패(파티 전멸)</summary>
     public string? Outcome { get; set; }
     public List<string>? PartyMembers { get; set; }
 }

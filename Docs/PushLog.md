@@ -59,6 +59,11 @@
 
 ## 기록
 
+### 2026-03-17 — 미니 프로젝트 분석·로그화·푸시
+- **MiniProjects/GuildDialogue 재설계**: 테스트 데이터(TestData/ActionLog) 기반 인게임 상호작용 — LogGlossary(Config/LogGlossary.json, Data/LogGlossary.cs) 도입(시간·순서·이벤트 유형·필드 정의), ActionLogBuilder로 DungeonLog 파싱·MemoryManager 에피소딕 버퍼 구축, DialogueManager·PromptBuilder·OllamaClient·MemoryManager·DialogueConfigLoader 연동.
+- **규칙**: problem-driven-mcp-verification.mdc 추가 — 문제 설명 시 검사 항목(PASS/FAIL 기준) 정의 → Unity MCP로 검증 → 항목별 근거·최종 결론(재현/미재현/검사 불가) 보고.
+- PushLog 갱신 후 커밋·푸시.
+
 ### 2026-03-17
 - MiniProjects/GuildDialogue: 던전 로그 기반 동료 대화 정리 — Ollama /api/chat 연동, 성격(Personality) 기반 주제 선정, 주제당 한 번 왔다 갔다·마지막 턴 마무리 규칙, 반복 감지 시 wrap-up 문장으로 치환, 다양한 캐릭터 조합 테스트(카일↔리나, 리나↔카일, 브람↔카일). TestData/Characters 성격 샘플·상황 문장·OpeningUtterance/RecentEvent 제거 반영.
 

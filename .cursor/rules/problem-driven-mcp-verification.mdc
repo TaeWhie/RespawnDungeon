@@ -1,0 +1,23 @@
+---
+description: Build verification checklist from user-reported problem
+alwaysApply: true
+---
+
+# Problem-Driven MCP Verification Rule
+
+- 사용자가 문제를 설명하면 AI는 먼저 해당 문제 전용 검사 항목(3~5개)을 직접 정의한다.
+- 검사 항목은 반드시 PASS/FAIL 기준이 명확해야 하며, "어떤 로그/상태를 보면 통과인지"를 수치 또는 조건으로 적는다.
+- 검사 항목 정의 없이 바로 "검사 완료"라고 결론내리지 않는다.
+- 검사 실행은 Unity MCP를 사용한다. 최소한 `editor_state`/세션 준비 상태 확인 후 `read_console`, `manage_editor(play/stop)` 흐름으로 검증한다.
+- 세션 미연결/툴 미등록 등으로 검사를 실행할 수 없으면, 성공처럼 말하지 말고 "검사 불가"와 원인을 명시한다.
+- 결과 보고는 항목별로 `PASS/FAIL + 근거(로그/수치)`를 함께 제공한다.
+- 최종 결론은 "문제 재현됨/재현 안됨/검사 불가" 중 하나로 명확히 끝낸다.
+
+## Report Template (required)
+
+- Problem: <user issue summary>
+- Checks:
+  - [PASS/FAIL] <check item 1> - Evidence: <log or state>
+  - [PASS/FAIL] <check item 2> - Evidence: <log or state>
+  - [PASS/FAIL] <check item 3> - Evidence: <log or state>
+- Verdict: <Reproduced / Not Reproduced / Blocked>

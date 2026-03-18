@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Text.Json;
 using GuildDialogue.Data;
 
@@ -15,28 +18,28 @@ public class DialogueConfigLoader
     public DialogueSettings LoadSettings()
     {
         var path = Path.Combine(_configPath, "DialogueSettings.json");
-        if (!File.Exists(path))
-            throw new FileNotFoundException($"설정 파일을 찾을 수 없습니다: {path}");
-        var json = File.ReadAllText(path);
-        var settings = JsonSerializer.Deserialize<DialogueSettings>(json);
-        return settings ?? throw new InvalidOperationException("DialogueSettings.json 파싱 실패.");
+        return JsonSerializer.Deserialize<DialogueSettings>(File.ReadAllText(path))!;
     }
 
     public List<Character> LoadCharacters()
     {
         var path = Path.Combine(_configPath, "Characters.json");
-        if (!File.Exists(path))
-            return new List<Character>();
-        var json = File.ReadAllText(path);
-        var list = JsonSerializer.Deserialize<List<Character>>(json);
-        return list ?? new List<Character>();
+        if (!File.Exists(path)) return new List<Character>();
+        return JsonSerializer.Deserialize<List<Character>>(File.ReadAllText(path)) ?? new();
     }
 
     public TestDataRoot? LoadTestData()
     {
         var path = Path.Combine(_configPath, "TestData.json");
         if (!File.Exists(path)) return null;
-        var json = File.ReadAllText(path);
-        return JsonSerializer.Deserialize<TestDataRoot>(json);
+        return JsonSerializer.Deserialize<TestDataRoot>(File.ReadAllText(path));
+    }
+
+    // Load LogGlossary for Lorebook conditional retrieval
+    public LogGlossaryRoot? LoadLogGlossary()
+    {
+        var path = Path.Combine(_configPath, "LogGlossary.json");
+        if (!File.Exists(path)) return null;
+        return JsonSerializer.Deserialize<LogGlossaryRoot>(File.ReadAllText(path));
     }
 }
