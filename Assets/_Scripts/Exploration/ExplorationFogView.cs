@@ -40,6 +40,12 @@ public class ExplorationFogView : MonoBehaviour
     [Tooltip("파티 타깃(Player/Ally) 재검색 주기(초). 0이면 매 프레임.")]
     [Slider(0f, 2f)]
     [SerializeField] private float _partyTargetRescanInterval = 0.5f;
+    [Tooltip("맵 초기화 직후 첫 프레임 시야 선반영용 1단계 반경.")]
+    [Slider(1, 20)]
+    [SerializeField] private int _initialFullViewRadius = 4;
+    [Tooltip("맵 초기화 직후 첫 프레임 시야 선반영용 2단계 반경.")]
+    [Slider(1, 25)]
+    [SerializeField] private int _initialStructureViewRadius = 8;
 
     private Tilemap _fogTilemap;
     private Dictionary<Vector2Int, TileBase> _wallTilesCache = new Dictionary<Vector2Int, TileBase>();
@@ -78,6 +84,7 @@ public class ExplorationFogView : MonoBehaviour
 
         if (_mapManager.IsInitialized)
         {
+            SeedInitialPartyView();
             CacheWallTiles();
             RefreshFogAll();
         }
@@ -168,6 +175,9 @@ public class ExplorationFogView : MonoBehaviour
 
             AddCellsInRadius(_cellsToUpdate, _mapManager.WorldToCell(t.position), r, minX, maxX, minY, maxY);
         }
+
+        if (_cellsToUpdate.Count == 0)
+            AddCellsInRadius(_cellsToUpdate, GetFallbackViewCenterCell(), r, minX, maxX, minY, maxY);
 
         // wall 셀도 갱신: 반경 안 셀들의 인접(상하좌우) 추가
         var withWalls = new HashSet<Vector2Int>(_cellsToUpdate);
@@ -310,10 +320,51 @@ public class ExplorationFogView : MonoBehaviour
 
     private void OnMapInitialized()
     {
+        SeedInitialPartyView();
         CacheWallTiles();
         RefreshFogAll();
         _cachedVisibilityObjects = FindObjectsByType<VisibilityByViewStage>(FindObjectsInactive.Include, FindObjectsSortMode.None);
         RefreshObjectsVisibility();
+    }
+
+    private void SeedInitialPartyView()
+    {
+        if (_mapManager == null || !_mapManager.IsInitialized)
+            return;
+
+        int fullR = Mathf.Max(1, _initialFullViewRadius);
+        int structureR = Mathf.Max(fullR, _initialStructureViewRadius);
+
+        CachePartyTargets();
+        for (int i = _partyTargets.Count - 1; i >= 0; i--)
+        {
+            var t = _partyTargets[i];
+            if (t == null) continue;
+            var cell = _mapManager.WorldToCell(t.position);
+            _mapManager.MarkVisitedInRadius(cell, fullR, structureR);
+        }
+
+        if (_partyTargets.Count == 0)
+        {
+            Vector2Int seedCell = GetFallbackViewCenterCell();
+            _mapManager.MarkVisitedInRadius(seedCell, fullR, structureR);
+        }
+
+        MCPLogHub.LogIssueStepIfEnabled(
+            "FOG_INIT",
+            "seed_initial_party_view",
+            $"targets={_partyTargets.Count} fullR={fullR} structureR={structureR}");
+    }
+
+    private Vector2Int GetFallbackViewCenterCell()
+    {
+        var startCell = _mapManager.GetStartCell();
+        if (startCell.HasValue)
+            return startCell.Value;
+
+        return new Vector2Int(
+            _mapManager.MinX + (_mapManager.Width / 2),
+            _mapManager.MinY + (_mapManager.Height / 2));
     }
 
     private void CacheWallTiles()

@@ -59,6 +59,10 @@
 
 ## 기록
 
+### 2026-03-19 — GuildDialogue 대화 강화 + 탐험 시야/조향 보정
+- `MiniProjects/GuildDialogue`: WorldLore/ItemDatabase를 로드해 프롬프트에 세계관·던전 구조·장비/인벤 효과를 주입하고, 대화 전 “사회적 인상 합성” 및 관계 업데이트 로직을 추가했으며 길드장 직접 입력 모드(콘솔 인코딩/모드 선택 포함)를 확장했습니다.
+- `Assets/_Scripts/Exploration`: ExplorationFogView에 초기 파티 시야 시딩(early full/structure 반경 + fallback) 로직을 추가하고, ExplorerAI/PartyFollower의 코너 arc 조향을 blend/측면 안전샘플링 기반으로 보정했으며 기즈모 경로 렌더링을 현재 경로 구간 기준으로 정리했습니다.
+
 ### 2026-03-17 — 미니 프로젝트 분석·로그화·푸시
 - **MiniProjects/GuildDialogue 재설계**: 테스트 데이터(TestData/ActionLog) 기반 인게임 상호작용 — LogGlossary(Config/LogGlossary.json, Data/LogGlossary.cs) 도입(시간·순서·이벤트 유형·필드 정의), ActionLogBuilder로 DungeonLog 파싱·MemoryManager 에피소딕 버퍼 구축, DialogueManager·PromptBuilder·OllamaClient·MemoryManager·DialogueConfigLoader 연동.
 - **규칙**: problem-driven-mcp-verification.mdc 추가 — 문제 설명 시 검사 항목(PASS/FAIL 기준) 정의 → Unity MCP로 검증 → 항목별 근거·최종 결론(재현/미재현/검사 불가) 보고.

@@ -79,6 +79,9 @@ public class ExplorerAI : MonoBehaviour
     [Tooltip("코너 진입 전부터 곡선 회전을 시작하는 거리.")]
     [Slider(0.1f, 2f)]
     [SerializeField] private float _cornerArcStartDistance = 0.8f;
+    [Tooltip("코너 라운딩 강도. 낮을수록 직선 성향이 강해져 커브 횟수/크기가 줄어듭니다.")]
+    [Slider(0f, 1f)]
+    [SerializeField] private float _cornerArcBlendStrength = 0.45f;
     [Tooltip("최대 회전 속도(도/초). 낮을수록 더 큰 곡선.")]
     [Slider(90f, 1080f)]
     [SerializeField] private float _maxTurnRateDeg = 420f;
@@ -97,7 +100,6 @@ public class ExplorerAI : MonoBehaviour
     [Tooltip("파티(Ally) 캐시 재검색 주기(초). 0이면 매 프레임.")]
     [Slider(0f, 2f)]
     [SerializeField] private float _partyRescanInterval = 0.4f;
-
     [Title("출구")]
     [Tooltip("출구 셀에 도착했을 때 호출 (다음 씬 로드 등)")]
     [SerializeField] private UnityEvent _onReachedExit;
@@ -386,17 +388,18 @@ public class ExplorerAI : MonoBehaviour
     private void OnDrawGizmos()
     {
         if (_mapManager == null || !_mapManager.DrawGizmos) return;
-        if (_currentPath == null || _currentPath.Count < 2) return;
+        List<Vector2Int> gizmoPath = BuildGizmoPathCells();
+        if (gizmoPath == null || gizmoPath.Count < 2) return;
 
         Gizmos.color = Color.cyan;
-        for (int i = 0; i < _currentPath.Count - 1; i++)
+        for (int i = 0; i < gizmoPath.Count - 1; i++)
         {
-            var a = _mapManager.CellToWorld(_currentPath[i]);
-            var b = _mapManager.CellToWorld(_currentPath[i + 1]);
+            var a = _mapManager.CellToWorld(gizmoPath[i]);
+            var b = _mapManager.CellToWorld(gizmoPath[i + 1]);
             Gizmos.DrawLine(a, b);
         }
 
-        DrawCurvedPathGizmos();
+        DrawCurvedPathGizmos(gizmoPath);
 
         if (_globalTargetCell.HasValue)
         {
@@ -405,19 +408,28 @@ public class ExplorerAI : MonoBehaviour
         }
     }
 
-    private void DrawCurvedPathGizmos()
+    private List<Vector2Int> BuildGizmoPathCells()
     {
-        if (!_useCornerArcSteering || _currentPath == null || _currentPath.Count < 3)
+        if (_currentPath == null || _currentPath.Count < 2)
+            return null;
+
+        int startIndex = Mathf.Clamp(_pathIndex, 0, _currentPath.Count - 1);
+        return _currentPath.GetRange(startIndex, _currentPath.Count - startIndex);
+    }
+
+    private void DrawCurvedPathGizmos(List<Vector2Int> path)
+    {
+        if (!_useCornerArcSteering || path == null || path.Count < 3)
             return;
 
         Gizmos.color = new Color(1f, 0.55f, 0.1f, 1f);
-        Vector2 last = _mapManager.CellToWorld(_currentPath[0]);
+        Vector2 last = _mapManager.CellToWorld(path[0]);
 
-        for (int i = 1; i < _currentPath.Count - 1; i++)
+        for (int i = 1; i < path.Count - 1; i++)
         {
-            Vector2 prev = _mapManager.CellToWorld(_currentPath[i - 1]);
-            Vector2 curr = _mapManager.CellToWorld(_currentPath[i]);
-            Vector2 next = _mapManager.CellToWorld(_currentPath[i + 1]);
+            Vector2 prev = _mapManager.CellToWorld(path[i - 1]);
+            Vector2 curr = _mapManager.CellToWorld(path[i]);
+            Vector2 next = _mapManager.CellToWorld(path[i + 1]);
 
             Vector2 inDir = (curr - prev).normalized;
             Vector2 outDir = (next - curr).normalized;
@@ -439,7 +451,7 @@ public class ExplorerAI : MonoBehaviour
             last = exit;
         }
 
-        Vector2 end = _mapManager.CellToWorld(_currentPath[_currentPath.Count - 1]);
+        Vector2 end = _mapManager.CellToWorld(path[path.Count - 1]);
         Gizmos.DrawLine(last, end);
     }
 
@@ -1158,13 +1170,25 @@ public class ExplorerAI : MonoBehaviour
                 float startDist = Mathf.Max(_cornerArcStartDistance, _waypointReachRadius * 2f);
                 float t = Mathf.Clamp01(1f - (distToCorner / Mathf.Max(0.001f, startDist)));
                 t = t * t * (3f - 2f * t); // smoothstep
+                // Arc influence starts only near corner and is capped by blend strength.
+                t = Mathf.Clamp01((t - 0.2f) / 0.8f);
+                t *= Mathf.Clamp01(_cornerArcBlendStrength);
 
-                steering = Vector2.Lerp(desired, outDir, t).normalized;
+                if (t > 0.001f)
+                    steering = Vector2.Lerp(desired, outDir, t).normalized;
 
                 if (_cornerObstacleBias > 0f && t > 0f)
                 {
-                    Vector2 saferNormal = GetSaferNormal(corner, steering);
-                    steering = (steering + saferNormal * (_cornerObstacleBias * t)).normalized;
+                    Vector2 left = new Vector2(-steering.y, steering.x).normalized;
+                    Vector2 right = -left;
+                    float leftScore = SampleSideWalkableScore(corner, left);
+                    float rightScore = SampleSideWalkableScore(corner, right);
+                    float imbalance = Mathf.Clamp01(Mathf.Abs(leftScore - rightScore) / 3f);
+                    if (imbalance > 0.01f)
+                    {
+                        Vector2 saferNormal = leftScore >= rightScore ? left : right;
+                        steering = (steering + saferNormal * (_cornerObstacleBias * t * imbalance)).normalized;
+                    }
                 }
             }
         }

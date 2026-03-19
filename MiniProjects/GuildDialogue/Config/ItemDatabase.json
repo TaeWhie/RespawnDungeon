@@ -1,0 +1,58 @@
+[
+  {
+    "ItemName": "회복 포션",
+    "ItemType": "Etc",
+    "Description": "마나즙과 치유초를 섞어 만든 기본 회복약. 성직자 조합에서 정기 납품한다.",
+    "Effects": "HP +40 즉시 회복",
+    "Value": 120,
+    "Rarity": "일반"
+  },
+  {
+    "ItemName": "마나 포션",
+    "ItemType": "Etc",
+    "Description": "희귀한 마정석 용액을 베이스로 제조된 마력 보충제. 회복 포션보다 제조가 까다롭다.",
+    "Effects": "MP +30 즉시 회복",
+    "Value": 250,
+    "Rarity": "고급"
+  },
+  {
+    "ItemName": "잊혀진 룬",
+    "ItemType": "Etc",
+    "Description": "고대 마법 문명의 유물. 표면에 해독 불명의 문자가 새겨져 있다. 학자와 마법사들에게 높은 가격에 팔린다.",
+    "Effects": "없음 (판매 전용 유물)",
+    "Value": 800,
+    "Rarity": "희귀"
+  },
+  {
+    "ItemName": "철검",
+    "ItemType": "Weapon",
+    "Description": "대장장이 조합 표준 규격으로 제작된 단순한 단검. 내구성이 좋고 손질이 쉽다.",
+    "Effects": "ATK +4",
+    "Value": 300,
+    "Rarity": "일반"
+  },
+  {
+    "ItemName": "지팡이",
+    "ItemType": "Weapon",
+    "Description": "마력 집중용 목재 지팡이. 마나 소모를 약간 줄여주는 수정이 끝에 박혀 있다.",
+    "Effects": "INT +2, MP 소비 -5%",
+    "Value": 450,
+    "Rarity": "일반"
+  },
+  {
+    "ItemName": "가죽 갑옷",
+    "ItemType": "Armor",
+    "Description": "기동성을 크게 해치지 않는 경량 방어구. 밀수업자나 척후병이 즐겨 입는다.",
+    "Effects": "DEF +3, DEX -1",
+    "Value": 380,
+    "Rarity": "일반"
+  },
+  {
+    "ItemName": "던전 지도",
+    "ItemType": "Etc",
+    "Description": "그레이펜 길드에서 발행한 아르켄 인근 던전 분포도. 오래됐지만 여전히 유용하다.",
+    "Effects": "탐색 난이도 소폭 감소 (스킬 보조)",
+    "Value": 200,
+    "Rarity": "일반"
+  }
+]

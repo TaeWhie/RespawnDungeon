@@ -28,6 +28,14 @@ public class DialogueConfigLoader
         return JsonSerializer.Deserialize<List<Character>>(File.ReadAllText(path)) ?? new();
     }
 
+    public void SaveCharacters(List<Character> characters)
+    {
+        var path = Path.Combine(_configPath, "Characters.json");
+        var options = new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+        var json = JsonSerializer.Serialize(characters, options);
+        File.WriteAllText(path, json);
+    }
+
     public TestDataRoot? LoadTestData()
     {
         var path = Path.Combine(_configPath, "TestData.json");
@@ -41,5 +49,19 @@ public class DialogueConfigLoader
         var path = Path.Combine(_configPath, "LogGlossary.json");
         if (!File.Exists(path)) return null;
         return JsonSerializer.Deserialize<LogGlossaryRoot>(File.ReadAllText(path));
+    }
+
+    public WorldLore? LoadWorldLore()
+    {
+        var path = Path.Combine(_configPath, "WorldLore.json");
+        if (!File.Exists(path)) return null;
+        return JsonSerializer.Deserialize<WorldLore>(File.ReadAllText(path));
+    }
+
+    public List<ItemData> LoadItemDatabase()
+    {
+        var path = Path.Combine(_configPath, "ItemDatabase.json");
+        if (!File.Exists(path)) return new List<ItemData>();
+        return JsonSerializer.Deserialize<List<ItemData>>(File.ReadAllText(path)) ?? new();
     }
 }

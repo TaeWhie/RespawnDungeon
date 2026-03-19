@@ -7,16 +7,23 @@ public class Character
 {
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
+    public int Age { get; set; } = 0;
     public string Role { get; set; } = "";
     public string Background { get; set; } = "";
+    public string SpeechStyle { get; set; } = "";
     public PersonalityValues Personality { get; set; } = new();
-    public List<string> FallbackLines { get; set; } = new();
 
     /// <summary>Unity CharacterData 호환 스탯. 대화에서 "체력 낮다", "MP 부족" 등 맥락으로 사용.</summary>
     public CharacterStats? Stats { get; set; }
 
     /// <summary>소지품 요약. Unity InventoryData에서 itemName + itemType + 개수로 매핑.</summary>
     public List<InventoryEntry> Inventory { get; set; } = new();
+
+    /// <summary>현재 장착 현황. 각 슬롯에 장착된 아이템명. null이면 미장착.</summary>
+    public EquipmentSlots Equipment { get; set; } = new();
+
+    /// <summary>다른 캐릭터와의 관계 데이터.</summary>
+    public List<Relationship>? Relationships { get; set; } = new();
 }
 
 /// <summary>Unity CharacterData 상태/스탯 필드와 1:1 대응.</summary>
@@ -43,6 +50,17 @@ public class InventoryEntry
     public int Count { get; set; } = 1;
 }
 
+/// <summary>장착 슬롯. 각 슬롯에 아이템명이 들어오며 null = 비어있음.</summary>
+public class EquipmentSlots
+{
+    public string? Weapon { get; set; }
+    public string? Helmet { get; set; }
+    public string? Armor { get; set; }
+    public string? Gloves { get; set; }
+    public string? Boots { get; set; }
+    public string? Accessory { get; set; }
+}
+
 public class PersonalityValues
 {
     public int Courage { get; set; }
@@ -55,4 +73,12 @@ public class PersonalityValues
     public int Focus { get; set; }
     public int Adaptability { get; set; }
     public int Frugality { get; set; }
+}
+
+public class Relationship
+{
+    public string TargetId { get; set; } = string.Empty;
+    public int Affinity { get; set; } // 친밀도 (0~100)
+    public int Trust { get; set; }    // 신뢰도 (0~100)
+    public string RelationType { get; set; } = string.Empty; // 관계 유형 (예: 소꿉친구, 비즈니스)
 }
