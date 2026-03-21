@@ -14,12 +14,34 @@ cd MiniProjects/GuildDialogue
 dotnet run
 ```
 
+### 길드 집무실 시멘틱 가드레일 점검
+
+Ollama + `Ollama.EmbeddingModel`(예: `nomic-embed-text`)이 떠 있는 상태에서:
+
+```bash
+dotnet run -- --eval-guardrail
+```
+
+- 케이스: `Config/SemanticGuardrailEval.json`
+- 앵커: `Config/SemanticGuardrailAnchors.json`
+- 임계·분리: `Retrieval`의 `GuildOfficeSemanticGuardrailThreshold`, `GuildOfficeSemanticDisambiguationMargin`, `GuildOfficeSemanticStrongAtypicalFloor`, `GuildOfficeSemanticExpeditionDisambigMin`, `GuildOfficeSemanticMetaOffEmbeddingTieEpsilon`, `UseGuildOfficeObviousKeywordTieBreak`
+- 두꺼운 원정 프롬프트(Episodic·ActionLog·RAG): `GuildOfficeExpeditionContextThreshold` + **`GuildOfficeExpeditionUseRelativeEmbeddingGate`** / **`GuildOfficeExpeditionDeepContextLead`**(원정 임베딩이 메타/오프보다 앞설 때만) + 명시 키워드(`GuildOfficeTopicGate.HasExplicitExpeditionKeywordCue`)
+
+### 길드 집무실: 발화별 실제 NPC 응답(LLM)
+
+`GuildOfficeExploration.json`의 각 `Utterance`에 대해 **집무실 1:1과 동일 프롬프트**로 Ollama 한 번씩 호출합니다(턴 격리, ActionLog 세션 미기록).
+
+```bash
+dotnet run -- --explore-guild-office-llm
+dotnet run -- --explore-guild-office-llm --buddy 리나 --max 8
+```
+
 - 설정·캐릭터: `Config/DialogueSettings.json`, `Config/Characters.json` (하드 코딩 없이 여기서 로드)
 - Ollama 사용 시: `DialogueSettings.json`의 `Ollama.Model`에 설치된 모델명(예: `llama3.2`) 지정
 
 ## 구조
 
-- **Config/** — 설정 JSON(문서 2.6 스키마), 캐릭터 JSON(스탯·인벤토리 포함, Unity CharacterData/InventoryData와 매핑 가능)
+- **Config/** — 설정 JSON(문서 2.6 스키마), 캐릭터 JSON(스탯·인벤토리·선택 필드 `Likes`/`Dislikes`/`RecentMemorableEvent` 등, Unity CharacterData/InventoryData와 매핑 가능). 던전 원정 시뮬 후 `RecentMemorableEvent`는 이번 런 로그로 한 줄 자동 갱신됨(캐릭터 DB 저장 시 반영).
 - **Data/** — `DialogueSettings`, `Character`(Stats, Inventory), `DungeonLog`, `DialogueRequest`, `LlmResponse` 등
 - **Services/** — `DialogueConfigLoader`, `PromptBuilder`, `OllamaClient`, `MemoryManager`, `DialogueManager`
 - **Program.cs** — 콘솔 진입점, GM 한 마디 → 카일 응답 → 입력 대화 루프

@@ -54,5 +54,69 @@
     "Effects": "탐색 난이도 소폭 감소 (스킬 보조)",
     "Value": 200,
     "Rarity": "일반"
+  },
+  {
+    "ItemName": "낡은 철퇴",
+    "ItemType": "Weapon",
+    "Description": "잊힌 묘지에서 나오는 녹슨 철퇴. 무겁고 둔하지만 한 방 위력은 괜찮다.",
+    "Effects": "ATK +6, SPD -2",
+    "Value": 180,
+    "Rarity": "일반"
+  },
+  {
+    "ItemName": "슬라임 점액",
+    "ItemType": "Etc",
+    "Description": "습지 동굴 슬라임에서 채집한 점액. 연금·접착제·저급 회복약 재료로 거래된다.",
+    "Effects": "없음 (제작 재료)",
+    "Value": 80,
+    "Rarity": "일반"
+  },
+  {
+    "ItemName": "희귀한 뼈 항아리",
+    "ItemType": "Etc",
+    "Description": "검은 가시 무덤 깊은 곳에서 발견되는 고대 뼈 유물. 저주나 축복이 서려 있다는 소문이 있다.",
+    "Effects": "없음 (퀘스트/판매용)",
+    "Value": 1200,
+    "Rarity": "희귀"
+  },
+  {
+    "ItemName": "마력 파편",
+    "ItemType": "Etc",
+    "Description": "던전 심핵 주변에 떨어진 마력 결정 조각. 마법 공학 재료나 화폐 대용으로 쓰인다.",
+    "Effects": "없음 (제작/거래용)",
+    "Value": 150,
+    "Rarity": "일반"
+  },
+  {
+    "ItemName": "푸른 불꽃 지팡이",
+    "ItemType": "Weapon",
+    "Description": "푸른 화염의 탑에서만 얻을 수 있는 정령의 불꽃이 깃든 지팡이.",
+    "Effects": "INT +5, 화염 계열 스킬 위력 +10%",
+    "Value": 3500,
+    "Rarity": "희귀"
+  },
+  {
+    "ItemName": "지혜의 비약",
+    "ItemType": "Etc",
+    "Description": "푸른 화염의 탑 관측실에서 발견되는 고대 연금술 비약. 일시적으로 통찰력을 높인다.",
+    "Effects": "INT +3 (30분), MP 최대치 +20 (1회)",
+    "Value": 800,
+    "Rarity": "고급"
+  },
+  {
+    "ItemName": "용의 심장 조각",
+    "ItemType": "Etc",
+    "Description": "심연의 둥지 고룡 후예에게서 얻은 심장 조각. 극한의 마력이 응축되어 있다.",
+    "Effects": "없음 (최상급 제작 재료)",
+    "Value": 15000,
+    "Rarity": "전설"
+  },
+  {
+    "ItemName": "에델가드의 눈물",
+    "ItemType": "Etc",
+    "Description": "심연의 둥지 최심부에서만 나오는 전설적 보석. 세계가 울었다는 신화에 등장한다.",
+    "Effects": "없음 (퀘스트/전설 장비 재료)",
+    "Value": 25000,
+    "Rarity": "전설"
   }
 ]

@@ -59,6 +59,12 @@ public class DungeonEvent
     /// <summary>DebuffClear 시 해제 횟수</summary>
     public int? ClearCount { get; set; }
 
+    /// <summary>TrapTypeDatabase.TrapId와 매칭(있으면 Location보다 우선).</summary>
+    public string? TrapId { get; set; }
+
+    /// <summary>로그에 실은 고정 대사(에피소드 요약에 선택 반영).</summary>
+    public List<string>? ScriptedDialogue { get; set; }
+
     /// <summary>이벤트 순서 (0,1,2… 또는 1,2,3…). 배열 인덱스와 같게 두거나, 외부 로그 ID와 동기화용으로 사용.</summary>
     public int Order { get; set; }
 

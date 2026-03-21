@@ -59,6 +59,10 @@
 
 ## 기록
 
+### 2026-03-21 — GuildDialogue PromptBuilder 무결성·참조 데이터 확장
+- `PromptBuilder`: 7B급 봉쇄 누적(지문·명단·작업 기억·최신성 편향·비서화 도피·SNAP-TRUTH·L0–L2 데이터 계층·JSON 단일 객체·BOM/선행 바이트·가짜 소유권·중복 30% 등).
+- `MiniProjects/GuildDialogue`: CharactersDatabase·ActionLog·파티/던전 참조 DB, 임베딩 RAG·길드 집무실 탐색·시맨틱 가드레일 등 설정·서비스·DTO 광범위 추가·갱신.
+
 ### 2026-03-19 — GuildDialogue 대화 강화 + 탐험 시야/조향 보정
 - `MiniProjects/GuildDialogue`: WorldLore/ItemDatabase를 로드해 프롬프트에 세계관·던전 구조·장비/인벤 효과를 주입하고, 대화 전 “사회적 인상 합성” 및 관계 업데이트 로직을 추가했으며 길드장 직접 입력 모드(콘솔 인코딩/모드 선택 포함)를 확장했습니다.
 - `Assets/_Scripts/Exploration`: ExplorationFogView에 초기 파티 시야 시딩(early full/structure 반경 + fallback) 로직을 추가하고, ExplorerAI/PartyFollower의 코너 arc 조향을 blend/측면 안전샘플링 기반으로 보정했으며 기즈모 경로 렌더링을 현재 경로 구간 기준으로 정리했습니다.

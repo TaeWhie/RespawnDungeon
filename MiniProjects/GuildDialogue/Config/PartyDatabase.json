@@ -1,0 +1,14 @@
+[
+  {
+    "PartyId": "core_fireteam",
+    "Name": "제1 추격대",
+    "Callsign": "코어",
+    "Description": "길드 주력 3인 전열. 선봉·지원·전리품/정찰 역할이 고정된 정예 소대입니다.",
+    "MemberIds": [
+      "kyle",
+      "rina",
+      "bram"
+    ],
+    "Notes": "CharactersDatabase.json 각 캐릭터의 PartyId와 동일한 키로 연결합니다. 멤버 변경 시 MemberIds와 캐릭터 PartyId를 함께 맞추세요."
+  }
+]

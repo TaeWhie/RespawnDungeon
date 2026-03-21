@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,11 +18,23 @@ public class DialogueManager
     private readonly DialogueSettings _settings;
     private WorldLore? _worldLore;
     private Dictionary<string, ItemData> _itemDb = new();
-    
+    private GameReferenceBundle _gameRefs = new();
+    private List<ActionLogEntry> _actionLogEntries = new();
+    private EmbeddingKnowledgeIndex? _embeddingIndex;
+    private OllamaEmbeddingClient? _embeddingClient;
+    private GuildOfficeSemanticGuardrail? _guildOfficeSemanticGuardrail;
+
+    /// <summary>탐색·테스트용 로드된 캐릭터 목록.</summary>
+    public IReadOnlyList<Character> Characters => _characters;
+
     private List<Character> _characters = new();
     private Dictionary<string, Character> _charMap = new();
     private Dictionary<string, string> _lastLineByChar = new();
     private Dictionary<string, string> _currentImpressions = new();
+    private Dictionary<string, List<string>> _perspectiveLinesByCharacterId = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>메뉴 1·2 세션 전체 대화(ActionLog 저장용). 워킹 메모리와 별개로 누적.</summary>
+    private readonly List<DialogueTurn> _sessionDialogueForLog = new();
 
     public DialogueManager()
     {
@@ -32,21 +46,275 @@ public class DialogueManager
         _memory = new MemoryManager(glossary);
     }
 
-    public async Task InitializeAsync()
+    public async Task InitializeAsync(CancellationToken ct = default)
     {
         _characters = _loader.LoadCharacters();
-        _charMap = _characters.ToDictionary(c => c.Name);
+        _charMap = new Dictionary<string, Character>(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in _characters)
+        {
+            _charMap[c.Name] = c;
+            if (!string.IsNullOrWhiteSpace(c.Id))
+                _charMap[c.Id] = c;
+        }
+
         _worldLore = _loader.LoadWorldLore();
         _itemDb = _loader.LoadItemDatabase()
             .ToDictionary(i => i.ItemName, StringComparer.OrdinalIgnoreCase);
-        
-        var testData = _loader.LoadTestData();
-        if (testData?.ActionLog != null)
+
+        _gameRefs = new GameReferenceBundle
         {
-            var parsedLogs = ActionLogBuilder.Build(testData.ActionLog);
-            var allDungeonLogs = parsedLogs.DungeonLogsByCharacter.SelectMany(kvp => kvp.Value).Distinct().ToList();
-            _memory.BuildEpisodicBuffer(allDungeonLogs);
+            Bases = _loader.LoadBaseDatabase(),
+            Monsters = _loader.LoadMonsterDatabase(),
+            Skills = _loader.LoadSkillDatabase(),
+            Traps = _loader.LoadTrapTypeDatabase(),
+            EventTypes = _loader.LoadEventTypeDatabase(),
+            Parties = _loader.LoadPartyDatabase()
+        };
+
+        var timeline = _loader.LoadTimelineData();
+        _actionLogEntries = timeline?.ActionLog?.OrderBy(e => e.Order).ToList() ?? new List<ActionLogEntry>();
+
+        if (timeline?.ActionLog != null)
+        {
+            var parsedLogs = ActionLogBuilder.Build(timeline.ActionLog);
+            var allDungeonLogs = parsedLogs.DungeonLogsByCharacter
+                .SelectMany(kvp => kvp.Value)
+                .Distinct()
+                .ToList();
+            var monsterByName = _gameRefs.Monsters
+                .GroupBy(m => m.MonsterName, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+            var idToName = _characters
+                .Where(c => !string.IsNullOrWhiteSpace(c.Id))
+                .ToDictionary(c => c.Id, c => c.Name, StringComparer.OrdinalIgnoreCase);
+            var episodicCtx = new EpisodicNarrativeContext
+            {
+                MonstersByLocalizedName = monsterByName,
+                TrapTypes = _gameRefs.Traps,
+                CharacterIdToDisplayName = idToName
+            };
+            _memory.BuildEpisodicBuffer(allDungeonLogs, parsedLogs.BaseLogs, episodicCtx);
         }
+
+        RebuildPerspectiveMemoryCache();
+
+        var retrieval = _settings.Retrieval ?? new RetrievalSettings();
+        if (retrieval.UseEmbeddingRag)
+        {
+            try
+            {
+                _embeddingClient?.Dispose();
+                _embeddingClient = new OllamaEmbeddingClient(_settings);
+                _embeddingIndex = new EmbeddingKnowledgeIndex();
+                var items = _itemDb.Values.ToList();
+                Console.WriteLine($"[시스템] 참조 지식 임베딩 인덱스 구축 중… (모델: {_embeddingClient.Model})");
+                var ok = await _embeddingIndex.BuildAsync(
+                    _embeddingClient,
+                    _worldLore,
+                    _gameRefs.Monsters,
+                    _gameRefs.Traps,
+                    _gameRefs.Skills,
+                    items,
+                    _characters,
+                    ct).ConfigureAwait(false);
+                Console.WriteLine(ok
+                    ? "[시스템] 임베딩 인덱스 준비 완료."
+                    : "[시스템] 임베딩 실패 — 키워드 RAG로 대체합니다. Ollama EmbeddingModel(예: nomic-embed-text)을 확인하세요.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[시스템] 임베딩 인덱스 오류: {ex.Message}");
+                _embeddingIndex = null;
+            }
+        }
+
+        if (retrieval.UseGuildOfficeSemanticGuardrail)
+        {
+            try
+            {
+                if (_embeddingClient == null)
+                    _embeddingClient = new OllamaEmbeddingClient(_settings);
+                _guildOfficeSemanticGuardrail = new GuildOfficeSemanticGuardrail();
+                var anchorDb = _loader.LoadSemanticGuardrailAnchors();
+                await _guildOfficeSemanticGuardrail.WarmupAsync(_embeddingClient, anchorDb, ct).ConfigureAwait(false);
+                Console.WriteLine("[시스템] 길드 집무실 세만틱 가드레일(임베딩 앵커) 준비됨.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[시스템] 세만틱 가드레일 생략: {ex.Message}");
+                _guildOfficeSemanticGuardrail = null;
+            }
+        }
+    }
+
+    private async Task<string> ResolveReferenceKnowledgeRagAsync(
+        string workingMemory,
+        Character speaker,
+        CancellationToken ct)
+    {
+        var retrieval = _settings.Retrieval ?? new RetrievalSettings();
+        var query = GameKnowledgeRetriever.BuildRetrievalQuery(
+            workingMemory,
+            _memory.EpisodicBuffer,
+            speaker,
+            retrieval);
+
+        if (retrieval.UseEmbeddingRag && _embeddingIndex != null && _embeddingIndex.IsReady && _embeddingClient != null)
+        {
+            var emb = await _embeddingIndex.RetrieveFormattedAsync(
+                _embeddingClient,
+                query,
+                retrieval.RagSearchPoolSize,
+                ct).ConfigureAwait(false);
+            if (!string.IsNullOrWhiteSpace(emb))
+                return emb;
+        }
+
+        if (retrieval.UseKeywordRagForGameDb)
+            return GameKnowledgeRetriever.BuildBlock(
+                workingMemory,
+                _memory.EpisodicBuffer,
+                speaker,
+                _gameRefs,
+                _worldLore,
+                _itemDb.Values,
+                retrieval);
+
+        return "";
+    }
+
+    private string BuildLatestActionLogForPrompt()
+    {
+        var retrieval = _settings.Retrieval ?? new RetrievalSettings();
+        if (retrieval.UseActionLogNarrativeProse)
+        {
+            var idToName = _characters
+                .Where(c => !string.IsNullOrWhiteSpace(c.Id))
+                .ToDictionary(c => c.Id, c => c.Name, StringComparer.OrdinalIgnoreCase);
+            return ActionLogNarrativeFormatter.FormatForSystemPrompt(
+                _actionLogEntries,
+                _gameRefs.Bases,
+                idToName,
+                retrieval.ActionLogNarrativeMaxDungeonRuns,
+                retrieval.ActionLogNarrativeMaxChars);
+        }
+
+        return LatestActionLogFormatter.FormatTailForSystemPrompt(
+            _actionLogEntries,
+            retrieval.LatestActionLogEntriesInPrompt);
+    }
+
+    private void RebuildPerspectiveMemoryCache()
+    {
+        var retrieval = _settings.Retrieval ?? new RetrievalSettings();
+        _perspectiveLinesByCharacterId = retrieval.UsePerspectiveMemoryInPrompt
+            ? CharacterPerspectiveMemoryBuilder.BuildByCharacterId(
+                _actionLogEntries,
+                _characters,
+                retrieval.PerspectiveMemoryMaxLinesPerCharacter)
+            : new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+        if (!retrieval.UsePerspectiveMemoryInPrompt ||
+            string.IsNullOrWhiteSpace(retrieval.PerspectiveMemoryExportPath))
+            return;
+
+        try
+        {
+            var exportRaw = retrieval.PerspectiveMemoryExportPath!;
+            var full = Path.IsPathRooted(exportRaw)
+                ? exportRaw
+                : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, exportRaw));
+
+            var actionLogCanonical = Path.GetFullPath(
+                Path.Combine(DialogueConfigLoader.ResolveDefaultConfigDirectory(), "ActionLog.json"));
+            if (string.Equals(Path.GetFullPath(full), actionLogCanonical, StringComparison.OrdinalIgnoreCase))
+            {
+                Console.WriteLine(
+                    "[시스템] PerspectiveMemoryExportPath가 Config의 ActionLog.json과 같으면 행동 로그 형식이 깨집니다. Logs/ 등 다른 파일을 지정하세요. 덤프를 건너뜁니다.");
+                return;
+            }
+
+            var dir = Path.GetDirectoryName(full);
+            if (!string.IsNullOrEmpty(dir))
+                Directory.CreateDirectory(dir);
+
+            var json = JsonSerializer.Serialize(_perspectiveLinesByCharacterId, new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            });
+            File.WriteAllText(full, json);
+            Console.WriteLine($"[시스템] 화자 관점 메모리 덤프: {full}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[시스템] 관점 메모리 덤프 실패: {ex.Message}");
+        }
+    }
+
+    private string? BuildPerspectiveMemoryForSpeaker(Character speaker)
+    {
+        var retrieval = _settings.Retrieval ?? new RetrievalSettings();
+        if (!retrieval.UsePerspectiveMemoryInPrompt)
+            return null;
+
+        var block = CharacterPerspectiveMemoryBuilder.FormatBlockForSpeaker(
+            speaker.Id,
+            _perspectiveLinesByCharacterId,
+            retrieval.PerspectiveMemoryMaxLinesPerCharacter);
+
+        return string.IsNullOrWhiteSpace(block) ? null : block;
+    }
+
+    private static string InferBaseLocationFromWorldState(string? worldState)
+    {
+        var ws = worldState ?? "";
+        if (ws.Contains("집무실")) return "reception";
+        if (ws.Contains("식당")) return "cafeteria";
+        if (ws.Contains("훈련")) return "training_ground";
+        if (ws.Contains("게시") || ws.Contains("의뢰")) return "quest_board";
+        if (ws.Contains("접수")) return "reception";
+        return "main_hall";
+    }
+
+    /// <summary>콘솔 대화(메뉴 1·2) 종료 직전, 워킹 메모리를 ActionLog에 Base/talk 한 건으로 추가합니다.</summary>
+    private void PersistDialogueSessionToActionLogIfEnabled(string worldState, string sessionLabel)
+    {
+        var retrieval = _settings.Retrieval ?? new RetrievalSettings();
+        if (!retrieval.PersistDialogueSessionsToActionLog)
+            return;
+
+        var turns = _sessionDialogueForLog.Count > 0
+            ? (IReadOnlyList<DialogueTurn>)_sessionDialogueForLog.ToList()
+            : _memory.GetWorkingMemoryTurns();
+        if (turns.Count == 0)
+            return;
+
+        try
+        {
+            var existing = _loader.LoadTimelineData();
+            var loc = InferBaseLocationFromWorldState(worldState);
+            var merged = ActionLogPersistence.AppendGuildDialogueSession(existing, loc, turns, sessionLabel);
+            _loader.SaveActionLog(merged);
+            _actionLogEntries = merged.ActionLog.OrderBy(e => e.Order).ToList();
+            RebuildPerspectiveMemoryCache();
+            Console.WriteLine(
+                $"[시스템] 대화가 ActionLog.json에 반영되었습니다. (Type=Base, EventType=talk, Location={loc}, 턴 {turns.Count})");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[시스템] ActionLog 대화 저장 실패: {ex.Message}");
+        }
+        finally
+        {
+            _sessionDialogueForLog.Clear();
+        }
+    }
+
+    private void LogSessionLineForActionLog(string speaker, string line)
+    {
+        if (string.IsNullOrWhiteSpace(line)) return;
+        _sessionDialogueForLog.Add(new DialogueTurn { Speaker = speaker, Line = line.Trim() });
     }
 
     public async Task RunInteractiveSessionAsync(CancellationToken ct = default)
@@ -68,7 +336,8 @@ public class DialogueManager
             return;
         }
 
-        string worldState = "장소: 길드 아지트 식당\n시간: 저녁\n함께 있는 동료: 카일, 리나, 브람\n상황: 던전 탐험을 무사히 마치고 식사하며 휴식 중입니다.";
+        _sessionDialogueForLog.Clear();
+        const string worldState = "장소: 길드 아지트 식당\n시간: 저녁\n함께 있는 동료: 카일, 리나, 브람\n상황: 던전 탐험을 무사히 마치고 식사하며 휴식 중입니다.";
         
         Console.WriteLine("[시스템] 최근 사건을 바탕으로 사회적 인상을 합성 중...");
         _currentImpressions = await SynthesizeSocialImpressionsAsync(_memory.EpisodicBuffer, ct);
@@ -100,7 +369,27 @@ public class DialogueManager
             string? lastLine = _lastLineByChar.GetValueOrDefault(turn.Speaker.Name);
             string? currentImpression = _currentImpressions.GetValueOrDefault($"{turn.Speaker.Id}->{turn.Listener.Id}");
 
-            string sysPrompt = PromptBuilder.BuildSystemPrompt(turn.Speaker, turn.Listener, worldState, _memory.EpisodicBuffer, archivalMem, _settings, _worldLore, _itemDb, lastLine, currentImpression, false);
+            var latestLog = BuildLatestActionLogForPrompt();
+            var codeDef = CodeDefinitionInstructions.Build(_gameRefs);
+            var ragBlock = await ResolveReferenceKnowledgeRagAsync(workingMem, turn.Speaker, ct);
+
+            var partyRoster = PartyRosterResolver.ResolveForPrompt(_characters, turn.Speaker);
+            string sysPrompt = PromptBuilder.BuildSystemPrompt(
+                turn.Speaker,
+                turn.Listener,
+                worldState,
+                _memory.EpisodicBuffer,
+                archivalMem,
+                _settings,
+                partyRoster,
+                latestLog,
+                codeDef,
+                BuildPerspectiveMemoryForSpeaker(turn.Speaker),
+                lastLine,
+                currentImpression,
+                false,
+                ragBlock,
+                _gameRefs);
             string userPrompt = PromptBuilder.BuildUserPrompt(workingMem, isFirstTurn ? randomTopic : null, isFinalTurn, turnIndex);
             isFirstTurn = false;
 
@@ -120,73 +409,345 @@ public class DialogueManager
                     
                     _memory.AddWorkingMemory(turn.Speaker.Name, generatedLine);
                     _lastLineByChar[turn.Speaker.Name] = generatedLine;
+                    LogSessionLineForActionLog(turn.Speaker.Name, generatedLine);
                 }
             }
             catch { }
         }
         
         Console.WriteLine("========== 대화 세션 종료 ==========");
-        await UpdateSocialSettlementAsync(ct);
+        PersistDialogueSessionToActionLogIfEnabled(worldState, "동료 간 자동 대화");
+        await UpdateSocialSettlementAsync(ct, null);
     }
 
     public async Task RunGuildMasterSessionAsync(CancellationToken ct = default)
     {
         Console.WriteLine("========== 길드장 집무실: 동료들과의 대화 ==========");
-        Console.WriteLine("(팁: @kyle @rina @bram 태그로 대화 상대를 지정할 수 있습니다.)");
-        Console.WriteLine("(팁: 대화를 마치려면 'exit' 또는 'end'를 입력하세요.)\n");
+        Console.WriteLine("(팁: 먼저 대화할 동료를 고릅니다. 이후에는 그 동료와만 이어집니다.)");
+        Console.WriteLine("(팁: 대화 중 다른 동료로 바꾸려면 'change' 또는 '바꿔'를 입력하세요.)");
+        Console.WriteLine("(팁: 집무실을 나가려면 exit, 나가, 나가 그냥, 그만, 대화 끝 등)\n");
 
         if (_characters.Count == 0) return;
 
+        var selectable = _characters
+            .Where(c => !string.Equals(c.Id, "master", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (selectable.Count == 0)
+        {
+            Console.WriteLine("[오류] 대화 가능한 동료 캐릭터가 없습니다.");
+            return;
+        }
+
+        _sessionDialogueForLog.Clear();
         var masterChar = new Character { Id = "master", Name = "길드장", Role = "Guild Master" };
-        string worldState = "장소: 길드장 집무실\n상황: 던전 탐험을 마친 동료들이 길드장에게 보고하거나 대화를 나누러 왔습니다.";
+        const string baseWorldState =
+            "장소: 길드장 집무실\n상황: 던전 탐험을 마친 뒤 동료가 길드장에게 보고하거나 대화를 나누러 집무실을 찾아왔습니다.";
 
         while (!ct.IsCancellationRequested)
         {
-            Console.Write("[길드장] ");
-            string? userInput = ReadConsoleLine();
-
-            if (string.IsNullOrWhiteSpace(userInput)) continue;
-            
-            string normalized = userInput.Trim().ToLower();
-            if (normalized == "exit" || normalized == "end" || normalized == "quit" || normalized == "종료") break;
-
-            _memory.AddWorkingMemory("길드장", userInput);
-
-            Character respondent = PickRespondent(userInput);
-            
-            Console.WriteLine($"[시스템] {respondent.Name}이(가) 생각을 정리 중...");
-
-            string workingMem = _memory.GetWorkingMemoryContext();
-            string archivalMem = _memory.RetrieveArchivalMemoryContext(workingMem);
-            string? lastLine = _lastLineByChar.GetValueOrDefault(respondent.Name);
-            string? currentImpression = _currentImpressions.GetValueOrDefault($"{respondent.Id}->master");
-
-            string sysPrompt = PromptBuilder.BuildSystemPrompt(respondent, masterChar, worldState, _memory.EpisodicBuffer, archivalMem, _settings, _worldLore, _itemDb, lastLine, currentImpression, true);
-            string userPrompt = PromptBuilder.BuildUserPrompt(workingMem, null, false, 0);
-
-            try {
-                string? responseText = await _ollama.GenerateResponseAsync(sysPrompt, userPrompt, ct);
-                if (string.IsNullOrWhiteSpace(responseText)) continue;
-
-                var cleanJson = CleanJsonResponse(responseText);
-
-                using var doc = JsonDocument.Parse(cleanJson);
-                var root = doc.RootElement;
-                if (root.TryGetProperty("line", out var lineProp))
-                {
-                    string generatedLine = lineProp.GetString() ?? "";
-                    Console.WriteLine($"[{respondent.Name}] {generatedLine}\n");
-                    
-                    _memory.AddWorkingMemory(respondent.Name, generatedLine);
-                    _lastLineByChar[respondent.Name] = generatedLine;
-                }
-            } catch (Exception ex) {
-                Console.WriteLine($"[오류] 응답 생성 또는 처리 중 문제가 발생했습니다: {ex.Message}");
+            if (!TryPromptGuildOfficeBuddySelection(selectable, ct, out Character? respondent) || respondent is null)
+            {
+                Console.WriteLine("(집무실을 나갑니다.)");
+                break;
             }
+
+            Console.WriteLine($"\n──────── 현재 대화 상대: {respondent.Name} (1:1) ────────\n");
+
+            // 다른 동료와 섞인 맥락·착각 방지: 상대를 바꿀 때마다 워킹 메모리는 새로 시작
+            _memory.ClearWorkingMemory();
+
+            var leaveOffice = false;
+            while (!ct.IsCancellationRequested)
+            {
+                Console.Write("[길드장] ");
+                string? userInput = ReadConsoleLine();
+
+                if (string.IsNullOrWhiteSpace(userInput)) continue;
+                userInput = NormalizeConsoleInputLine(userInput);
+
+                // 파이프·리다이렉트 입력 시에는 화면에 한 줄이 안 보일 수 있어 동일 내용을 한 번 더 출력
+                if (Console.IsInputRedirected)
+                    Console.WriteLine(userInput);
+
+                if (GuildOfficeTopicGate.IsGuildOfficeExitRoomCommand(userInput))
+                {
+                    Console.WriteLine("(집무실을 나갑니다.)");
+                    leaveOffice = true;
+                    break;
+                }
+
+                string normalized = userInput.Trim().ToLowerInvariant();
+                if (normalized is "change" or "바꿔" or "바꾸기" or "상대")
+                    break;
+
+                string worldState =
+                    $"{baseWorldState}\n현재: 길드장과 {respondent.Name}만 집무실에 있으며 1:1로 대화 중입니다.";
+
+                _memory.AddWorkingMemory("길드장", userInput);
+                LogSessionLineForActionLog("길드장", userInput);
+
+                Console.WriteLine($"[시스템] {respondent.Name}이(가) 생각을 정리 중...");
+
+                var turnResult = await GenerateGuildOfficeBuddyReplyAsync(
+                    respondent,
+                    masterChar,
+                    worldState,
+                    userInput,
+                    persistBuddyLineToSession: true,
+                    ct).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(turnResult.BuddyLine))
+                    Console.WriteLine($"[{respondent.Name}] {turnResult.BuddyLine}\n");
+                else if (!string.IsNullOrWhiteSpace(turnResult.ErrorMessage))
+                    Console.WriteLine($"[오류] 응답·파싱 중 문제: {turnResult.ErrorMessage}");
+            }
+
+            if (leaveOffice) break;
         }
 
         Console.WriteLine("========== 상호작용 세션 종료 ==========");
-        await UpdateSocialSettlementAsync(ct);
+        string settlementHistory = FormatDialogueTurnsForSettlement(_sessionDialogueForLog);
+        PersistDialogueSessionToActionLogIfEnabled(baseWorldState, "길드장 상호작용");
+        await UpdateSocialSettlementAsync(ct, settlementHistory);
+    }
+
+    /// <summary>
+    /// 워킹 메모리에 길드장 발화가 이미 반영된 상태에서 NPC 한 줄 생성(집무실 1:1과 동일 파이프라인).
+    /// </summary>
+    public async Task<GuildOfficeLlmTurnResult> GenerateGuildOfficeBuddyReplyAsync(
+        Character respondent,
+        Character masterChar,
+        string worldState,
+        string userUtterance,
+        bool persistBuddyLineToSession,
+        CancellationToken ct = default)
+    {
+        string workingMem = _memory.GetWorkingMemoryContext();
+        string archivalMem = _memory.RetrieveArchivalMemoryContext(workingMem);
+        string? lastLine = _lastLineByChar.GetValueOrDefault(respondent.Name);
+        string? currentImpression = _currentImpressions.GetValueOrDefault($"{respondent.Id}->master");
+
+        var retrievalGm = _settings.Retrieval ?? new RetrievalSettings();
+        var signals = await GuildOfficeTopicGate.ResolveGuildOfficeSignalsAsync(
+            userUtterance,
+            _guildOfficeSemanticGuardrail,
+            _embeddingClient,
+            _ollama,
+            _settings,
+            ct).ConfigureAwait(false);
+        var atypicalKind = signals.AtypicalKind;
+        bool guardrailReady = retrievalGm.UseGuildOfficeSemanticGuardrail &&
+            _guildOfficeSemanticGuardrail?.IsReady == true &&
+            _embeddingClient != null;
+        bool deepExpedition = GuildOfficeTopicGate.ComputeDeepExpeditionForGuildOffice(
+            userUtterance,
+            signals,
+            retrievalGm,
+            guardrailReady);
+        bool frustrationStop = GuildOfficeTopicGate.LooksLikeGuildMasterFrustrationOrStop(userUtterance);
+        bool deepExpeditionEffective = deepExpedition && !frustrationStop;
+        double sigMeta = signals.MetaSimilarity;
+        double sigOff = signals.OffWorldSimilarity;
+        double sigExp = signals.ExpeditionContextSimilarity;
+        string episodicForPrompt = deepExpeditionEffective
+            ? _memory.EpisodicBuffer
+            : "[시스템 — 일상 대화 턴] 던전 서사(Episodic)는 응답을 방해하지 않도록 생략함. 던전·전투·로그 인용 금지.";
+        string latestLogForPrompt = deepExpeditionEffective
+            ? BuildLatestActionLogForPrompt()
+            : "[시스템 — 일상 대화 턴] ActionLog 최신 블록 생략. 길드장이 작전·던전을 묻기 전까지 인용 금지.";
+        string? perspectiveForPrompt =
+            deepExpeditionEffective ? BuildPerspectiveMemoryForSpeaker(respondent) : null;
+        string ragBlock = deepExpeditionEffective
+            ? await ResolveReferenceKnowledgeRagAsync(workingMem, respondent, ct).ConfigureAwait(false)
+            : string.Empty;
+
+        var codeDef = CodeDefinitionInstructions.Build(_gameRefs);
+        var partyRosterGm = PartyRosterResolver.ResolveForGuildMasterOneOnOne(respondent);
+        string sysPrompt = PromptBuilder.BuildSystemPrompt(
+            respondent,
+            masterChar,
+            worldState,
+            episodicForPrompt,
+            archivalMem,
+            _settings,
+            partyRosterGm,
+            latestLogForPrompt,
+            codeDef,
+            perspectiveForPrompt,
+            lastLine,
+            currentImpression,
+            true,
+            ragBlock,
+            _gameRefs,
+            guildMasterOneOnOneScene: true,
+            guildMasterAtypicalKind: atypicalKind,
+            guildOfficePersonaHijackCue: BuildShortWorldLoreCueForGuildOffice(_worldLore),
+            guildMasterDeepExpeditionTurn: deepExpeditionEffective,
+            guildMasterFrustrationStopTurn: frustrationStop);
+        string userPrompt = PromptBuilder.BuildGuildMasterInteractiveUserPrompt(
+            workingMem,
+            userUtterance,
+            respondent.Name,
+            atypicalKind,
+            deepExpeditionTurn: deepExpeditionEffective,
+            frustrationStopTurn: frustrationStop);
+
+        string? preview = null;
+        try
+        {
+            string? responseText = await _ollama.GenerateResponseAsync(sysPrompt, userPrompt, ct).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(responseText))
+                return new GuildOfficeLlmTurnResult(null, atypicalKind, deepExpeditionEffective, "모델 빈 응답", null, sigMeta, sigOff, sigExp);
+
+            preview = responseText.Length > 220 ? responseText[..220] + "…" : responseText;
+            var cleanJson = CleanJsonResponse(responseText);
+
+            using var doc = JsonDocument.Parse(cleanJson);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("line", out var lineProp))
+                return new GuildOfficeLlmTurnResult(null, atypicalKind, deepExpeditionEffective, "JSON에 line 필드 없음", preview, sigMeta, sigOff, sigExp);
+
+            string generatedLine = lineProp.GetString() ?? "";
+            if (persistBuddyLineToSession)
+            {
+                _memory.AddWorkingMemory(respondent.Name, generatedLine);
+                _lastLineByChar[respondent.Name] = generatedLine;
+                LogSessionLineForActionLog(respondent.Name, generatedLine);
+            }
+
+            return new GuildOfficeLlmTurnResult(generatedLine, atypicalKind, deepExpeditionEffective, null, null, sigMeta, sigOff, sigExp);
+        }
+        catch (Exception ex)
+        {
+            return new GuildOfficeLlmTurnResult(null, atypicalKind, deepExpeditionEffective, ex.Message, preview, sigMeta, sigOff, sigExp);
+        }
+    }
+
+    /// <summary>한 턴만 격리(워킹 메모리·상대 마지막 대사 초기화 후 LLM 호출). ActionLog 세션에는 남기지 않음.</summary>
+    public async Task<GuildOfficeLlmTurnResult> RunIsolatedGuildOfficeLlmTurnAsync(
+        Character respondent,
+        string userUtterance,
+        string baseWorldState,
+        CancellationToken ct = default)
+    {
+        _memory.ClearWorkingMemory();
+        if (!string.IsNullOrWhiteSpace(respondent.Name))
+            _lastLineByChar.Remove(respondent.Name);
+        _memory.AddWorkingMemory("길드장", userUtterance);
+
+        var masterChar = new Character { Id = "master", Name = "길드장", Role = "Guild Master" };
+        string worldState =
+            $"{baseWorldState}\n현재: 길드장과 {respondent.Name}만 집무실에 있으며 1:1로 대화 중입니다.";
+
+        return await GenerateGuildOfficeBuddyReplyAsync(
+            respondent,
+            masterChar,
+            worldState,
+            userUtterance,
+            persistBuddyLineToSession: false,
+            ct).ConfigureAwait(false);
+    }
+
+    /// <summary>WorldLore에서 골렘/마공 등 ‘메타를 세계관으로 흡수’할 힌트 한 덩어리.</summary>
+    private static string? BuildShortWorldLoreCueForGuildOffice(WorldLore? w)
+    {
+        if (w == null) return null;
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(w.WorldName)) parts.Add(w.WorldName);
+        if (!string.IsNullOrWhiteSpace(w.GuildInfo)) parts.Add(w.GuildInfo);
+        if (!string.IsNullOrWhiteSpace(w.BaseCamp)) parts.Add("거점 " + w.BaseCamp);
+        var luminis = w.Locations?.FirstOrDefault(l =>
+            l.Name.Contains("루미니스", StringComparison.OrdinalIgnoreCase));
+        if (luminis != null)
+            parts.Add($"{luminis.Name}: {luminis.Description}");
+
+        var golemDungeon = w.Dungeons?.FirstOrDefault(d =>
+            d.TypicalMonsters?.Any(m => m.Contains("골렘", StringComparison.OrdinalIgnoreCase)) == true);
+        if (golemDungeon != null)
+            parts.Add($"{golemDungeon.Name} 등에 골렘·마법 자동체 설정.");
+
+        return parts.Count == 0 ? null : string.Join(' ', parts);
+    }
+
+    private static string FormatDialogueTurnsForSettlement(IReadOnlyList<DialogueTurn> turns)
+    {
+        if (turns == null || turns.Count == 0) return "(대화 없음)";
+        var sb = new System.Text.StringBuilder();
+        foreach (var t in turns)
+            sb.AppendLine($"{t.Speaker}: \"{t.Line}\"");
+        return sb.ToString().TrimEnd();
+    }
+
+    /// <summary>집무실: 번호·이름·Id로 동료를 고릅니다. exit 계열이면 false.</summary>
+    private bool TryPromptGuildOfficeBuddySelection(
+        IReadOnlyList<Character> selectable,
+        CancellationToken ct,
+        out Character? respondent)
+    {
+        respondent = null;
+        while (!ct.IsCancellationRequested)
+        {
+            Console.WriteLine("대화할 동료를 선택하세요:");
+            for (int i = 0; i < selectable.Count; i++)
+            {
+                var c = selectable[i];
+                string idPart = string.IsNullOrWhiteSpace(c.Id) ? "" : $" [{c.Id}]";
+                Console.WriteLine($"  {i + 1}. {c.Name}{idPart}");
+            }
+
+            Console.WriteLine("  (나가기: exit)\n선택> ");
+
+            string? line = ReadConsoleLine();
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                Console.WriteLine("(번호 또는 이름/Id를 입력하세요.)\n");
+                continue;
+            }
+
+            string trimmed = NormalizeConsoleInputLine(line);
+            string low = trimmed.ToLowerInvariant();
+            if (low is "exit" or "end" or "quit" or "종료")
+                return false;
+
+            if (int.TryParse(trimmed, System.Globalization.NumberStyles.Integer, null, out int n) &&
+                n >= 1 && n <= selectable.Count)
+            {
+                respondent = selectable[n - 1];
+                return true;
+            }
+
+            var digitsOnly = new string(trimmed.Where(c => c is >= '0' and <= '9').ToArray());
+            if (digitsOnly.Length > 0 && digitsOnly.Length <= 3 &&
+                int.TryParse(digitsOnly, System.Globalization.NumberStyles.Integer, null, out int n2) &&
+                n2 >= 1 && n2 <= selectable.Count)
+            {
+                respondent = selectable[n2 - 1];
+                return true;
+            }
+
+            Character? match = selectable.FirstOrDefault(c =>
+                (!string.IsNullOrWhiteSpace(c.Id) &&
+                 c.Id.Equals(trimmed, StringComparison.OrdinalIgnoreCase)) ||
+                c.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+
+            if (match != null)
+            {
+                respondent = match;
+                return true;
+            }
+
+            Console.WriteLine("[시스템] 목록에 없는 선택입니다. 번호 또는 이름/Id를 다시 입력하세요.\n");
+        }
+
+        return false;
+    }
+
+    /// <summary>ReadConsoleW·콘솔 입력 공통: BOM/제로폭 제거 후 Trim.</summary>
+    private static string NormalizeConsoleInputLine(string? line)
+    {
+        if (string.IsNullOrEmpty(line)) return line ?? "";
+        var t = line.Trim().Trim('\uFEFF');
+        t = t.Replace("\u200B", "").Replace("\u200C", "").Replace("\u200D", "");
+        return t.Trim();
     }
 
     [System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
@@ -208,11 +769,17 @@ public class DialogueManager
                 {
                     // 버퍼 크기를 넉넉하게 확장 (2048 chars)
                     var sb = new System.Text.StringBuilder(2048);
-                    if (ReadConsoleW(hInput, sb, (uint)sb.Capacity, out uint charsRead, IntPtr.Zero))
+                    if (ReadConsoleW(hInput, sb, (uint)sb.Capacity, out uint charsRead, IntPtr.Zero) &&
+                        charsRead > 0)
                     {
-                        string result = sb.ToString();
-                        // 개행 문자 처리 (\r\n 제거)
-                        return result.Replace("\r", "").Replace("\n", "");
+                        // ReadConsoleW는 lpNumberOfCharsRead만큼만 유효. 전체 ToString()은 널 패딩·잔여 문자로
+                        // "1" 파싱 실패·동료 선택 오류를 유발할 수 있음.
+                        string raw = sb.ToString();
+                        int z = raw.IndexOf('\0');
+                        if (z >= 0) raw = raw.Substring(0, z);
+                        if (raw.Length > (int)charsRead)
+                            raw = raw.Substring(0, (int)charsRead);
+                        return raw.TrimEnd('\r', '\n', ' ').Trim();
                     }
                 }
             }
@@ -251,27 +818,6 @@ public class DialogueManager
         return cleanJson.Trim();
     }
 
-    private Character PickRespondent(string userInput)
-    {
-        string normalized = userInput.ToLower();
-        
-        if (normalized.Contains("@kyle")) return _characters.FirstOrDefault(c => c.Id == "kyle") ?? _characters[0];
-        if (normalized.Contains("@rina")) return _characters.FirstOrDefault(c => c.Id == "rina") ?? _characters[0];
-        if (normalized.Contains("@bram")) return _characters.FirstOrDefault(c => c.Id == "bram") ?? _characters[0];
-
-        if (normalized.StartsWith("1")) return _characters[0];
-        if (normalized.StartsWith("2") && _characters.Count > 1) return _characters[1];
-        if (normalized.StartsWith("3") && _characters.Count > 2) return _characters[2];
-
-        foreach (var c in _characters)
-        {
-            if (userInput.IndexOf(c.Name, StringComparison.OrdinalIgnoreCase) >= 0) return c;
-        }
-
-        var random = new Random();
-        return _characters[random.Next(_characters.Count)];
-    }
-
     private async Task<Dictionary<string, string>> SynthesizeSocialImpressionsAsync(string episodicBuffer, CancellationToken ct)
     {
         var impressions = new Dictionary<string, string>();
@@ -293,12 +839,19 @@ public class DialogueManager
         return impressions;
     }
 
-    private async Task UpdateSocialSettlementAsync(CancellationToken ct)
+    private async Task UpdateSocialSettlementAsync(CancellationToken ct, string? dialogueHistoryOverride)
     {
         Console.WriteLine("[시스템] 대화 내용을 바탕으로 관계 변화를 분석 중...");
-        string history = _memory.GetWorkingMemoryContext();
+        string history = dialogueHistoryOverride ?? _memory.GetWorkingMemoryContext();
         
-        string systemPrompt = @"당신은 캐릭터 간의 사회적 상호작용을 분석하는 심리 전문가입니다. {A->B: {affinity: X, trust: Y}} 형식의 JSON으로만 응답하세요.";
+        string systemPrompt =
+            "당신은 캐릭터 간의 사회적 상호작용을 분석하는 심리 전문가입니다.\n" +
+            "반드시 **객체 하나(JSON object)**만 출력하세요. 다른 설명 금지.\n" +
+            "키 형식: `화자Id->대상Id` (영문 Id만, 화살표 -> 포함). 값은 객체 `{ \"affinity\": 정수, \"trust\": 정수 }`.\n" +
+            "affinity/trust는 **이번 대화로 인한 변화량**(델타, -5~+5 권장). 변화 없으면 0.\n" +
+            "예시: {\"kyle->rina\":{\"affinity\":0,\"trust\":1}}\n" +
+            "대화에 등장한 관계만 넣으세요. 존재하지 않는 Id를 만들지 마세요.";
+
         string userPrompt = $"[최근 대화 내역]\n{history}";
 
         string? response = await _ollama.GenerateResponseAsync(systemPrompt, userPrompt, ct);
@@ -306,40 +859,87 @@ public class DialogueManager
 
         try {
             string cleanJson = CleanJsonResponse(response);
-            
-            // Try flexible deserialization
-            var options = new JsonSerializerOptions 
-            { 
-                AllowTrailingCommas = true, 
-                PropertyNameCaseInsensitive = true,
-                NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
-            };
-            var deltas = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, int>>>(cleanJson, options);
-            
-            if (deltas != null)
+            int applied = TryApplySocialSettlementDeltasFromJson(cleanJson);
+            if (applied > 0)
             {
-                foreach (var kvp in deltas)
-                {
-                    var ids = kvp.Key.Split("->", StringSplitOptions.TrimEntries);
-                    if (ids.Length != 2) continue;
-                    
-                    var speaker = _characters.FirstOrDefault(c => c.Id.Equals(ids[0], StringComparison.OrdinalIgnoreCase));
-                    var rel = speaker?.Relationships?.FirstOrDefault(r => r.TargetId.Equals(ids[1], StringComparison.OrdinalIgnoreCase));
-                    
-                    if (rel != null)
-                    {
-                        if (kvp.Value.TryGetValue("affinity", out int aDelta)) rel.Affinity = Math.Clamp(rel.Affinity + aDelta, 0, 100);
-                        if (kvp.Value.TryGetValue("trust", out int tDelta)) rel.Trust = Math.Clamp(rel.Trust + tDelta, 0, 100);
-                        
-                        if (aDelta != 0 || tDelta != 0)
-                            Console.WriteLine($"  [정산] {speaker!.Name} -> {ids[1]}: 친밀도({(aDelta >= 0 ? "+" : "")}{aDelta}), 신뢰도({(tDelta >= 0 ? "+" : "")}{tDelta})");
-                    }
-                }
-                _loader.SaveCharacters(_characters);
-                Console.WriteLine("[시스템] 관계 수치가 업데이트되어 저장되었습니다.\n");
+                _loader.SaveCharactersDatabase(_characters);
+                Console.WriteLine("[시스템] 관계 수치가 CharactersDatabase.json(또는 Characters.json)에 저장되었습니다.\n");
             }
+            else
+                Console.WriteLine("[시스템] 관계 변화로 반영할 유효한 항목이 없었습니다. (모델 JSON 형식 확인)\n");
         } catch (Exception ex) {
             Console.WriteLine($"[시스템] 관계 분석 처리 중 오류: {ex.Message}");
+        }
+    }
+
+    /// <summary>Ollama가 살짝 어긋난 JSON을 내도 델타를 최대한 반영합니다.</summary>
+    private int TryApplySocialSettlementDeltasFromJson(string cleanJson)
+    {
+        using var doc = JsonDocument.Parse(cleanJson);
+        var root = doc.RootElement;
+        if (root.ValueKind != JsonValueKind.Object) return 0;
+
+        int appliedEdges = 0;
+        foreach (var prop in root.EnumerateObject())
+        {
+            var key = prop.Name.Trim();
+            var ids = key.Split("->", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            if (ids.Length != 2) continue;
+
+            var fromId = ids[0];
+            var toId = ids[1];
+            var speaker = _characters.FirstOrDefault(c => c.Id.Equals(fromId, StringComparison.OrdinalIgnoreCase));
+            var rel = speaker?.Relationships?.FirstOrDefault(r =>
+                r.TargetId.Equals(toId, StringComparison.OrdinalIgnoreCase));
+            if (rel == null) continue;
+
+            if (!TryReadAffinityTrustDeltas(prop.Value, out int aDelta, out int tDelta)) continue;
+            if (aDelta == 0 && tDelta == 0) continue;
+
+            rel.Affinity = Math.Clamp(rel.Affinity + aDelta, 0, 100);
+            rel.Trust = Math.Clamp(rel.Trust + tDelta, 0, 100);
+            appliedEdges++;
+            Console.WriteLine(
+                $"  [정산] {speaker!.Name} -> {toId}: 친밀도({(aDelta >= 0 ? "+" : "")}{aDelta}), 신뢰도({(tDelta >= 0 ? "+" : "")}{tDelta})");
+        }
+
+        return appliedEdges;
+    }
+
+    private static bool TryReadAffinityTrustDeltas(JsonElement value, out int affinityDelta, out int trustDelta)
+    {
+        affinityDelta = 0;
+        trustDelta = 0;
+        if (value.ValueKind != JsonValueKind.Object) return false;
+
+        foreach (var p in value.EnumerateObject())
+        {
+            var n = p.Name.Trim().ToLowerInvariant();
+            if (n is "affinity" or "친밀" or "친밀도")
+            {
+                if (TryReadIntLoose(p.Value, out int x)) affinityDelta = x;
+            }
+            else if (n is "trust" or "신뢰" or "신뢰도")
+            {
+                if (TryReadIntLoose(p.Value, out int x)) trustDelta = x;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool TryReadIntLoose(JsonElement el, out int v)
+    {
+        v = 0;
+        switch (el.ValueKind)
+        {
+            case JsonValueKind.Number:
+                return el.TryGetInt32(out v);
+            case JsonValueKind.String:
+                return int.TryParse(el.GetString(), System.Globalization.NumberStyles.Integer,
+                    System.Globalization.CultureInfo.InvariantCulture, out v);
+            default:
+                return false;
         }
     }
 }

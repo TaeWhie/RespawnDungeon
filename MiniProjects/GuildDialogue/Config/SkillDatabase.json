@@ -1,0 +1,56 @@
+[
+  {
+    "SkillName": "방패 올려치기",
+    "SkillType": "Active",
+    "Tags": ["control", "frontline", "defense"],
+    "Description": "방패를 들어 올려 전열을 밀어내고 짧은 틈을 만든다.",
+    "Effects": "전방 적 경직 1턴, 아군 피해 경감 +10%",
+    "MpCost": 8,
+    "CooldownTurns": 2
+  },
+  {
+    "SkillName": "약점 간파",
+    "SkillType": "Active",
+    "Tags": ["debuff", "analysis", "single-target"],
+    "Description": "적의 움직임과 장비 틈을 읽어 핵심 약점을 짚어낸다.",
+    "Effects": "단일 대상 받는 피해 +15% (2턴)",
+    "MpCost": 6,
+    "CooldownTurns": 2
+  },
+  {
+    "SkillName": "치유 기도",
+    "SkillType": "Active",
+    "Tags": ["healing", "support", "single-target"],
+    "Description": "짧은 기도로 아군의 상처를 봉합하고 통증을 완화한다.",
+    "Effects": "아군 1명 HP 35 회복",
+    "MpCost": 10,
+    "CooldownTurns": 1
+  },
+  {
+    "SkillName": "정화의 손길",
+    "SkillType": "Active",
+    "Tags": ["cleanse", "support", "healing"],
+    "Description": "불순한 마력을 씻어내어 디버프를 해제한다.",
+    "Effects": "아군 1명 디버프 1개 해제, MP 소량 회복",
+    "MpCost": 9,
+    "CooldownTurns": 2
+  },
+  {
+    "SkillName": "전리품 감정",
+    "SkillType": "Passive",
+    "Tags": ["economy", "utility", "loot"],
+    "Description": "전리품의 가치를 빠르게 판별해 거래 손실을 줄인다.",
+    "Effects": "판매 가치 +12%, 희귀 아이템 발견 확률 소폭 증가",
+    "MpCost": 0,
+    "CooldownTurns": 0
+  },
+  {
+    "SkillName": "은밀 수색",
+    "SkillType": "Active",
+    "Tags": ["scout", "utility", "trap-detect"],
+    "Description": "소리를 줄이며 주변 함정과 은닉물을 탐색한다.",
+    "Effects": "함정 탐지 확률 +20% (3턴)",
+    "MpCost": 7,
+    "CooldownTurns": 2
+  }
+]

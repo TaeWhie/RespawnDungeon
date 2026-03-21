@@ -9,8 +9,34 @@ public class Character
     public string Name { get; set; } = "";
     public int Age { get; set; } = 0;
     public string Role { get; set; } = "";
+    /// <summary>
+    /// PartyDatabase.json의 PartyId와 매칭. 비어 있으면 프롬프트/시뮬에서 "파티 미지정(전체 동료)" 규칙을 씁니다.
+    /// </summary>
+    public string? PartyId { get; set; }
+
+    /// <summary>
+    /// 캐릭터가 **지금** 머무르는 장소. 보통 BaseDatabase.json의 BaseId(main_hall, cafeteria 등).
+    /// 아지트 밖이면 던전명·맵 코드 등 자유 문자열 가능.
+    /// </summary>
+    public string? CurrentLocationId { get; set; }
+
+    /// <summary>위치 보조 설명(선택). 예: "식당 창가", "2층 복도".</summary>
+    public string? CurrentLocationNote { get; set; }
+
+    /// <summary>모험/군 경력 등 연차. CharactersDatabase.json.</summary>
+    public int? Career { get; set; }
     public string Background { get; set; } = "";
     public string SpeechStyle { get; set; } = "";
+
+    /// <summary>성향·취향에 맞게 좋아하는 것(한 줄씩). 대화 톤·화제 훅.</summary>
+    public List<string>? Likes { get; set; }
+
+    /// <summary>싫어하거나 피하는 것(한 줄씩).</summary>
+    public List<string>? Dislikes { get; set; }
+
+    /// <summary>최근 인상 깊었던 일(수동 기록). 원정 시뮬 종료 시 이번 런 로그 한 줄로 덮어씀(저장 시 반영). ActionLog와 충돌하면 로그가 우선.</summary>
+    public string? RecentMemorableEvent { get; set; }
+
     public PersonalityValues Personality { get; set; } = new();
 
     /// <summary>Unity CharacterData 호환 스탯. 대화에서 "체력 낮다", "MP 부족" 등 맥락으로 사용.</summary>
@@ -24,6 +50,9 @@ public class Character
 
     /// <summary>다른 캐릭터와의 관계 데이터.</summary>
     public List<Relationship>? Relationships { get; set; } = new();
+
+    /// <summary>보유 스킬 이름 목록(SkillDatabase.json와 매칭).</summary>
+    public List<string> Skills { get; set; } = new();
 }
 
 /// <summary>Unity CharacterData 상태/스탯 필드와 1:1 대응.</summary>

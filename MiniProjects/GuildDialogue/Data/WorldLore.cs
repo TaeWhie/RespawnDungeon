@@ -14,6 +14,8 @@ public class WorldLore
     // New structures
     public List<LocationData> Locations { get; set; } = new();
     public List<DungeonData> Dungeons { get; set; } = new();
+
+    public List<OrganizationData> Organizations { get; set; } = new();
     
     public List<string> Lore { get; set; } = new();
 }

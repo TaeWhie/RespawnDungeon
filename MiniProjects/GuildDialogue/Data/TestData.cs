@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace GuildDialogue.Data;
 
 public class TestDataRoot
@@ -25,6 +27,8 @@ public class ActionLogEntry
 
     // ---- Dungeon 전용 (Type == "Dungeon") ----
     public string? DungeonName { get; set; }
+
+    [JsonConverter(typeof(JsonStringOrNumberConverter))]
     public string? FloorOrZone { get; set; }
         /// <summary>런 결과: clear | retreat | fail</summary>
     public string? Outcome { get; set; }
@@ -51,6 +55,12 @@ public class ActionLogEntry
     public string? CheckType { get; set; }
     public int? ClearCount { get; set; }
 
+    /// <summary>함정 DB(TrapTypeDatabase)와 직결할 때 사용.</summary>
+    public string? TrapId { get; set; }
+
+    /// <summary>사전 정의 대사 줄들(Base 대화 이벤트 등). JSON에서는 문자열 배열.</summary>
+    public List<string>? Dialogue { get; set; }
+
     // ---- Base (Type == "Base"). EventType+Location만 사용. Summary는 LLM 등 동적 생성용이라 로그에는 넣지 않음. ----
 }
 
@@ -61,6 +71,9 @@ public class BaseLogEntry
     public string EventType { get; set; } = "";
     /// <summary>이 아지트 이벤트에 참여한 캐릭터들.</summary>
     public List<string> PartyMembers { get; set; } = new();
+
+    /// <summary>ActionLog.Dialogue 배열 복사.</summary>
+    public List<string>? ScriptedDialogue { get; set; }
 }
 
 /// <summary>ActionLog(시간순 단일 로그)를 DungeonLogs·BaseLogs로 변환한다.</summary>
@@ -92,7 +105,8 @@ public static class ActionLogBuilder
                 {
                     Location = entry.Location ?? "",
                     EventType = entry.EventType ?? "",
-                    PartyMembers = entry.PartyMembers != null ? new List<string>(entry.PartyMembers) : new List<string>()
+                    PartyMembers = entry.PartyMembers != null ? new List<string>(entry.PartyMembers) : new List<string>(),
+                    ScriptedDialogue = entry.Dialogue != null ? new List<string>(entry.Dialogue) : null
                 });
                 continue;
             }
@@ -162,7 +176,9 @@ public static class ActionLogBuilder
             FromId = e.FromId,
             ToId = e.ToId,
             CheckType = e.CheckType,
-            ClearCount = e.ClearCount
+            ClearCount = e.ClearCount,
+            TrapId = e.TrapId,
+            ScriptedDialogue = e.Dialogue != null ? new List<string>(e.Dialogue) : null
         }).OrderBy(ev => ev.TimeOffsetSeconds).ToList();
 
         for (var i = 0; i < events.Count; i++)

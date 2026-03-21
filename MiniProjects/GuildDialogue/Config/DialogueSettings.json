@@ -14,6 +14,49 @@
   "Ollama": {
     "BaseUrl": "http://localhost:11434",
     "Model": "exaone3.5:7.8b",
-    "TimeoutSeconds": 60
+    "EmbeddingModel": "nomic-embed-text",
+    "TimeoutSeconds": 60,
+    "Temperature": 0.7,
+    "TopP": 0.9,
+    "NumPredict": 0,
+    "AnalysisStrategyMaxTokens": 0
+  },
+  "Retrieval": {
+    "MaxEpisodicCharsInQuery": 2800,
+    "ExcludeCurrencyLineFromLoreEmbedding": true,
+    "PrioritizeEpisodicMentionsInRag": true,
+    "RagSearchPoolSize": 12,
+    "UseEmbeddingRag": true,
+    "UseKeywordRagForGameDb": true,
+    "RagFallbackToFullDb": true,
+    "RagIncludeSpeakerLoadout": true,
+    "LatestActionLogEntriesInPrompt": 28,
+    "UseActionLogNarrativeProse": true,
+    "ActionLogNarrativeMaxDungeonRuns": 8,
+    "ActionLogNarrativeMaxChars": 14000,
+    "UsePerspectiveMemoryInPrompt": true,
+    "PerspectiveMemoryMaxLinesPerCharacter": 24,
+    "PerspectiveMemoryExportPath": "Logs/CharacterPerspectiveMemory.json",
+    "PersistDialogueSessionsToActionLog": true,
+    "UseGuildOfficeSemanticGuardrail": true,
+    "GuildOfficeSemanticGuardrailThreshold": 0.78,
+    "GuildOfficeSemanticDisambiguationMargin": 0.06,
+    "GuildOfficeSemanticExpeditionDisambigMin": 0.58,
+    "GuildOfficeSemanticStrongAtypicalFloor": 0.88,
+    "GuildOfficeSemanticMetaOffEmbeddingTieEpsilon": 0.015,
+    "UseGuildOfficeObviousKeywordTieBreak": true,
+    "GuildOfficeExpeditionContextThreshold": 0.72,
+    "GuildOfficeExpeditionUseRelativeEmbeddingGate": true,
+    "GuildOfficeExpeditionDeepContextLead": 0.03,
+    "UseGuildOfficeLlmIntentRouter": false
+  },
+  "QualitativeAnalysis": {
+    "Enabled": false,
+    "LogToConsole": true,
+    "LogToFile": false,
+    "LogFilePath": "Logs/GuildDialogue-QualitativeAnalysis.log",
+    "IncludeRawLlmResponse": true,
+    "ConsoleMaxPromptChars": 8000,
+    "MaxRetrievalQueryPreviewChars": 1200
   }
 }

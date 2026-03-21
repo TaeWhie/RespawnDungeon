@@ -1,0 +1,302 @@
+[
+  {
+    "Id": "kyle",
+    "PartyId": "core_fireteam",
+    "CurrentLocationId": "cafeteria",
+    "CurrentLocationNote": "길드 식당, 저녁 식사·휴식",
+    "Name": "카일",
+    "Age": 32,
+    "Role": "Vanguard",
+    "Career": 15,
+    "Background": "전직 왕국 기사단 제3군단 천인대장 출신. 15년간 국경 분쟁 지역인 '철벽 산맥' 전선을 방어하며 수십 차례 대규모 전투를 지휘한 베테랑 기사입니다. 마지막 전투에서 부하들을 지키고 입은 중상으로 인해 명예 제대했습니다.",
+    "SpeechStyle": "말은 짧고 단호하다. ~하지, ~할 것이다 어미를 선호한다. 감탄사 '젠장'은 정말 화가 났을 때 한 번만 사용하며, 같은 문장에서 반복하지 않는다.",
+    "Likes": [
+      "전열이 무너지지 않을 때의 질서",
+      "식사 후 뜨거운 차 한 잔",
+      "동료에게 등을 맡길 수 있다는 믿음"
+    ],
+    "Dislikes": [
+      "명령 없는 무질서한 돌진",
+      "부하를 버리는 명목의 명예"
+    ],
+    "RecentMemorableEvent": "검은 가시 무덤에서 거대 거미와 맞선 순간—방패 라인을 유지한 채 후열까지 시간을 벌었을 때였다.",
+    "Personality": {
+      "Courage": 95,
+      "Caution": 30,
+      "Greed": 25,
+      "Orderliness": 60,
+      "Impulsiveness": 70,
+      "Cooperation": 55,
+      "Aggression": 90,
+      "Focus": 85,
+      "Adaptability": 40,
+      "Frugality": 30
+    },
+    "Stats": {
+      "CurrentHP": 95,
+      "MaxHP": 100,
+      "CurrentMP": 40,
+      "MaxMP": 50,
+      "Atk": 14,
+      "Def": 8,
+      "Str": 12,
+      "Dex": 10,
+      "Int": 5,
+      "StatPoints": 0
+    },
+    "Inventory": [
+      {
+        "ItemName": "회복 포션",
+        "ItemType": "Etc",
+        "Count": 2
+      },
+      {
+        "ItemName": "잊혀진 룬",
+        "ItemType": "Etc",
+        "Count": 1
+      },
+      {
+        "ItemName": "던전 지도",
+        "ItemType": "Etc",
+        "Count": 1
+      },
+      {
+        "ItemName": "마나 포션",
+        "ItemType": "Etc",
+        "Count": 1
+      },
+      {
+        "ItemName": "지혜의 비약",
+        "ItemType": "Etc",
+        "Count": 1
+      }
+    ],
+    "Equipment": {
+      "Weapon": "철검",
+      "Helmet": null,
+      "Armor": null,
+      "Gloves": null,
+      "Boots": null,
+      "Accessory": null
+    },
+    "Relationships": [
+      {
+        "TargetId": "rina",
+        "Affinity": 100,
+        "Trust": 100,
+        "RelationType": "지속적인 동료"
+      },
+      {
+        "TargetId": "bram",
+        "Affinity": 92,
+        "Trust": 100,
+        "RelationType": "믿음직한 동료"
+      },
+      {
+        "TargetId": "master",
+        "Affinity": 35,
+        "Trust": 65,
+        "RelationType": "전문가와의 협업"
+      }
+    ],
+    "Skills": [
+      "방패 올려치기",
+      "약점 간파"
+    ]
+  },
+  {
+    "Id": "rina",
+    "PartyId": "core_fireteam",
+    "CurrentLocationId": "cafeteria",
+    "CurrentLocationNote": "길드 식당, 저녁 식사·휴식",
+    "Name": "리나",
+    "Age": 24,
+    "Role": "Support",
+    "Career": 5,
+    "Background": "성직자 수도원 '루미나스' 수석 사제 후보생 출신. 18세에 최연소 치유사 자격을 취득하고, 3년간 빈민가와 전방 거점에서 무료 치료 봉사를 수행했습니다. 전염병 사태 이후 더 큰 힘을 기르기 위해 길드에 합류했습니다.",
+    "SpeechStyle": "말투는 부드럽고 친근하다. 동료에게는 '님'을 붙이지 않고 이름을 부르며, ~요 어미를 사용한다. '혹시 ~어때요?' 같은 제안형을 즐겨 쓴다.",
+    "Likes": [
+      "새벽 기도와 고요한 성소",
+      "환자가 숨을 고르고 눈을 뜰 때",
+      "길드 식당의 따뜻한 스프"
+    ],
+    "Dislikes": [
+      "치료 중 끼어드는 고함과 소란",
+      "약품·식량을 함부로 버리는 태도"
+    ],
+    "RecentMemorableEvent": "MP가 바닥날 때까지 전열을 붙들어 준 원정—끝나고 카일이 고개만 끄덕여 준 것이 기억에 남는다.",
+    "Personality": {
+      "Courage": 35,
+      "Caution": 95,
+      "Greed": 15,
+      "Orderliness": 80,
+      "Impulsiveness": 20,
+      "Cooperation": 100,
+      "Aggression": 10,
+      "Focus": 75,
+      "Adaptability": 85,
+      "Frugality": 90
+    },
+    "Stats": {
+      "CurrentHP": 49,
+      "MaxHP": 100,
+      "CurrentMP": 10,
+      "MaxMP": 50,
+      "Atk": 6,
+      "Def": 4,
+      "Str": 5,
+      "Dex": 8,
+      "Int": 14,
+      "StatPoints": 0
+    },
+    "Inventory": [
+      {
+        "ItemName": "마나 포션",
+        "ItemType": "Etc",
+        "Count": 1
+      },
+      {
+        "ItemName": "마력 파편",
+        "ItemType": "Etc",
+        "Count": 1
+      },
+      {
+        "ItemName": "에델가드의 눈물",
+        "ItemType": "Etc",
+        "Count": 1
+      },
+      {
+        "ItemName": "슬라임 점액",
+        "ItemType": "Etc",
+        "Count": 2
+      }
+    ],
+    "Equipment": {
+      "Weapon": "지팡이",
+      "Helmet": null,
+      "Armor": null,
+      "Gloves": null,
+      "Boots": null,
+      "Accessory": null
+    },
+    "Relationships": [
+      {
+        "TargetId": "kyle",
+        "Affinity": 100,
+        "Trust": 100,
+        "RelationType": "지속적인 동료"
+      },
+      {
+        "TargetId": "bram",
+        "Affinity": 90,
+        "Trust": 90,
+        "RelationType": "동행자"
+      },
+      {
+        "TargetId": "master",
+        "Affinity": 65,
+        "Trust": 70,
+        "RelationType": "지도자와의 신뢰 유지"
+      }
+    ],
+    "Skills": [
+      "치유 기도",
+      "정화의 손길"
+    ]
+  },
+  {
+    "Id": "bram",
+    "PartyId": "core_fireteam",
+    "CurrentLocationId": "cafeteria",
+    "CurrentLocationNote": "길드 식당, 저녁 식사·휴식",
+    "Name": "브람",
+    "Age": 38,
+    "Role": "Scavenger",
+    "Career": 20,
+    "Background": "비밀 결사 '쉐도우 핑거'의 정보 중개인 및 전직 밀수꾼 출신. 20년 넘게 암시장과 경매장을 주도하며 전리품의 가치를 감정해온 전문가입니다. 겉으론 돈만 밝히는 척하지만 동료들을 뒤에서 챙겨주는 살림꾼입니다.",
+    "SpeechStyle": "말투는 능청스럽고 약간 건들거린다. '흠', '그렇지', '뭐, 나쁘지 않군' 같은 판단형 추임새를 자주 쓴다. 이득이 없을 것 같으면 말을 짧게 끊는다.",
+    "Likes": [
+      "희귀 전리품이 손에 잡히는 무게",
+      "거래 성사 때 나는 도장 소리",
+      "한 줄 정보가 가격으로 바뀌는 순간"
+    ],
+    "Dislikes": [
+      "밑져야 본전 식의 무모한 돌파",
+      "장부 숫자를 속이려는 상대"
+    ],
+    "RecentMemorableEvent": "바닥에 굴러다니는 뼈 항아리를 먼저 집어 넣은 밤—은밀 수색이 제값을 했다.",
+    "Personality": {
+      "Courage": 40,
+      "Caution": 45,
+      "Greed": 100,
+      "Orderliness": 90,
+      "Impulsiveness": 55,
+      "Cooperation": 35,
+      "Aggression": 35,
+      "Focus": 80,
+      "Adaptability": 75,
+      "Frugality": 85
+    },
+    "Stats": {
+      "CurrentHP": 80,
+      "MaxHP": 100,
+      "CurrentMP": 16,
+      "MaxMP": 50,
+      "Atk": 10,
+      "Def": 6,
+      "Str": 8,
+      "Dex": 14,
+      "Int": 7,
+      "StatPoints": 2
+    },
+    "Inventory": [
+      {
+        "ItemName": "회복 포션",
+        "ItemType": "Etc",
+        "Count": 3
+      },
+      {
+        "ItemName": "던전 지도",
+        "ItemType": "Etc",
+        "Count": 1
+      },
+      {
+        "ItemName": "희귀한 뼈 항아리",
+        "ItemType": "Etc",
+        "Count": 2
+      }
+    ],
+    "Equipment": {
+      "Weapon": null,
+      "Helmet": null,
+      "Armor": "가죽 갑옷",
+      "Gloves": null,
+      "Boots": null,
+      "Accessory": null
+    },
+    "Relationships": [
+      {
+        "TargetId": "kyle",
+        "Affinity": 87,
+        "Trust": 100,
+        "RelationType": "믿음직한 동료"
+      },
+      {
+        "TargetId": "rina",
+        "Affinity": 100,
+        "Trust": 100,
+        "RelationType": "믿음직한 동료"
+      },
+      {
+        "TargetId": "master",
+        "Affinity": 34,
+        "Trust": 42,
+        "RelationType": "상호 협력 관계"
+      }
+    ],
+    "Skills": [
+      "전리품 감정",
+      "은밀 수색"
+    ]
+  }
+]
