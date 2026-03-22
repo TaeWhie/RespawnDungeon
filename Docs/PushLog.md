@@ -59,6 +59,10 @@
 
 ## 기록
 
+### 2026-03-21 — GuildDialogue 직업·캐릭터 생성·Ollama 전제 정리
+- `JobDatabase.json`·`JobSkillRules`·프롬프트 직업 블록; 콘솔 캐릭터 생성(`CharacterCreationConsole` / `CharacterCreationLlmGenerator` / `CharacterCreationRng`), RAG는 임베딩만(키워드 RAG·오프라인 서사 제거), `Retrieval` 플래그 정리.
+- 시멘틱 가드레일 `--eval-guardrail` 러너·`SemanticGuardrailEval.json` 제거, 테스트용 캐릭터·임시 `build-*` 폴더·`_build_out`·README 정리.
+
 ### 2026-03-21 — GuildDialogue PromptBuilder 무결성·참조 데이터 확장
 - `PromptBuilder`: 7B급 봉쇄 누적(지문·명단·작업 기억·최신성 편향·비서화 도피·SNAP-TRUTH·L0–L2 데이터 계층·JSON 단일 객체·BOM/선행 바이트·가짜 소유권·중복 30% 등).
 - `MiniProjects/GuildDialogue`: CharactersDatabase·ActionLog·파티/던전 참조 DB, 임베딩 RAG·길드 집무실 탐색·시맨틱 가드레일 등 설정·서비스·DTO 광범위 추가·갱신.

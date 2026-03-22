@@ -69,6 +69,19 @@ public class OrganizationData
     public string Type { get; set; } = "";
 }
 
+/// <summary>Config/JobDatabase.json — <see cref="Character.Role"/>과 매칭되는 직업·허용 스킬.</summary>
+public class JobRoleData
+{
+    /// <summary><see cref="Character.Role"/>과 동일한 식별자(예: Vanguard, Support).</summary>
+    public string RoleId { get; set; } = "";
+
+    public string DisplayName { get; set; } = "";
+    public string Description { get; set; } = "";
+
+    /// <summary><see cref="SkillData.SkillName"/>과 일치하는 스킬만 이 직업이 사용 가능.</summary>
+    public List<string> AllowedSkillNames { get; set; } = new();
+}
+
 /// <summary>Config/PartyDatabase.json — 파티 편성·호칭.</summary>
 public class PartyData
 {
@@ -90,6 +103,7 @@ public class GameReferenceBundle
     public List<TrapTypeData> Traps { get; set; } = new();
     public EventTypeDatabaseRoot? EventTypes { get; set; }
     public List<PartyData> Parties { get; set; } = new();
+    public List<JobRoleData> Jobs { get; set; } = new();
 }
 
 /// <summary>행동 로그 → 자연어 서사 시 몬스터·함정·이름 해석 보강.</summary>

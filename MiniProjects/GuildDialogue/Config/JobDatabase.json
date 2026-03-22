@@ -1,0 +1,29 @@
+[
+  {
+    "RoleId": "Vanguard",
+    "DisplayName": "선봉 (Vanguard)",
+    "Description": "전열을 막고 아군을 보호한다. 방어·제어·전방 압박 계열 스킬을 쓴다.",
+    "AllowedSkillNames": [
+      "방패 올려치기",
+      "약점 간파"
+    ]
+  },
+  {
+    "RoleId": "Support",
+    "DisplayName": "지원 (Support)",
+    "Description": "아군 회복·정화·버프에 집중한다. 직접 딜보다 생존·상태 이상 대응이 주 역할이다.",
+    "AllowedSkillNames": [
+      "치유 기도",
+      "정화의 손길"
+    ]
+  },
+  {
+    "RoleId": "Scavenger",
+    "DisplayName": "전리·정찰 (Scavenger)",
+    "Description": "전리품 가치 판별·은밀 탐색·함정 대응. 전투 정면 돌파보다 정보·자원 쪽이 강점이다.",
+    "AllowedSkillNames": [
+      "전리품 감정",
+      "은밀 수색"
+    ]
+  }
+]

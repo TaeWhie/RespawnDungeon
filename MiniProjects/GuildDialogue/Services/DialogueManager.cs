@@ -48,7 +48,7 @@ public class DialogueManager
 
     public async Task InitializeAsync(CancellationToken ct = default)
     {
-        _characters = _loader.LoadCharacters();
+        _characters = _loader.LoadCharactersWithJobSkillFilter();
         _charMap = new Dictionary<string, Character>(StringComparer.OrdinalIgnoreCase);
         foreach (var c in _characters)
         {
@@ -68,7 +68,8 @@ public class DialogueManager
             Skills = _loader.LoadSkillDatabase(),
             Traps = _loader.LoadTrapTypeDatabase(),
             EventTypes = _loader.LoadEventTypeDatabase(),
-            Parties = _loader.LoadPartyDatabase()
+            Parties = _loader.LoadPartyDatabase(),
+            Jobs = _loader.LoadJobDatabase()
         };
 
         var timeline = _loader.LoadTimelineData();
@@ -98,42 +99,30 @@ public class DialogueManager
 
         RebuildPerspectiveMemoryCache();
 
-        var retrieval = _settings.Retrieval ?? new RetrievalSettings();
-        if (retrieval.UseEmbeddingRag)
-        {
-            try
-            {
-                _embeddingClient?.Dispose();
-                _embeddingClient = new OllamaEmbeddingClient(_settings);
-                _embeddingIndex = new EmbeddingKnowledgeIndex();
-                var items = _itemDb.Values.ToList();
-                Console.WriteLine($"[시스템] 참조 지식 임베딩 인덱스 구축 중… (모델: {_embeddingClient.Model})");
-                var ok = await _embeddingIndex.BuildAsync(
-                    _embeddingClient,
-                    _worldLore,
-                    _gameRefs.Monsters,
-                    _gameRefs.Traps,
-                    _gameRefs.Skills,
-                    items,
-                    _characters,
-                    ct).ConfigureAwait(false);
-                Console.WriteLine(ok
-                    ? "[시스템] 임베딩 인덱스 준비 완료."
-                    : "[시스템] 임베딩 실패 — 키워드 RAG로 대체합니다. Ollama EmbeddingModel(예: nomic-embed-text)을 확인하세요.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[시스템] 임베딩 인덱스 오류: {ex.Message}");
-                _embeddingIndex = null;
-            }
-        }
+        _embeddingClient?.Dispose();
+        _embeddingClient = new OllamaEmbeddingClient(_settings);
+        _embeddingIndex = new EmbeddingKnowledgeIndex();
+        var items = _itemDb.Values.ToList();
+        Console.WriteLine($"[시스템] 참조 지식 임베딩 인덱스 구축 중… (모델: {_embeddingClient.Model})");
+        var ok = await _embeddingIndex.BuildAsync(
+            _embeddingClient,
+            _worldLore,
+            _gameRefs.Monsters,
+            _gameRefs.Traps,
+            _gameRefs.Skills,
+            items,
+            _characters,
+            ct).ConfigureAwait(false);
+        if (!ok)
+            throw new InvalidOperationException(
+                "참조 지식 임베딩 인덱스를 구축하지 못했습니다. Ollama를 실행하고 DialogueSettings.json의 EmbeddingModel(예: nomic-embed-text)을 확인하세요.");
+        Console.WriteLine("[시스템] 임베딩 인덱스 준비 완료.");
 
+        var retrieval = _settings.Retrieval ?? new RetrievalSettings();
         if (retrieval.UseGuildOfficeSemanticGuardrail)
         {
             try
             {
-                if (_embeddingClient == null)
-                    _embeddingClient = new OllamaEmbeddingClient(_settings);
                 _guildOfficeSemanticGuardrail = new GuildOfficeSemanticGuardrail();
                 var anchorDb = _loader.LoadSemanticGuardrailAnchors();
                 await _guildOfficeSemanticGuardrail.WarmupAsync(_embeddingClient, anchorDb, ct).ConfigureAwait(false);
@@ -159,28 +148,15 @@ public class DialogueManager
             speaker,
             retrieval);
 
-        if (retrieval.UseEmbeddingRag && _embeddingIndex != null && _embeddingIndex.IsReady && _embeddingClient != null)
-        {
-            var emb = await _embeddingIndex.RetrieveFormattedAsync(
-                _embeddingClient,
-                query,
-                retrieval.RagSearchPoolSize,
-                ct).ConfigureAwait(false);
-            if (!string.IsNullOrWhiteSpace(emb))
-                return emb;
-        }
+        if (_embeddingIndex == null || !_embeddingIndex.IsReady || _embeddingClient == null)
+            throw new InvalidOperationException("임베딩 인덱스가 준비되지 않았습니다. InitializeAsync가 완료됐는지 확인하세요.");
 
-        if (retrieval.UseKeywordRagForGameDb)
-            return GameKnowledgeRetriever.BuildBlock(
-                workingMemory,
-                _memory.EpisodicBuffer,
-                speaker,
-                _gameRefs,
-                _worldLore,
-                _itemDb.Values,
-                retrieval);
-
-        return "";
+        var emb = await _embeddingIndex.RetrieveFormattedAsync(
+            _embeddingClient,
+            query,
+            retrieval.RagSearchPoolSize,
+            ct).ConfigureAwait(false);
+        return emb ?? "";
     }
 
     private string BuildLatestActionLogForPrompt()
@@ -405,6 +381,7 @@ public class DialogueManager
                 if (root.TryGetProperty("line", out var lineProp))
                 {
                     string generatedLine = lineProp.GetString() ?? "";
+                    CharacterMoodUpdater.ApplyAfterSquadTurn(turn.Speaker, generatedLine);
                     Console.WriteLine($"[{turn.Speaker.Name}] {generatedLine}\n");
                     
                     _memory.AddWorkingMemory(turn.Speaker.Name, generatedLine);
@@ -562,6 +539,14 @@ public class DialogueManager
 
         var codeDef = CodeDefinitionInstructions.Build(_gameRefs);
         var partyRosterGm = PartyRosterResolver.ResolveForGuildMasterOneOnOne(respondent);
+        string? mcpRuntimeFacts = AethelgardMcpRuntimeFacts.Build(
+            userUtterance,
+            partyRosterGm,
+            respondent,
+            _settings,
+            _characters,
+            _itemDb.Values.ToList(),
+            atypicalKind);
         string sysPrompt = PromptBuilder.BuildSystemPrompt(
             respondent,
             masterChar,
@@ -582,7 +567,8 @@ public class DialogueManager
             guildMasterAtypicalKind: atypicalKind,
             guildOfficePersonaHijackCue: BuildShortWorldLoreCueForGuildOffice(_worldLore),
             guildMasterDeepExpeditionTurn: deepExpeditionEffective,
-            guildMasterFrustrationStopTurn: frustrationStop);
+            guildMasterFrustrationStopTurn: frustrationStop,
+            mcpRuntimeToolBlock: mcpRuntimeFacts);
         string userPrompt = PromptBuilder.BuildGuildMasterInteractiveUserPrompt(
             workingMem,
             userUtterance,
@@ -607,6 +593,12 @@ public class DialogueManager
                 return new GuildOfficeLlmTurnResult(null, atypicalKind, deepExpeditionEffective, "JSON에 line 필드 없음", preview, sigMeta, sigOff, sigExp);
 
             string generatedLine = lineProp.GetString() ?? "";
+            CharacterMoodUpdater.ApplyAfterGuildOfficeTurn(
+                respondent,
+                userUtterance,
+                atypicalKind,
+                frustrationStop,
+                deepExpeditionEffective);
             if (persistBuddyLineToSession)
             {
                 _memory.AddWorkingMemory(respondent.Name, generatedLine);

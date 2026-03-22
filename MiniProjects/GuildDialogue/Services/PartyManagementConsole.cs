@@ -61,7 +61,7 @@ public static class PartyManagementConsole
     private static void PrintPartyAndRoster(DialogueConfigLoader loader)
     {
         var parties = loader.LoadPartyDatabase();
-        var chars = loader.LoadCharacters()
+        var chars = loader.LoadCharactersWithJobSkillFilter()
             .Where(c => !c.Id.Equals("master", StringComparison.OrdinalIgnoreCase))
             .ToList();
 
@@ -118,7 +118,7 @@ public static class PartyManagementConsole
         Console.WriteLine("설명 한 줄 (엔터 생략): ");
         var desc = Console.ReadLine()?.Trim() ?? "";
 
-        var chars = loader.LoadCharacters();
+        var chars = loader.LoadCharactersWithJobSkillFilter();
         var memberIds = PickMemberIds(chars);
         if (memberIds.Count == 0)
         {
@@ -163,7 +163,7 @@ public static class PartyManagementConsole
         if (desc != null && desc.Length > 0) party.Description = desc;
 
         Console.WriteLine("멤버를 다시 고릅니다.");
-        var chars = loader.LoadCharacters();
+        var chars = loader.LoadCharactersWithJobSkillFilter();
         var memberIds = PickMemberIds(chars);
         if (memberIds.Count == 0)
         {
@@ -187,7 +187,7 @@ public static class PartyManagementConsole
         if (!string.Equals(Console.ReadLine()?.Trim(), "y", StringComparison.OrdinalIgnoreCase))
             return;
 
-        var chars = loader.LoadCharacters();
+        var chars = loader.LoadCharactersWithJobSkillFilter();
         foreach (var c in chars.Where(c =>
                      !string.IsNullOrWhiteSpace(c.PartyId) &&
                      c.PartyId.Equals(party.PartyId, StringComparison.OrdinalIgnoreCase)))
@@ -336,6 +336,12 @@ public static class PartyManagementConsole
 
         var inputs = loader.LoadSimulationInputs(party.PartyId);
         var sim = DungeonRunSimulator.Generate(inputs, seed);
+
+        CharacterMoodUpdater.ApplyAfterDungeonRun(
+            sim.CharactersAfterRun,
+            sim.ParticipatingCharacterIds,
+            sim.RunOutcome,
+            sim.PartyAvgHpRatio);
 
         var actionPath = Path.Combine(loader.ConfigDirectory, "ActionLog.json");
         var prevCount = loader.LoadTimelineData()?.ActionLog?.Count ?? 0;

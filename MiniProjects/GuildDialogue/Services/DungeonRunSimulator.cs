@@ -270,28 +270,30 @@ public static class DungeonRunSimulator
             }
 
             var lootLines = BuildLootEntries(rnd, dungeonPick, items);
-            AddDn("loot", lootRoom, e => e.LootItems = lootLines);
             if (charById.Count > 0)
                 DistributeLootToParty(charById, roster, lootLines, items, rnd);
+            AddDn("loot", lootRoom, e => e.LootItems = lootLines);
             t += RndRange(rnd, 5, 14);
 
             var artifactName = PickArtifactName(rnd, dungeonPick, items);
             if (!string.IsNullOrEmpty(artifactName))
             {
+                Member? artifactReceiver = null;
+                if (charById.Count > 0)
+                    artifactReceiver = roster[rnd.Next(roster.Count)];
                 AddDn("artifact", "발굴물 보관함", e =>
                 {
                     e.ItemName = artifactName;
                     e.ItemCount = 1;
+                    if (artifactReceiver != null)
+                        e.AcquiredByCharacterId = artifactReceiver.Id;
                 });
-                if (charById.Count > 0)
+                if (artifactReceiver != null && charById.TryGetValue(artifactReceiver.Id, out var ach))
                 {
-                    var recv = roster[rnd.Next(roster.Count)];
-                    if (charById.TryGetValue(recv.Id, out var ach))
-                    {
-                        var ait = items.FirstOrDefault(i => i.ItemName.Equals(artifactName, StringComparison.OrdinalIgnoreCase));
-                        AddInventoryCount(ach, artifactName, ait?.ItemType ?? "Etc", 1);
-                    }
+                    var ait = items.FirstOrDefault(i => i.ItemName.Equals(artifactName, StringComparison.OrdinalIgnoreCase));
+                    AddInventoryCount(ach, artifactName, ait?.ItemType ?? "Etc", 1);
                 }
+
                 t += RndRange(rnd, 6, 14);
             }
 
@@ -454,10 +456,22 @@ public static class DungeonRunSimulator
             c.RecentMemorableEvent = ExpeditionRecentMemorableSummarizer.SummarizeLineForCharacter(c.Id, c.Name, log);
         }
 
+        var avgHpRatio = roster.Count == 0
+            ? 1.0
+            : roster.Average(m => (double)m.Hp / Math.Max(1, m.HpMax));
+        var participantIds = workingChars
+            .Where(c => !string.IsNullOrWhiteSpace(c.Id))
+            .Select(c => c.Id!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
         return new DungeonSimulationResult
         {
             Timeline = new TestDataRoot { ActionLog = log },
-            CharactersAfterRun = MergeRunResultsIntoFullRoster(data.Characters, workingChars)
+            CharactersAfterRun = MergeRunResultsIntoFullRoster(data.Characters, workingChars),
+            RunOutcome = outcome,
+            PartyAvgHpRatio = avgHpRatio,
+            ParticipatingCharacterIds = participantIds
         };
     }
 
@@ -550,6 +564,7 @@ public static class DungeonRunSimulator
         addDn("consumePotion", loc, e =>
         {
             e.ActorId = user.Id;
+            e.AcquiredByCharacterId = user.Id;
             e.ItemName = pot;
             e.ItemCount = 1;
             e.HpBefore = hpB;
@@ -800,6 +815,7 @@ public static class DungeonRunSimulator
         {
             var recipient = roster[rnd.Next(roster.Count)];
             if (!charById.TryGetValue(recipient.Id, out var ch)) continue;
+            entry.AcquiredByCharacterId = recipient.Id;
             var it = items.FirstOrDefault(i => i.ItemName.Equals(entry.ItemName, StringComparison.OrdinalIgnoreCase));
             AddInventoryCount(ch, entry.ItemName, it?.ItemType ?? "Etc", entry.Count);
         }

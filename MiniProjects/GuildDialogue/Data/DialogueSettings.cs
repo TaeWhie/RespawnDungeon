@@ -28,17 +28,8 @@ public class RetrievalSettings
     public bool PrioritizeEpisodicMentionsInRag { get; set; }
     public int RagSearchPoolSize { get; set; } = 12;
 
-    /// <summary>true면 게임 DB(몬스터·아이템 등)를 전부 넣지 않고, 질의·에피소드와 겹치는 항목만 발췌해 넣습니다.</summary>
-    public bool UseKeywordRagForGameDb { get; set; } = true;
-
-    /// <summary>RAG 결과가 비었을 때만 전체 DB 블록으로 대체.</summary>
-    public bool RagFallbackToFullDb { get; set; } = true;
-
     /// <summary>RAG 질의문에 화자 인벤·장비·스킬 이름을 섞어 장비 언급과 연동.</summary>
     public bool RagIncludeSpeakerLoadout { get; set; } = true;
-
-    /// <summary>WorldLore·몬스터·함정·스킬·아이템 참조 지식은 Ollama 임베딩 RAG로 검색.</summary>
-    public bool UseEmbeddingRag { get; set; } = true;
 
     /// <summary>시스템 프롬프트에 넣을 ActionLog 최신 N건(Order 기준 꼬리).</summary>
     public int LatestActionLogEntriesInPrompt { get; set; } = 28;
@@ -112,6 +103,16 @@ public class RetrievalSettings
     /// true면 소형 분류 LLM 한 번 추가(토큰 증가). 키워드·임베딩이 애매할 때 보완.
     /// </summary>
     public bool UseGuildOfficeLlmIntentRouter { get; set; } = false;
+
+    /// <summary>
+    /// 길드장 1:1에서 시스템 프롬프트에 RAG·MCP·프롬프트 3층 역할 분담(에델가드 설계)을 싣습니다. 켜면 긴 Identity 셸 대신 이 블록을 사용합니다.
+    /// </summary>
+    public bool UseAethelgardThreeLayerPrompt { get; set; } = true;
+
+    /// <summary>
+    /// 길드장 턴만 C#으로 <c>inventory://</c>·<c>Verify_Member</c> 등 MCP 스타일 조회 결과를 주입합니다(외부 MCP 서버가 아니라 동일 프로세스 내 팩트 블록).
+    /// </summary>
+    public bool UseMcpRuntimeToolFacts { get; set; } = true;
 }
 
 public class QualitativeAnalysisSettings

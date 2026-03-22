@@ -186,6 +186,23 @@ public class DialogueConfigLoader
         return JsonSerializer.Deserialize<List<SkillData>>(File.ReadAllText(path), JsonOptions()) ?? new();
     }
 
+    /// <summary>Config/JobDatabase.json — 직업(Role)별 허용 스킬. 없으면 빈 목록.</summary>
+    public List<JobRoleData> LoadJobDatabase()
+    {
+        var path = Path.Combine(_configPath, "JobDatabase.json");
+        if (!File.Exists(path)) return new List<JobRoleData>();
+        return JsonSerializer.Deserialize<List<JobRoleData>>(File.ReadAllText(path), JsonOptions()) ?? new();
+    }
+
+    /// <summary><see cref="LoadCharacters"/> 후 <see cref="JobSkillRules"/>로 스킬을 직업에 맞게 제한합니다.</summary>
+    public List<Character> LoadCharactersWithJobSkillFilter()
+    {
+        var chars = LoadCharacters();
+        var jobs = LoadJobDatabase();
+        JobSkillRules.EnforceOnRoster(chars, jobs);
+        return chars;
+    }
+
     public List<TrapTypeData> LoadTrapTypeDatabase()
     {
         var path = Path.Combine(_configPath, "TrapTypeDatabase.json");
@@ -221,7 +238,7 @@ public class DialogueConfigLoader
     /// <summary>던전 런 시뮬레이터용 입력 묶음.</summary>
     public DungeonSimulationInputs LoadSimulationInputs(string? simulationPartyId = null) => new()
     {
-        Characters = LoadCharacters(),
+        Characters = LoadCharactersWithJobSkillFilter(),
         Monsters = LoadMonsterDatabase(),
         Traps = LoadTrapTypeDatabase(),
         Items = LoadItemDatabase(),

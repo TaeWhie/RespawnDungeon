@@ -137,11 +137,20 @@ public static class PromptBuilder
         GuildMasterAtypicalInputKind guildMasterAtypicalKind = GuildMasterAtypicalInputKind.None,
         string? guildOfficePersonaHijackCue = null,
         bool guildMasterDeepExpeditionTurn = false,
-        bool guildMasterFrustrationStopTurn = false)
+        bool guildMasterFrustrationStopTurn = false,
+        string? mcpRuntimeToolBlock = null)
     {
         var sb = new StringBuilder();
+        var ret = settings.Retrieval;
+        bool useAethelgardThreeLayer = ret?.UseAethelgardThreeLayerPrompt == true && guildMasterOneOnOneScene;
 
-        AppendMinimalSystemShell(sb, speaker.Name);
+        if (useAethelgardThreeLayer)
+            AppendAethelgardThreeLayerArchitecture(sb, speaker.Name);
+        else
+            AppendMinimalSystemShell(sb, speaker.Name);
+
+        if (!string.IsNullOrWhiteSpace(mcpRuntimeToolBlock))
+            AppendMcpRuntimeToolBlock(sb, mcpRuntimeToolBlock!);
 
         AppendDialogueSettingsCore(sb, settings);
 
@@ -192,7 +201,7 @@ public static class PromptBuilder
             sb.AppendLine();
         }
 
-        AppendReferenceKnowledgeRag(sb, settings, referenceKnowledgeRag);
+        AppendReferenceKnowledgeRag(sb, settings, referenceKnowledgeRag, useAethelgardThreeLayer);
 
         AppendItemAndOwnershipGuideline(sb, speaker, partyRoster);
 
@@ -894,6 +903,26 @@ public static class PromptBuilder
         sb.AppendLine();
     }
 
+    private static void AppendJobRolePromptBlock(StringBuilder sb, Character speaker, GameReferenceBundle? gameRefs)
+    {
+        if (gameRefs?.Jobs == null || gameRefs.Jobs.Count == 0)
+            return;
+        var roleId = (speaker.Role ?? string.Empty).Trim();
+        var job = gameRefs.Jobs.FirstOrDefault(j =>
+            string.Equals(j.RoleId?.Trim(), roleId, StringComparison.OrdinalIgnoreCase));
+        if (job == null)
+            return;
+        sb.AppendLine("[직업 정의 — JobDatabase]");
+        sb.AppendLine($"  • RoleId: {job.RoleId}");
+        if (!string.IsNullOrWhiteSpace(job.DisplayName))
+            sb.AppendLine($"  • 표시명: {job.DisplayName.Trim()}");
+        if (!string.IsNullOrWhiteSpace(job.Description))
+            sb.AppendLine($"  • 설명: {job.Description.Trim()}");
+        if (job.AllowedSkillNames is { Count: > 0 })
+            sb.AppendLine("  • 이 직업이 사용할 수 있는 스킬(이름): " + string.Join(", ", job.AllowedSkillNames));
+        sb.AppendLine();
+    }
+
     private static void AppendSpeakerPersonaCore(StringBuilder sb, Character speaker, DialogueSettings settings,
         GameReferenceBundle? gameRefs)
     {
@@ -907,6 +936,13 @@ public static class PromptBuilder
         sb.AppendLine("• 길드장·다른 동료의 입을 대신 열지 마세요. **당신의 대사 한 줄**만 출력하세요.");
         sb.AppendLine("※ 화자 **[Stats]·`[내 소지품]`·[장비]**는 **현재 스냅샷(상태 요약)** 입니다. **‘지금 내가 무엇을 들고 있는가’는 `[내 소지품]`만이 진실**이며, **동료가 무엇을 들었는지**는 위 **[파티원 실시간 소지 현황]**(교차 검증 블록)을 따릅니다. ActionLog의 획득·전리품은 과거 이벤트일 수 있으며, ActionLog의 HpBefore/MpAfter 등은 **그 이벤트 당시** 기록일 수 있으니 ‘지금 체력’은 Stats를 우선합니다.");
         sb.AppendLine($"이름: {speaker.Name} / Id: {speaker.Id} / 나이: {speaker.Age}세 / 역할: {speaker.Role}");
+        AppendJobRolePromptBlock(sb, speaker, gameRefs);
+        if (!string.IsNullOrWhiteSpace(speaker.Mood))
+        {
+            sb.AppendLine(
+                $"[현재 기분(실시간 Mood)]: {speaker.Mood.Trim()} — 말투·짧은 `( )` 연출에 **살짝** 반영하세요. " +
+                "성격·SpeechStyle·금지 규칙보다 우선하지 않습니다.");
+        }
         if (!string.IsNullOrWhiteSpace(speaker.PartyId))
         {
             var p = gameRefs?.Parties?.FirstOrDefault(x =>
@@ -984,7 +1020,7 @@ public static class PromptBuilder
 
         if (speaker.Skills is { Count: > 0 })
         {
-            sb.AppendLine("[보유 스킬(이름만 — 효과는 참조 RAG의 스킬)]");
+            sb.AppendLine("[보유 스킬 — 직업(JobDatabase) 필터 적용 후, 이름만 — 효과는 참조 RAG의 스킬]");
             sb.AppendLine("  " + string.Join(", ", speaker.Skills));
         }
 
@@ -1021,26 +1057,74 @@ public static class PromptBuilder
         sb.AppendLine();
     }
 
-    private static void AppendReferenceKnowledgeRag(StringBuilder sb, DialogueSettings settings, string? ragBlock)
+    private static void AppendReferenceKnowledgeRag(StringBuilder sb, DialogueSettings settings, string? ragBlock, bool aethelgardThreeLayer = false)
     {
-        var ret = settings.Retrieval;
-        if (ret?.UseEmbeddingRag == true || ret?.UseKeywordRagForGameDb == true)
+        if (!string.IsNullOrWhiteSpace(ragBlock))
         {
-            if (!string.IsNullOrWhiteSpace(ragBlock))
+            if (aethelgardThreeLayer)
             {
-                sb.AppendLine("[참조 지식 RAG (에델가드 지식 베이스 · 도감) — WorldLore·Monster·Trap·Item·Skill (임베딩 또는 키워드 검색)]");
+                sb.AppendLine("[1층 RAG — The Library · 무한한 장기 기억 저장소]");
+                sb.AppendLine(
+                    "역할: 컨텍스트 밖의 방대한 설정(Aethelgard_Master_Guide·도감·과거 로그 요약 등)에서 **이번 질의와 겹치는 조각(Chunk)**만 꺼낸 것입니다.");
+                sb.AppendLine(
+                    "※ 아래는 **검색된 참고 지식**입니다. 없는 사실을 지어내지 말고, **필요할 때만** 인용하세요.");
+            }
+
+            sb.AppendLine("[참조 지식 RAG (에델가드 지식 베이스 · 도감) — WorldLore·Monster·Trap·Item·Skill (임베딩 검색)]");
+            if (!aethelgardThreeLayer)
                 sb.AppendLine("아래는 이번 질의와 유사도가 높은 참고 문서입니다. 없는 사실은 만들지 마세요.");
-                sb.AppendLine(ragBlock);
-                sb.AppendLine();
-                return;
-            }
-            if (ret.RagFallbackToFullDb)
-            {
-                sb.AppendLine("[참조 지식 RAG]");
-                sb.AppendLine("(이번 턴 검색 결과 없음. 질의·에피소드 키워드를 늘리거나 EmbeddingModel을 확인하세요.)");
-                sb.AppendLine();
-            }
+            sb.AppendLine(ragBlock);
+            sb.AppendLine();
+            return;
         }
+
+        sb.AppendLine("[참조 지식 RAG]");
+        sb.AppendLine("(이번 턴 임베딩 검색 결과 없음. 질의·에피소드 키워드를 늘리거나 EmbeddingModel을 확인하세요.)");
+        sb.AppendLine();
+    }
+
+    /// <summary>에델가드 길드 다이얼로그: 7B를 위한 RAG·MCP·프롬프트 역할 분담(설계 문서와 동일 골격).</summary>
+    private static void AppendAethelgardThreeLayerArchitecture(StringBuilder sb, string speakerName)
+    {
+        sb.AppendLine("[에델가드 길드 다이얼로그 — 3대 핵심 기술 계층 · 7B 지능 배치]");
+        sb.AppendLine($"• 당신은 **{speakerName}**. 아래는 **RAG / MCP / 프롬프트**가 각각 맡는 일입니다. 최종 한 줄 JSON은 **맨 아래 규칙**을 따릅니다.");
+        sb.AppendLine();
+        sb.AppendLine("**1. RAG (Retrieval-Augmented Generation) — The Library**");
+        sb.AppendLine("• 역할: 컨텍스트 창을 넘는 방대한 설정·도감·과거 기록에서 **질의와 유사한 조각만** 가져옵니다.");
+        sb.AppendLine("• 대상 예: 세계관 전체 가이드, 수백 건 ActionLog에서 뽑은 요약·도감 청크.");
+        sb.AppendLine("• 동작: ‘심연의 둥지가 뭐야?’처럼 물으면 **관련 Chunk만** 아래 [참조 지식 RAG]에 실립니다. **전부 외울 필요 없음**.");
+        sb.AppendLine();
+        sb.AppendLine("**2. MCP (Model Context Protocol) — The Interface**");
+        sb.AppendLine("• 역할: ‘내 머릿속 기억’이 아니라 **외부 리소스**를 읽는 **표준 통로**라고 인지하게 합니다(이 세션에선 프롬프트에 실린 URI·표가 그 본문).");
+        sb.AppendLine("• **Resources (URI)**: 예) `guild://roster`, `inventory://kyle`, `expedition://action_log`, `world://lore`(RAG와 겹치면 RAG가 Library).");
+        sb.AppendLine("• **Tools**: `Verify_Member(name)` — 이름을 쓰기 **전** 명단·DB와 대조. `Resolve_Item_Ownership(item)` — **지금 인벤 스냅샷** 기준 OWNER.");
+        sb.AppendLine("• 이점: ‘브라이언’ 같은 **가짜 인물**에 빠지지 않게, **명단에 없으면 없음**이 근거가 됩니다.");
+        sb.AppendLine("• **런타임 팩트**: `[MCP — 런타임 조회 결과]` 블록이 있으면 **C#이 방금 계산한 결과**이며, 그 줄은 **추론이 아님**.");
+        sb.AppendLine();
+        sb.AppendLine("**3. 프롬프트 (Prompting) — The Brain**");
+        sb.AppendLine("• 역할: RAG·MCP 중 **무엇을 우선할지**, 말투·괄호 연출·JSON 형식 등 **최종 온도**를 정합니다.");
+        sb.AppendLine("• 논리 게이트: 소유·행방 질문이면 **먼저** 파티 인벤 표·MCP 팩트 → 그다음 로그·RAG.");
+        sb.AppendLine("• 페르소나: SpeechStyle·성격·`( )` 연출. 최종 검문: 출력 직전 **표·도구 결과와 모순 없는지**.");
+        sb.AppendLine();
+        sb.AppendLine("**4. 통합 워크플로우 (예시)**");
+        sb.AppendLine("[입력] 길드장: 「리나, 지금 카일이 뼈 항아리 가지고 있어?」");
+        sb.AppendLine("→ [프롬프트] 아이템 소유 질문 → MCP 우선.");
+        sb.AppendLine("→ [MCP] `inventory://kyle` 확인 → 뼈 항아리 ×0 · `inventory://bram` → 뼈 항아리 ×2.");
+        sb.AppendLine("→ [RAG] (필요 시) 뼈 항아리 설명을 `world://lore` 청크에서 검색.");
+        sb.AppendLine("→ [합성] 카일은 없음, 브람이 보유 — **리나** 말투로 한 줄 JSON.");
+        sb.AppendLine("→ [출력 예] `(가방 쪽을 훑듯)` 카일 님은 그걸 안 들고 계세요. 뼈 항아리는 브람 님이 가져가셨어요.");
+        sb.AppendLine();
+        sb.AppendLine("**5. 요약**");
+        sb.AppendLine("• RAG = **지식의 양**(Library). MCP = **지금 표의 정확함**(Interface). 프롬프트 = **자아·절차·형식**(Brain).");
+        sb.AppendLine("• **스냅 진실**: 지금 소유는 **`[내 소지품]`·`[파티원 실시간 소지 현황]`** + 위 MCP 런타임 블록(있을 때). ActionLog는 **과거**.");
+        sb.AppendLine("• 출력: **`{ \"line\": \"…\" }` 단일 JSON** · 1인칭 · `line`에 화자명 접두어 금지.");
+        sb.AppendLine();
+    }
+
+    private static void AppendMcpRuntimeToolBlock(StringBuilder sb, string mcpRuntimeToolBlock)
+    {
+        sb.AppendLine(mcpRuntimeToolBlock.Trim());
+        sb.AppendLine();
     }
 
     /// <summary>길드장 1:1 대화: 워킹 메모리 위에 이번 턴 발화를 명시해 짧은 인사 등이 오인되지 않게 합니다.</summary>

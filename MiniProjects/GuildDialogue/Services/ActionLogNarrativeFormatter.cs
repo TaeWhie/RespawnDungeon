@@ -271,11 +271,24 @@ public static class ActionLogNarrativeFormatter
 
             case "loot":
                 if (e.LootItems is { Count: > 0 })
-                    return $"{a}[획득] {locSeg}에서 " + string.Join(", ", e.LootItems.Select(l => $"{l.ItemName}×{l.Count}")) + "을(를) 획득했습니다.";
-                return $"{a}[획득] {locSeg}에서 {e.ItemName ?? "전리품"} ×{e.ItemCount ?? 1}.";
+                {
+                    string Line(LootEntry l)
+                    {
+                        var core = $"{l.ItemName}×{l.Count}";
+                        return string.IsNullOrEmpty(l.AcquiredByCharacterId) ? core : $"{core}({r(l.AcquiredByCharacterId)}에게 귀속)";
+                    }
+
+                    return $"{a}[획득] {locSeg}에서 " + string.Join(", ", e.LootItems.Select(Line)) + "을(를) 획득했습니다.";
+                }
+
+                return $"{a}[획득] {locSeg}에서 {e.ItemName ?? "전리품"} ×{e.ItemCount ?? 1}" +
+                       (string.IsNullOrEmpty(e.AcquiredByCharacterId) ? "." : $"({r(e.AcquiredByCharacterId)}에게 귀속).");
 
             case "artifact":
-                return $"{a}[유물] {locSeg}에서 **'{e.ItemName}'**을(를) 발견·회수했습니다.";
+                {
+                    var artifactSuffix = string.IsNullOrEmpty(e.AcquiredByCharacterId) ? "" : $" ({r(e.AcquiredByCharacterId)}에게 귀속)";
+                    return $"{a}[유물] {locSeg}에서 **'{e.ItemName}'**을(를) 발견·회수했습니다." + artifactSuffix;
+                }
 
             case "consumepotion":
                 var stat = new List<string>();

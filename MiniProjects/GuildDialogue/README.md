@@ -5,7 +5,7 @@
 ## 요구 사항
 
 - .NET 6 SDK
-- (선택) [Ollama](https://ollama.ai/) — 로컬 LLM 사용 시. 미실행/미설치 시 **폴백**으로 캐릭터/역할별 문장 출력
+- [Ollama](https://ollama.ai/) — 채팅·임베딩 모델 (`DialogueSettings.json`의 `Model`, `EmbeddingModel`)
 
 ## 실행
 
@@ -14,18 +14,11 @@ cd MiniProjects/GuildDialogue
 dotnet run
 ```
 
-### 길드 집무실 시멘틱 가드레일 점검
-
-Ollama + `Ollama.EmbeddingModel`(예: `nomic-embed-text`)이 떠 있는 상태에서:
+### 길드 집무실 탐색(키워드·임베딩만, LLM 호출 없음)
 
 ```bash
-dotnet run -- --eval-guardrail
+dotnet run -- --explore-guild-office
 ```
-
-- 케이스: `Config/SemanticGuardrailEval.json`
-- 앵커: `Config/SemanticGuardrailAnchors.json`
-- 임계·분리: `Retrieval`의 `GuildOfficeSemanticGuardrailThreshold`, `GuildOfficeSemanticDisambiguationMargin`, `GuildOfficeSemanticStrongAtypicalFloor`, `GuildOfficeSemanticExpeditionDisambigMin`, `GuildOfficeSemanticMetaOffEmbeddingTieEpsilon`, `UseGuildOfficeObviousKeywordTieBreak`
-- 두꺼운 원정 프롬프트(Episodic·ActionLog·RAG): `GuildOfficeExpeditionContextThreshold` + **`GuildOfficeExpeditionUseRelativeEmbeddingGate`** / **`GuildOfficeExpeditionDeepContextLead`**(원정 임베딩이 메타/오프보다 앞설 때만) + 명시 키워드(`GuildOfficeTopicGate.HasExplicitExpeditionKeywordCue`)
 
 ### 길드 집무실: 발화별 실제 NPC 응답(LLM)
 
@@ -36,17 +29,13 @@ dotnet run -- --explore-guild-office-llm
 dotnet run -- --explore-guild-office-llm --buddy 리나 --max 8
 ```
 
-- 설정·캐릭터: `Config/DialogueSettings.json`, `Config/Characters.json` (하드 코딩 없이 여기서 로드)
-- Ollama 사용 시: `DialogueSettings.json`의 `Ollama.Model`에 설치된 모델명(예: `llama3.2`) 지정
+- 설정·캐릭터: `Config/DialogueSettings.json`, `Config/CharactersDatabase.json`
+- `DialogueSettings.json`의 `Ollama.Model`·`EmbeddingModel`에 설치된 모델명 지정
 
 ## 구조
 
-- **Config/** — 설정 JSON(문서 2.6 스키마), 캐릭터 JSON(스탯·인벤토리·선택 필드 `Likes`/`Dislikes`/`RecentMemorableEvent` 등, Unity CharacterData/InventoryData와 매핑 가능). 던전 원정 시뮬 후 `RecentMemorableEvent`는 이번 런 로그로 한 줄 자동 갱신됨(캐릭터 DB 저장 시 반영).
-- **Data/** — `DialogueSettings`, `Character`(Stats, Inventory), `DungeonLog`, `DialogueRequest`, `LlmResponse` 등
-- **Services/** — `DialogueConfigLoader`, `PromptBuilder`, `OllamaClient`, `MemoryManager`, `DialogueManager`
-- **Program.cs** — 콘솔 진입점, GM 한 마디 → 카일 응답 → 입력 대화 루프
+- **Config/** — 설정 JSON, 캐릭터·던전·아이템 등
+- **Data/** — `DialogueSettings`, `Character`, `ActionLog` DTO 등
+- **Services/** — `DialogueManager`, RAG 임베딩, 프롬프트 빌더 등
 
-## 설계 준수
-
-- N값·키워드·허용 주제·리트라이·오프셋·폴백 문장 등 **전부 설정에서 로드** (하드 코딩 금지)
-- RAG: Retrieve(캐릭터·던전 로그·메모리·최근 턴) → Augment(프롬프트 조합) → Generate(Ollama 또는 폴백)
+빌드 시 `Config/**`가 출력 폴더로 복사됩니다.

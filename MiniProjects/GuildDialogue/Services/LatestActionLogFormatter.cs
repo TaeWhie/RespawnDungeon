@@ -41,6 +41,7 @@ public static class LatestActionLogFormatter
                 e.FloorOrZone,
                 e.PartyMembers,
                 e.ActorId,
+                e.AcquiredByCharacterId,
                 e.TargetId,
                 e.HpBefore,
                 e.HpAfter,

@@ -15,13 +15,6 @@ class Program
         // 2. 터미널 출력만 UTF-8로 설정 (입력은 터미널 기본값 유지)
         Console.OutputEncoding = System.Text.Encoding.UTF8;
 
-        if (args.Length > 0 && string.Equals(args[0], "--eval-guardrail", StringComparison.OrdinalIgnoreCase))
-        {
-            var code = await SemanticGuardrailEvalRunner.RunAsync(args, CancellationToken.None);
-            Environment.Exit(code);
-            return;
-        }
-
         if (args.Length > 0 && string.Equals(args[0], "--explore-guild-office", StringComparison.OrdinalIgnoreCase))
         {
             var code = await GuildOfficeExplorationRunner.RunAsync(CancellationToken.None);
@@ -67,6 +60,12 @@ class Program
             var loader = new DialogueConfigLoader(configDir);
             var sim = DungeonRunSimulator.Generate(loader.LoadSimulationInputs(partyForSim), seed);
 
+            CharacterMoodUpdater.ApplyAfterDungeonRun(
+                sim.CharactersAfterRun,
+                sim.ParticipatingCharacterIds,
+                sim.RunOutcome,
+                sim.PartyAvgHpRatio);
+
             var dir = Path.GetDirectoryName(Path.GetFullPath(outPath));
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
@@ -97,8 +96,9 @@ class Program
             Console.WriteLine("실행 모드를 선택하세요:");
             Console.WriteLine("1. 동료 간 관전 모드 (자동 대화)");
             Console.WriteLine("2. 길드장 직접 참여 모드 (사용자 입력)");
-            Console.WriteLine("3. 파티 편성 (목록·생성·수정·삭제, Ollama 불필요)");
-            Console.WriteLine("4. 원정 보내기 (던전 시뮬 → ActionLog·캐릭터 반영, Ollama 불필요)");
+            Console.WriteLine("3. 파티 편성 (목록·생성·수정·삭제)");
+            Console.WriteLine("4. 원정 보내기 (던전 시뮬 → ActionLog·캐릭터 반영)");
+            Console.WriteLine("5. 캐릭터 생성 (JobDatabase·스킬; 서사 Ollama)");
             Console.WriteLine("0. 종료");
             Console.Write("> ");
 
@@ -116,6 +116,12 @@ class Program
             if (choice == "4")
             {
                 await PartyManagementConsole.RunExpeditionAsync(offlineLoader);
+                continue;
+            }
+
+            if (choice == "5")
+            {
+                await CharacterCreationConsole.RunCreateCharacterAsync(offlineLoader);
                 continue;
             }
 

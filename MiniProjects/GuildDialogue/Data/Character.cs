@@ -28,6 +28,11 @@ public class Character
     public string Background { get; set; } = "";
     public string SpeechStyle { get; set; } = "";
 
+    /// <summary>
+    /// 현재 기분·감정 톤(한국어 짧은 라벨). JSON 시드값이며, 런타임에 대화 턴마다 갱신됩니다(메모리만).
+    /// </summary>
+    public string Mood { get; set; } = "중립";
+
     /// <summary>성향·취향에 맞게 좋아하는 것(한 줄씩). 대화 톤·화제 훅.</summary>
     public List<string>? Likes { get; set; }
 

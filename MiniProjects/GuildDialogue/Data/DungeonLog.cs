@@ -53,6 +53,9 @@ public class DungeonEvent
     /// <summary>ItemTransfer 시 받는 쪽</summary>
     public string? ToId { get; set; }
 
+    /// <summary>단일 아이템 이벤트(artifact 등)에서 최종 소지자 Id. LootItems에는 항목별 <see cref="LootEntry.AcquiredByCharacterId"/> 사용.</summary>
+    public string? AcquiredByCharacterId { get; set; }
+
     /// <summary>PartyCheck 시 HpMp, PotionCount 등</summary>
     public string? CheckType { get; set; }
 
@@ -82,4 +85,7 @@ public class LootEntry
 {
     public string ItemName { get; set; } = "";
     public int Count { get; set; } = 1;
+
+    /// <summary>해당 수량이 최종적으로 귀속된 캐릭터 Id (CharactersDatabase.Id). 루팅 분배 후 기록.</summary>
+    public string? AcquiredByCharacterId { get; set; }
 }

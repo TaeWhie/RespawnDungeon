@@ -26,9 +26,6 @@
     "ExcludeCurrencyLineFromLoreEmbedding": true,
     "PrioritizeEpisodicMentionsInRag": true,
     "RagSearchPoolSize": 12,
-    "UseEmbeddingRag": true,
-    "UseKeywordRagForGameDb": true,
-    "RagFallbackToFullDb": true,
     "RagIncludeSpeakerLoadout": true,
     "LatestActionLogEntriesInPrompt": 28,
     "UseActionLogNarrativeProse": true,
@@ -48,7 +45,9 @@
     "GuildOfficeExpeditionContextThreshold": 0.72,
     "GuildOfficeExpeditionUseRelativeEmbeddingGate": true,
     "GuildOfficeExpeditionDeepContextLead": 0.03,
-    "UseGuildOfficeLlmIntentRouter": false
+    "UseGuildOfficeLlmIntentRouter": false,
+    "UseAethelgardThreeLayerPrompt": true,
+    "UseMcpRuntimeToolFacts": true
   },
   "QualitativeAnalysis": {
     "Enabled": false,

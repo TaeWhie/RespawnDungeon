@@ -162,15 +162,20 @@ public class MemoryManager
                 $"  - 함정 회피: {e.AvoidedCount ?? 1}건 ({e.Location ?? log.DungeonName})",
             "loot" =>
                 e.LootItems?.Count > 0
-                    ? $"  - 루팅: {string.Join(", ", e.LootItems.Select(l => $"{l.ItemName}×{l.Count}"))}"
-                    : $"  - 루팅: {e.ItemName ?? "아이템"} ×{e.ItemCount ?? 1}",
+                    ? "  - 루팅: " + string.Join(", ", e.LootItems.Select(l =>
+                    {
+                        var who = string.IsNullOrEmpty(l.AcquiredByCharacterId) ? "" : $" ({R(l.AcquiredByCharacterId)} 소지)";
+                        return $"{l.ItemName}×{l.Count}{who}";
+                    }))
+                    : $"  - 루팅: {e.ItemName ?? "아이템"} ×{e.ItemCount ?? 1}{(string.IsNullOrEmpty(e.AcquiredByCharacterId) ? "" : $" ({R(e.AcquiredByCharacterId)} 소지)")}",
             "itemtransfer" =>
                 $"  - 아이템 전달: {R(e.FromId)} → {R(e.ToId)}, {e.ItemName ?? "?"} ×{e.ItemCount ?? 1}",
             "heal" =>
                 $"  - 치유: {R(e.ActorId)}가 {R(e.TargetId)} 회복 (HP {e.HpBefore}→{e.HpAfter})",
             "consumepotion" => ConsumePotionLine(e, R),
             "artifact" =>
-                $"  - 유물/특수 획득: {e.ItemName ?? "아이템"} @ {e.Location ?? "?"}",
+                $"  - 유물/특수 획득: {e.ItemName ?? "아이템"} @ {e.Location ?? "?"}" +
+                (string.IsNullOrEmpty(e.AcquiredByCharacterId) ? "" : $" → {R(e.AcquiredByCharacterId)} 소지"),
             "partycheck" =>
                 $"  - 파티 점검: {R(e.ActorId)}{(string.IsNullOrEmpty(e.CheckType) ? "" : $" ({e.CheckType})")} @ {e.Location ?? ""}",
             "debuffclear" =>

@@ -52,6 +52,12 @@ public class ActionLogEntry
     public int? AvoidedCount { get; set; }
     public string? FromId { get; set; }
     public string? ToId { get; set; }
+
+    /// <summary>
+    /// 단일 아이템 행(artifact 등) 또는 이벤트 단위로 귀속자를 밝힐 때. 루팅은 <see cref="LootItems"/> 각 줄의 <see cref="LootEntry.AcquiredByCharacterId"/> 우선.
+    /// </summary>
+    public string? AcquiredByCharacterId { get; set; }
+
     public string? CheckType { get; set; }
     public int? ClearCount { get; set; }
 
@@ -175,6 +181,7 @@ public static class ActionLogBuilder
             AvoidedCount = e.AvoidedCount,
             FromId = e.FromId,
             ToId = e.ToId,
+            AcquiredByCharacterId = e.AcquiredByCharacterId,
             CheckType = e.CheckType,
             ClearCount = e.ClearCount,
             TrapId = e.TrapId,
