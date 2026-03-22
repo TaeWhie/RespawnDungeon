@@ -1,0 +1,42 @@
+[
+  {
+    "BaseId": "main_hall",
+    "Name": "메인홀",
+    "Type": "Hub",
+    "Description": "출정/복귀 동선의 중심이 되는 집결 구역.",
+    "AvailableServices": "파티 편성, 복귀 보고, 출정 준비",
+    "RiskOrLimit": "혼잡 시 정비 우선순위가 늦어질 수 있음"
+  },
+  {
+    "BaseId": "cafeteria",
+    "Name": "식당",
+    "Type": "Recovery",
+    "Description": "원정 후 체력 회복과 정보 교환이 이루어지는 휴식 공간.",
+    "AvailableServices": "식사, 비공식 브리핑, 사기 회복",
+    "RiskOrLimit": "소음이 많아 민감한 전략 대화에는 부적합"
+  },
+  {
+    "BaseId": "reception",
+    "Name": "접수대",
+    "Type": "Operation",
+    "Description": "신규 모험가 등록과 의뢰 접수가 처리되는 행정 창구.",
+    "AvailableServices": "모험가 등록, 의뢰 접수, 보상 정산",
+    "RiskOrLimit": "서류 처리 지연 시 출정 대기 시간 증가"
+  },
+  {
+    "BaseId": "training_ground",
+    "Name": "훈련장",
+    "Type": "Training",
+    "Description": "실전 전술과 스킬 연계를 점검하는 모의 전투 구역.",
+    "AvailableServices": "대련, 스킬 숙련, 장비 테스트",
+    "RiskOrLimit": "과훈련 시 다음 런 컨디션 저하 가능"
+  },
+  {
+    "BaseId": "quest_board",
+    "Name": "게시판",
+    "Type": "Intel",
+    "Description": "던전 정보와 신규 퀘스트가 갱신되는 정보 허브.",
+    "AvailableServices": "퀘스트 수주, 난이도 확인, 보상 비교",
+    "RiskOrLimit": "오래된 정보가 섞여 있을 수 있어 교차 검증 필요"
+  }
+]

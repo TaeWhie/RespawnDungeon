@@ -15,6 +15,13 @@ public class OllamaSettings
     /// <summary>Ollama /api/embeddings 전용(비우면 Model 사용 — 임베딩 미지원 모델이면 오류). 예: nomic-embed-text</summary>
     public string? EmbeddingModel { get; set; }
     public int TimeoutSeconds { get; set; } = 60;
+
+    /// <summary>
+    /// 초기화 시 RAG 청크·가드레일 앵커 임베딩을 몇 개까지 동시에 요청할지(1~16).
+    /// Ollama/머신이 버티는 범위에서 올리면 전체 임베딩 시간이 짧아집니다. 불안하면 1.
+    /// </summary>
+    public int EmbeddingMaxConcurrency { get; set; } = 4;
+
     public double Temperature { get; set; } = 0.7;
     public double TopP { get; set; } = 0.9;
     public int NumPredict { get; set; } = 0;

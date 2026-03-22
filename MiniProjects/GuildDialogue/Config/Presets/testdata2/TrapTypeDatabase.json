@@ -1,0 +1,38 @@
+[
+  {
+    "TrapId": "pressure_plate_basic",
+    "TrapName": "압력판 함정",
+    "Category": "Mechanical",
+    "TriggerCondition": "지정 타일 위 체중 감지",
+    "Effect": "전방 화살 발사, 경미한 출혈 유발",
+    "CounterMeasure": "탐지 후 우회 이동 또는 무거운 물체로 선발동",
+    "DangerLevel": "Low"
+  },
+  {
+    "TrapId": "poison_needle_slot",
+    "TrapName": "독침 슬롯",
+    "Category": "Mechanical",
+    "TriggerCondition": "문틀/상자 개방 시 트리거",
+    "Effect": "독 상태이상 부여, 지속 피해",
+    "CounterMeasure": "개방 전 슬롯 탐지, 장갑/도구 사용",
+    "DangerLevel": "Mid"
+  },
+  {
+    "TrapId": "mana_drain_sigil",
+    "TrapName": "마력 흡수 문양",
+    "Category": "Magical",
+    "TriggerCondition": "문양 반경 진입 시 활성화",
+    "Effect": "MP 급감, 스킬 사용 제약",
+    "CounterMeasure": "문양 파괴 또는 무효화 주문 후 진입",
+    "DangerLevel": "Mid"
+  },
+  {
+    "TrapId": "collapse_tile_chain",
+    "TrapName": "붕괴 타일 연쇄",
+    "Category": "Terrain",
+    "TriggerCondition": "하중 누적 시 연쇄 붕괴",
+    "Effect": "낙하 피해, 파티 분리 위험",
+    "CounterMeasure": "분산 진입, 로프/앵커 사전 설치",
+    "DangerLevel": "High"
+  }
+]

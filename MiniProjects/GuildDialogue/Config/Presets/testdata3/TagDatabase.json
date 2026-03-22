@@ -1,0 +1,58 @@
+[
+  {
+    "TagName": "control",
+    "Description": "군중 제어·기절·경직 등 행동 제약 계열"
+  },
+  {
+    "TagName": "frontline",
+    "Description": "전열·선봉 역할"
+  },
+  {
+    "TagName": "defense",
+    "Description": "방어·피해 경감"
+  },
+  {
+    "TagName": "debuff",
+    "Description": "약화·디버프 부여"
+  },
+  {
+    "TagName": "analysis",
+    "Description": "분석·약점 노출"
+  },
+  {
+    "TagName": "single-target",
+    "Description": "단일 대상"
+  },
+  {
+    "TagName": "healing",
+    "Description": "회복"
+  },
+  {
+    "TagName": "support",
+    "Description": "버프·보조"
+  },
+  {
+    "TagName": "cleanse",
+    "Description": "해제·정화"
+  },
+  {
+    "TagName": "economy",
+    "Description": "경제·거래·전리품 가치"
+  },
+  {
+    "TagName": "utility",
+    "Description": "범용 도구성"
+  },
+  {
+    "TagName": "loot",
+    "Description": "전리품·탐색 보상"
+  },
+  {
+    "TagName": "scout",
+    "Description": "정찰·수색"
+  },
+  {
+    "TagName": "trap-detect",
+    "Description": "함정 감지"
+  }
+]

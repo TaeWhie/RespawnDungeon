@@ -1,0 +1,6 @@
+[
+  { "RarityName": "일반", "Description": "흔한 등급." },
+  { "RarityName": "고급", "Description": "약간 희소." },
+  { "RarityName": "희귀", "Description": "귀한 전리품·장비." },
+  { "RarityName": "전설", "Description": "전설급 가치·힘." }
+]

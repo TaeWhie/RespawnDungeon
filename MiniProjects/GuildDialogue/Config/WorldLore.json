@@ -27,36 +27,65 @@
       "Name": "잊힌 묘지 (Forgotten Cemetery)",
       "Description": "언데드가 출몰하는 초보자용 공동묘지 유적.",
       "Difficulty": "Low",
-      "TypicalMonsters": ["스켈레톤", "좀비"],
-      "KnownRewards": ["잊혀진 룬", "낡은 철퇴"]
+      "TypicalMonsters": [
+        "스켈레톤",
+        "좀비"
+      ],
+      "KnownRewards": [
+        "잊혀진 룬",
+        "낡은 철퇴"
+      ]
     },
     {
       "Name": "습지 동굴 (Wetland Cave)",
       "Description": "슬라임이 서식하는 축축한 훈련용 동굴.",
       "Difficulty": "Low",
-      "TypicalMonsters": ["슬라임"],
-      "KnownRewards": ["슬라임 점액", "회복 포션"]
+      "TypicalMonsters": [
+        "슬라임"
+      ],
+      "KnownRewards": [
+        "슬라임 점액",
+        "회복 포션"
+      ]
     },
     {
       "Name": "검은 가시 무덤 (Black Thorn Catacombs)",
       "Description": "거대 가시 거미와 언데드가 있는 중급 유적.",
       "Difficulty": "Mid",
-      "TypicalMonsters": ["스켈레톤", "거대 가시 거미"],
-      "KnownRewards": ["희귀한 뼈 항아리", "마력 파편"]
+      "TypicalMonsters": [
+        "스켈레톤",
+        "거대 가시 거미"
+      ],
+      "KnownRewards": [
+        "희귀한 뼈 항아리",
+        "마력 파편"
+      ]
     },
     {
       "Name": "푸른 화염의 탑 (Tower of Blue Flame)",
       "Description": "정령과 골렘이 수호하는 신비로운 마탑.",
       "Difficulty": "Mid",
-      "TypicalMonsters": ["불의 정령", "청동 골렘"],
-      "KnownRewards": ["푸른 불꽃 지팡이", "지혜의 비약"]
+      "TypicalMonsters": [
+        "불의 정령",
+        "청동 골렘"
+      ],
+      "KnownRewards": [
+        "푸른 불꽃 지팡이",
+        "지혜의 비약"
+      ]
     },
     {
       "Name": "심연의 둥지 (Abyss Nest)",
       "Description": "고룡의 후예가 잠든 최정상급 던전.",
       "Difficulty": "Abyss",
-      "TypicalMonsters": ["와이번", "심연의 기사"],
-      "KnownRewards": ["용의 심장 조각", "에델가드의 눈물"]
+      "TypicalMonsters": [
+        "와이번",
+        "심연의 기사"
+      ],
+      "KnownRewards": [
+        "용의 심장 조각",
+        "에델가드의 눈물"
+      ]
     }
   ],
   "Organizations": [

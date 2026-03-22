@@ -1,305 +1,62 @@
 [
   {
-    "Id": "kyle",
-    "Name": "카일",
-    "Age": 32,
-    "Role": "Vanguard",
-    "PartyId": "core_fireteam",
-    "CurrentLocationId": "main_hall",
-    "CurrentLocationNote": null,
-    "Career": 15,
-    "Background": "전직 왕국 기사단 제3군단 천인대장 출신. 15년간 국경 분쟁 지역인 '철벽 산맥' 전선을 방어하며 수십 차례 대규모 전투를 지휘한 베테랑 기사입니다. 마지막 전투에서 부하들을 지키고 입은 중상으로 인해 명예 제대했습니다.",
-    "SpeechStyle": "말은 짧고 단호하다. ~하지, ~할 것이다 어미를 선호한다. 감탄사 '젠장'은 정말 화가 났을 때 한 번만 사용하며, 같은 문장에서 반복하지 않는다.",
-    "Mood": "차분",
-    "Likes": [
-      "전열이 무너지지 않을 때의 질서",
-      "식사 후 뜨거운 차 한 잔",
-      "동료에게 등을 맡길 수 있다는 믿음"
-    ],
-    "Dislikes": [
-      "명령 없는 무질서한 돌진",
-      "부하를 버리는 명목의 명예"
-    ],
-    "RecentMemorableEvent": "푸른 화염의 탑 (Tower of Blue Flame)(2) 원정, 결과 클리어. 전리품을 정리했다.",
-    "Personality": {
-      "Courage": 95,
-      "Caution": 30,
-      "Greed": 25,
-      "Orderliness": 60,
-      "Impulsiveness": 70,
-      "Cooperation": 55,
-      "Aggression": 90,
-      "Focus": 85,
-      "Adaptability": 40,
-      "Frugality": 30
-    },
-    "Stats": {
-      "CurrentHP": 72,
-      "MaxHP": 100,
-      "CurrentMP": 22,
-      "MaxMP": 50,
-      "Atk": 14,
-      "Def": 8,
-      "Str": 12,
-      "Dex": 10,
-      "Int": 5,
-      "StatPoints": 0
-    },
-    "Inventory": [
-      {
-        "ItemName": "회복 포션",
-        "ItemType": "Etc",
-        "Count": 1
-      },
-      {
-        "ItemName": "잊혀진 룬",
-        "ItemType": "Etc",
-        "Count": 1
-      },
-      {
-        "ItemName": "던전 지도",
-        "ItemType": "Etc",
-        "Count": 1
-      },
-      {
-        "ItemName": "마나 포션",
-        "ItemType": "Etc",
-        "Count": 1
-      },
-      {
-        "ItemName": "지혜의 비약",
-        "ItemType": "Etc",
-        "Count": 1
-      },
-      {
-        "ItemName": "푸른 불꽃 지팡이",
-        "ItemType": "Weapon",
-        "Count": 1
-      }
-    ],
-    "Equipment": {
-      "Weapon": "철검",
-      "Helmet": null,
-      "Armor": null,
-      "Gloves": null,
-      "Boots": null,
-      "Accessory": null
-    },
-    "Relationships": [
-      {
-        "TargetId": "rina",
-        "Affinity": 100,
-        "Trust": 100,
-        "RelationType": "지속적인 동료"
-      },
-      {
-        "TargetId": "bram",
-        "Affinity": 92,
-        "Trust": 100,
-        "RelationType": "믿음직한 동료"
-      },
-      {
-        "TargetId": "master",
-        "Affinity": 35,
-        "Trust": 65,
-        "RelationType": "전문가와의 협업"
-      }
-    ],
-    "Skills": [
-      "방패 올려치기",
-      "약점 간파"
-    ]
-  },
-  {
-    "Id": "rina",
-    "Name": "리나",
-    "Age": 24,
+    "Id": "support_mira",
+    "Name": "미라",
+    "Age": 28,
     "Role": "Support",
-    "PartyId": "core_fireteam",
+    "PartyId": "party_0217d4c7",
     "CurrentLocationId": "main_hall",
     "CurrentLocationNote": null,
-    "Career": 5,
-    "Background": "성직자 수도원 '루미나스' 수석 사제 후보생 출신. 18세에 최연소 치유사 자격을 취득하고, 3년간 빈민가와 전방 거점에서 무료 치료 봉사를 수행했습니다. 전염병 사태 이후 더 큰 힘을 기르기 위해 길드에 합류했습니다.",
-    "SpeechStyle": "말투는 부드럽고 친근하다. 동료에게는 '님'을 붙이지 않고 이름을 부르며, ~요 어미를 사용한다. '혹시 ~어때요?' 같은 제안형을 즐겨 쓴다.",
-    "Mood": "맑음",
-    "Likes": [
-      "새벽 기도와 고요한 성소",
-      "환자가 숨을 고르고 눈을 뜰 때",
-      "길드 식당의 따뜻한 스프"
-    ],
-    "Dislikes": [
-      "치료 중 끼어드는 고함과 소란",
-      "약품·식량을 함부로 버리는 태도"
-    ],
-    "RecentMemorableEvent": "푸른 화염의 탑 (Tower of Blue Flame)(2) 원정, 결과 클리어. 파티 상태를 점검했다.",
+    "Career": 0,
+    "Background": "28세의 미라, 안개 숲 가장자리에서 태어난 그녀는 어릴 적부터 치유의 힘을 지녔습니다. 에델가드의 고대 유적 탐사 도중 부상당한 동료들을 치료하며 경험을 쌓아왔습니다. 현재는 에델가드 길드의 지원 전문가로 활동하며, '치유 기도'와 '정화의 손길'로 아군을 보호하고 전투 중인 동료들에게 희망을 전합니다.",
+    "SpeechStyle": "말투는 간결하면서도 따뜻합니다. 상황에 따라 깊이 생각한 후 간단하게 조언을 던지곤 합니다.",
+    "Mood": "안도",
+    "Likes": null,
+    "Dislikes": null,
+    "RecentMemorableEvent": "심연의 둥지 (Abyss Nest)(B1) 원정, 결과 클리어. 심층 제단에서 심연의 기사와 맞섰다.",
     "Personality": {
-      "Courage": 35,
-      "Caution": 95,
-      "Greed": 15,
-      "Orderliness": 80,
-      "Impulsiveness": 20,
-      "Cooperation": 100,
-      "Aggression": 10,
+      "Courage": 19,
+      "Caution": 60,
+      "Greed": 31,
+      "Orderliness": 39,
+      "Impulsiveness": 80,
+      "Cooperation": 67,
+      "Aggression": 12,
       "Focus": 75,
-      "Adaptability": 85,
-      "Frugality": 90
+      "Adaptability": 81,
+      "Frugality": 64
     },
     "Stats": {
-      "CurrentHP": 84,
+      "CurrentHP": 63,
       "MaxHP": 100,
       "CurrentMP": 10,
       "MaxMP": 50,
-      "Atk": 6,
-      "Def": 4,
-      "Str": 5,
-      "Dex": 8,
-      "Int": 14,
+      "Atk": 10,
+      "Def": 5,
+      "Str": 8,
+      "Dex": 12,
+      "Int": 6,
       "StatPoints": 0
     },
     "Inventory": [
       {
-        "ItemName": "마력 파편",
+        "ItemName": "용의 심장 조각",
         "ItemType": "Etc",
         "Count": 1
-      },
-      {
-        "ItemName": "에델가드의 눈물",
-        "ItemType": "Etc",
-        "Count": 1
-      },
-      {
-        "ItemName": "슬라임 점액",
-        "ItemType": "Etc",
-        "Count": 2
-      }
-    ],
-    "Equipment": {
-      "Weapon": "지팡이",
-      "Helmet": null,
-      "Armor": null,
-      "Gloves": null,
-      "Boots": null,
-      "Accessory": null
-    },
-    "Relationships": [
-      {
-        "TargetId": "kyle",
-        "Affinity": 100,
-        "Trust": 100,
-        "RelationType": "지속적인 동료"
-      },
-      {
-        "TargetId": "bram",
-        "Affinity": 90,
-        "Trust": 90,
-        "RelationType": "동행자"
-      },
-      {
-        "TargetId": "master",
-        "Affinity": 65,
-        "Trust": 70,
-        "RelationType": "지도자와의 신뢰 유지"
-      }
-    ],
-    "Skills": [
-      "치유 기도",
-      "정화의 손길"
-    ]
-  },
-  {
-    "Id": "bram",
-    "Name": "브람",
-    "Age": 38,
-    "Role": "Scavenger",
-    "PartyId": "core_fireteam",
-    "CurrentLocationId": "main_hall",
-    "CurrentLocationNote": null,
-    "Career": 20,
-    "Background": "비밀 결사 '쉐도우 핑거'의 정보 중개인 및 전직 밀수꾼 출신. 20년 넘게 암시장과 경매장을 주도하며 전리품의 가치를 감정해온 전문가입니다. 겉으론 돈만 밝히는 척하지만 동료들을 뒤에서 챙겨주는 살림꾼입니다.",
-    "SpeechStyle": "말투는 능청스럽고 약간 건들거린다. '흠', '그렇지', '뭐, 나쁘지 않군' 같은 판단형 추임새를 자주 쓴다. 이득이 없을 것 같으면 말을 짧게 끊는다.",
-    "Mood": "여유",
-    "Likes": [
-      "희귀 전리품이 손에 잡히는 무게",
-      "거래 성사 때 나는 도장 소리",
-      "한 줄 정보가 가격으로 바뀌는 순간"
-    ],
-    "Dislikes": [
-      "밑져야 본전 식의 무모한 돌파",
-      "장부 숫자를 속이려는 상대"
-    ],
-    "RecentMemorableEvent": "푸른 화염의 탑 (Tower of Blue Flame)(2) 원정, 결과 클리어. 전리품을 정리했다.",
-    "Personality": {
-      "Courage": 40,
-      "Caution": 45,
-      "Greed": 100,
-      "Orderliness": 90,
-      "Impulsiveness": 55,
-      "Cooperation": 35,
-      "Aggression": 35,
-      "Focus": 80,
-      "Adaptability": 75,
-      "Frugality": 85
-    },
-    "Stats": {
-      "CurrentHP": 100,
-      "MaxHP": 100,
-      "CurrentMP": 4,
-      "MaxMP": 50,
-      "Atk": 10,
-      "Def": 6,
-      "Str": 8,
-      "Dex": 14,
-      "Int": 7,
-      "StatPoints": 2
-    },
-    "Inventory": [
-      {
-        "ItemName": "회복 포션",
-        "ItemType": "Etc",
-        "Count": 2
-      },
-      {
-        "ItemName": "던전 지도",
-        "ItemType": "Etc",
-        "Count": 1
-      },
-      {
-        "ItemName": "희귀한 뼈 항아리",
-        "ItemType": "Etc",
-        "Count": 2
       }
     ],
     "Equipment": {
       "Weapon": null,
       "Helmet": null,
-      "Armor": "가죽 갑옷",
+      "Armor": null,
       "Gloves": null,
       "Boots": null,
       "Accessory": null
     },
-    "Relationships": [
-      {
-        "TargetId": "kyle",
-        "Affinity": 87,
-        "Trust": 100,
-        "RelationType": "믿음직한 동료"
-      },
-      {
-        "TargetId": "rina",
-        "Affinity": 100,
-        "Trust": 100,
-        "RelationType": "믿음직한 동료"
-      },
-      {
-        "TargetId": "master",
-        "Affinity": 34,
-        "Trust": 42,
-        "RelationType": "상호 협력 관계"
-      }
-    ],
+    "Relationships": [],
     "Skills": [
-      "전리품 감정",
-      "은밀 수색"
+      "치유 기도",
+      "정화의 손길"
     ]
   }
 ]

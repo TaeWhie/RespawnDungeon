@@ -1,0 +1,5 @@
+[
+  { "CategoryName": "Mechanical", "Description": "기계·압력·침 등 물리 트랩." },
+  { "CategoryName": "Magical", "Description": "마력 문양·저주 발동." },
+  { "CategoryName": "Terrain", "Description": "붕괴·지형 변화." }
+]

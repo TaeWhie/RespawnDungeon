@@ -1,0 +1,26 @@
+{
+  "DungeonEventTypes": [
+    { "Code": "income", "LabelKo": "진입", "Meaning": "해당 던전·층으로 파티가 들어온 시점. 런의 시작." },
+    { "Code": "combat", "LabelKo": "전투", "Meaning": "몬스터(Enemies)와의 전투. 턴 수·막기 횟수 등이 있을 수 있음." },
+    { "Code": "loot", "LabelKo": "루팅", "Meaning": "골드·아이템 획득. LootItems에 목록." },
+    { "Code": "trap", "LabelKo": "함정 피격", "Meaning": "함정으로 피해. TargetId, Damage, HpBefore/HpAfter 등." },
+    { "Code": "trapAvoided", "LabelKo": "함정 회피", "Meaning": "함정을 회피함. AvoidedCount로 회피 횟수." },
+    { "Code": "heal", "LabelKo": "치유", "Meaning": "아군(ActorId→TargetId) 치유. HpBefore/HpAfter." },
+    { "Code": "artifact", "LabelKo": "유물", "Meaning": "던전 내 유물 획득. ItemName, Location." },
+    { "Code": "consumePotion", "LabelKo": "포션 사용", "Meaning": "포션 등 소비. ActorId, ItemName, ItemCount, MpBefore/MpAfter 등." },
+    { "Code": "partyCheck", "LabelKo": "파티 확인", "Meaning": "파티원 상태/포션 등 확인. ActorId, CheckType(HpMp, PotionCount 등)." },
+    { "Code": "itemTransfer", "LabelKo": "아이템 전달", "Meaning": "파티원 간 아이템 건네기. FromId→ToId, ItemName, ItemCount." },
+    { "Code": "debuffClear", "LabelKo": "디버프 해제", "Meaning": "디버프 해제. ActorId, TargetId, ClearCount." },
+    { "Code": "inventorySort", "LabelKo": "인벤 정리", "Meaning": "인벤토리 정리. ActorId, Location." },
+    { "Code": "outcome", "LabelKo": "런 결과", "Meaning": "해당 런의 최종 결과만 기록. Outcome 필드(clear/retreat/fail)와 쌍으로 사용." }
+  ],
+  "BaseEventTypes": [
+    { "Code": "income", "LabelKo": "복귀", "Meaning": "아지트(베이스)에 들어온 시점. 던전에서 돌아온 뒤 메인홀 등에 도착." },
+    { "Code": "partyForm", "LabelKo": "파티 편성", "Meaning": "파티 구성. PartyMembers에 참여자 목록." },
+    { "Code": "adventurerRegister", "LabelKo": "모험가 접수", "Meaning": "접수대에서 모험가 등록·합류." },
+    { "Code": "questAccept", "LabelKo": "퀘스트 수주", "Meaning": "게시판 등에서 퀘스트 수락." },
+    { "Code": "training", "LabelKo": "훈련", "Meaning": "훈련장에서 훈련." },
+    { "Code": "meal", "LabelKo": "식사", "Meaning": "식당에서 식사." },
+    { "Code": "talk", "LabelKo": "대화", "Meaning": "아지트 내 대화(식당·홀 등)." }
+  ]
+}

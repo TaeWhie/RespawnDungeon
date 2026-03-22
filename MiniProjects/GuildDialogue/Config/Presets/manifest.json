@@ -1,0 +1,17 @@
+[
+  {
+    "Id": "testdata1",
+    "Label": "테스트 데이터 1",
+    "Description": "중세·마법 판타지 (기본 세트)"
+  },
+  {
+    "Id": "testdata2",
+    "Label": "테스트 데이터 2",
+    "Description": "우주 식민지·SF (동일 규칙, 세계관 서술만 SF)"
+  },
+  {
+    "Id": "testdata3",
+    "Label": "테스트 데이터 3",
+    "Description": "동양 무협 (동일 규칙, 세계관 서술만 무협)"
+  }
+]

@@ -1,0 +1,74 @@
+[
+  {
+    "MonsterId": "skeleton",
+    "MonsterName": "스켈레톤",
+    "Type": "Undead",
+    "Description": "뼈만 남은 언데드 병사. 고통을 느끼지 않으며 머리가 부서질 때까지 움직입니다.",
+    "Weakness": "신성 마법, 타격계 무기(둔기)",
+    "DangerLevel": "Low",
+    "Traits": ["고통 면역", "물리 공격 위주"]
+  },
+  {
+    "MonsterId": "zombie",
+    "MonsterName": "좀비",
+    "Type": "Undead",
+    "Description": "부패한 시체가 마력으로 움직임. 느리지만 강력한 힘과 독기를 내뿜습니다.",
+    "Weakness": "화염 마법, 신성 마법",
+    "DangerLevel": "Low",
+    "Traits": ["중독 부여", "느린 이동속도"]
+  },
+  {
+    "MonsterId": "slime",
+    "MonsterName": "슬라임",
+    "Type": "Elemental",
+    "Description": "젤리 형태의 반투명 유기체. 물리적 타격에 면역성이 강하며 물체를 녹이는 성질이 있습니다.",
+    "Weakness": "화염 마법, 전격 마법",
+    "DangerLevel": "Low",
+    "Traits": ["물리 저항", "장비 부식"]
+  },
+  {
+    "MonsterId": "giant_thorn_spider",
+    "MonsterName": "거대 가시 거미",
+    "Type": "Beast",
+    "Description": "가시가 돋친 다리를 가진 대형 거미. 끈질긴 거미줄로 적을 묶고 맹독을 주입합니다.",
+    "Weakness": "화염 마법",
+    "DangerLevel": "Mid",
+    "Traits": ["속박(거미줄)", "맹독 주입"]
+  },
+  {
+    "MonsterId": "fire_spirit",
+    "MonsterName": "불의 정령",
+    "Type": "Spirit",
+    "Description": "활활 타오르는 불길의 화신. 주변의 온도를 급격히 높여 접근하는 것만으로도 피해를 줍니다.",
+    "Weakness": "냉기 마법, 물 마법",
+    "DangerLevel": "Mid",
+    "Traits": ["화염 면역", "지속 화상 피해"]
+  },
+  {
+    "MonsterId": "bronze_golem",
+    "MonsterName": "청동 골렘",
+    "Type": "Construct",
+    "Description": "청동으로 제작된 고대 유적 수호 병기. 압도적인 방어력과 파괴력을 지니고 있습니다.",
+    "Weakness": "전격 마법, 타격계 무기(둔기)",
+    "DangerLevel": "Mid",
+    "Traits": ["초고방어력", "군중 제어 무시"]
+  },
+  {
+    "MonsterId": "wyvern",
+    "MonsterName": "와이버른",
+    "Type": "Dragon",
+    "Description": "비행 능력을 갖춘 소형 용족. 빠른 속도로 공중에서 급강하하며 날카로운 발톱으로 공격합니다.",
+    "Weakness": "전격 마법, 원거리 무기",
+    "DangerLevel": "High",
+    "Traits": ["공중 비행", "기습 공격"]
+  },
+  {
+    "MonsterId": "abyss_knight",
+    "MonsterName": "심연의 기사",
+    "Type": "Undead/Dark",
+    "Description": "심연의 마력에 잠식된 몰락한 기사. 흑마법이 깃든 검으로 영혼을 직접 공격합니다.",
+    "Weakness": "신성 마법",
+    "DangerLevel": "Abyss",
+    "Traits": ["심연의 마력", "높은 지능", "검술 숙련"]
+  }
+]

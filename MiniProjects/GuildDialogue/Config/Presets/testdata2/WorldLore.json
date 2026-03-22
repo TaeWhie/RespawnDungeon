@@ -1,0 +1,93 @@
+{
+  "WorldName": "Orbit-7 (궤도-7)",
+  "WorldSummary": "항성 망막을 도는 거대 주거 링과 폐쇄 도시. 고대 함선 유적이 '던전'으로 개방된 우주 식민지 시대입니다.",
+  "GuildInfo": "플레이어가 운영하는 '리스폰 던전' 계약 길드. 전투 클라우드 백업으로 전멸 시에도 아지트에서 재배치됩니다.",
+  "DungeonSystem": "유적 함선의 코어를 무력화해야 구역이 안정화됩니다. 던전은 생체·기계 혼합 생태계입니다.",
+  "BaseCamp": "링 하빗-3 구역 도킹 거점. 루미니스 거점 도시 궤도와 연결됩니다.",
+  "CurrencyAndLoot": "화폐: 크레딧(C), 주요 루팅: 마력 파편, 고대 룬, 장비 설계도.",
+  "Locations": [
+    {
+      "Name": "루미니스 시티 (Luminis City)",
+      "Description": "링 최대 무역 거점이자 에너지 격자의 중심. 거대 홀로그램 광고탑이 특징입니다.",
+      "Type": "City"
+    },
+    {
+      "Name": "침묵의 안개 호수 (Silent Mist Lake)",
+      "Description": "인공 대기권에서 형성된 저중력 호수. 센서 교란이 심해 미아 사건이 잦습니다.",
+      "Type": "Landmark"
+    },
+    {
+      "Name": "철벽 산맥 (Iron Wall Mountains)",
+      "Description": "소행성 채굴장과 방공 포대가 뒤섞인 요충지. 드워프 광산은 고대 채굴 드론 유적입니다.",
+      "Type": "Landmark"
+    }
+  ],
+  "Dungeons": [
+    {
+      "Name": "잊힌 묘지 (Forgotten Cemetery)",
+      "Description": "폐기된 냉동 보관소 겸 초보자용 유적. 언데드는 나노 감염체로 표기됩니다.",
+      "Difficulty": "Low",
+      "TypicalMonsters": ["스켈레톤", "좀비"],
+      "KnownRewards": ["잊혀진 룬", "낡은 철퇴"]
+    },
+    {
+      "Name": "습지 동굴 (Wetland Cave)",
+      "Description": "누수된 생태 돔 안의 슬라임 서식지. 훈련용 저위험 구역입니다.",
+      "Difficulty": "Low",
+      "TypicalMonsters": ["슬라임"],
+      "KnownRewards": ["슬라임 점액", "회복 포션"]
+    },
+    {
+      "Name": "검은 가시 무덤 (Black Thorn Catacombs)",
+      "Description": "거대 가시 거미와 언데드가 있는 중급 유적.",
+      "Difficulty": "Mid",
+      "TypicalMonsters": ["스켈레톤", "거대 가시 거미"],
+      "KnownRewards": ["희귀한 뼈 항아리", "마력 파편"]
+    },
+    {
+      "Name": "푸른 화염의 탑 (Tower of Blue Flame)",
+      "Description": "플라즈마 플레어와 정령 AI가 수호하는 마탑.",
+      "Difficulty": "Mid",
+      "TypicalMonsters": ["불의 정령", "청동 골렘"],
+      "KnownRewards": ["푸른 불꽃 지팡이", "지혜의 비약"]
+    },
+    {
+      "Name": "심연의 둥지 (Abyss Nest)",
+      "Description": "고룡 후예가 잠든 최정상급 던전.",
+      "Difficulty": "Abyss",
+      "TypicalMonsters": ["와이번", "심연의 기사"],
+      "KnownRewards": ["용의 심장 조각", "에델가드의 눈물"]
+    }
+  ],
+  "Organizations": [
+    {
+      "Name": "왕국 기사단 (Kingdom Knights)",
+      "Description": "링 치안을 담당하는 중앙 무장군. 국경 분쟁으로 전력이 분산되어 있습니다.",
+      "Type": "Military"
+    },
+    {
+      "Name": "루미나스 수도원 (Luminas Monastery)",
+      "Description": "의료·나노 치유 데이터를 보존하는 종교 단체.",
+      "Type": "Religion"
+    },
+    {
+      "Name": "쉐도우 핑거 (Shadow Finger)",
+      "Description": "암시장과 정보 거래를 주도하는 베일에 싸인 비밀 결사.",
+      "Type": "Secret"
+    },
+    {
+      "Name": "붉은 늑대 용병단 (Red Wolf Mercenaries)",
+      "Description": "실력 위주의 거친 용병 집단. 돈만 되면 위험한 임무도 마다하지 않습니다.",
+      "Type": "Mercenary"
+    },
+    {
+      "Name": "왕립 마법 아카데미 (Royal Magic Academy)",
+      "Description": "최고의 마법사를 양성하는 교육 기관.",
+      "Type": "Education"
+    }
+  ],
+  "Lore": [
+    "부활의 아티팩트 '이터널 앙코르'는 길드장의 피로만 작동합니다.",
+    "던전에 오래 머물면 '마력 오염'이 진행되어 환청을 들을 수 있습니다."
+  ]
+}

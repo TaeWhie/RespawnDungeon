@@ -1,0 +1,7 @@
+[
+  { "TypeName": "Etc", "Description": "소모품·재료·전리품 등 기타(장비 슬롯 없음)." },
+  { "TypeName": "Weapon", "Description": "무기 슬롯." },
+  { "TypeName": "Armor", "Description": "방어구(몸통 등)." },
+  { "TypeName": "Shield", "Description": "방패." },
+  { "TypeName": "Accessory", "Description": "장신구." }
+]

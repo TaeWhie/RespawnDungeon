@@ -6,6 +6,12 @@
 # dotenv files
 .env
 
+# 로컬 publish·검증용 복사본
+_buildout/
+
+# 런타임: 허브·콘솔이 공유하는 「다음 홈 동료 대화」 플래그
+**/CompanionDialogueHubPending.json
+
 # User-specific files
 *.rsuser
 *.suo

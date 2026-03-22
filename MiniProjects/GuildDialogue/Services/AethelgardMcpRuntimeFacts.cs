@@ -86,6 +86,19 @@ public static class AethelgardMcpRuntimeFacts
             hasContent = true;
         }
 
+        if (itemDatabase != null && itemDatabase.Count > 0 && DetectItemDefinitionIntent(q))
+        {
+            if (QueryMentionsItemFromDb(q, itemDatabase))
+            {
+                AppendItemDefinitionFacts(sb, q, itemDatabase);
+                hasContent = true;
+            }
+            else if (TryAppendItemDefinitionFromInventoryFallback(sb, q, itemDatabase, speaker))
+            {
+                hasContent = true;
+            }
+        }
+
         if (!hasContent)
             return null;
 
@@ -311,6 +324,177 @@ public static class AethelgardMcpRuntimeFacts
 
             if (!found)
                 sb.AppendLine($"  - {itemName}: STATUS_NOT_FOUND (파티 인벤 스냅샷에 해당 전체 이름 없음 — 부분 일치·로그는 표 참고)");
+        }
+    }
+
+    /// <summary>
+    /// 아이템 이름·효과·설명 등을 Config/ItemDatabase.json 정의와 맞추기 위한 조회(환각 억제).
+    /// </summary>
+    private static bool DetectItemDefinitionIntent(string query)
+    {
+        string[] cues =
+        {
+            "효과", "설명", "뭐야", "뭔데", "무슨", "도감", "스펙", "용도", "정의", "능력",
+            "어떻게 쓰", "쓰면", "먹으면", "사용하면", "먹었을", "마시면", "바르면"
+        };
+        foreach (var c in cues)
+        {
+            if (query.Contains(c, StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool QueryMentionsItemFromDb(string query, IReadOnlyList<ItemData> db)
+    {
+        foreach (var it in db.OrderByDescending(x => x.ItemName.Length))
+        {
+            if (string.IsNullOrWhiteSpace(it.ItemName))
+                continue;
+            if (query.Contains(it.ItemName, StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// 질문에 풀 네임이 없을 때: 화자(응답 NPC) 인벤 + 대명사/단일 후보/「포션」 힌트로 ItemDatabase 조회.
+    /// </summary>
+    private static bool TryAppendItemDefinitionFromInventoryFallback(
+        StringBuilder sb,
+        string query,
+        IReadOnlyList<ItemData> db,
+        Character speaker)
+    {
+        var resolved = ResolveSpeakerInventoryItemsInDb(speaker, db);
+        if (resolved.Count == 0)
+            return false;
+
+        List<ItemData> pick;
+        string? sourceNote;
+
+        if (resolved.Count == 1)
+        {
+            pick = resolved;
+            sourceNote = "(source: 화자 인벤에 ItemDatabase 정의가 있는 아이템이 1종류뿐 — 자동 매칭)";
+        }
+        else if (DetectPronounOrImplicitItemReference(query))
+        {
+            pick = resolved.OrderBy(x => x.ItemName, StringComparer.OrdinalIgnoreCase).Take(8).ToList();
+            sourceNote = "(source: 화자 인벤 · 대명사/맥락 질문 — 후보 최대 8종, 풀 이름 없음)";
+        }
+        else if (QueryContainsPotionCategoryHint(query))
+        {
+            var pot = resolved.Where(x => x.ItemName.Contains("포션", StringComparison.Ordinal)).ToList();
+            if (pot.Count == 0)
+                return false;
+            pick = pot.Count > 8 ? pot.Take(8).ToList() : pot;
+            sourceNote = "(source: 화자 인벤 · 질문에 「포션」 포함 — 이름에 포션 포함 항목만)";
+        }
+        else
+            return false;
+
+        AppendItemDefinitionBlockForItems(sb, pick, sourceNote);
+        return true;
+    }
+
+    /// <summary>화자 인벤 고유 아이템명 중 ItemDatabase에 있는 항목.</summary>
+    private static List<ItemData> ResolveSpeakerInventoryItemsInDb(Character speaker, IReadOnlyList<ItemData> db)
+    {
+        var result = new List<ItemData>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (speaker.Inventory == null)
+            return result;
+
+        foreach (var inv in speaker.Inventory)
+        {
+            if (string.IsNullOrWhiteSpace(inv.ItemName) || inv.Count <= 0)
+                continue;
+            if (!seen.Add(inv.ItemName))
+                continue;
+
+            var data = db.FirstOrDefault(d =>
+                !string.IsNullOrWhiteSpace(d.ItemName) &&
+                d.ItemName.Equals(inv.ItemName, StringComparison.OrdinalIgnoreCase));
+            if (data != null)
+                result.Add(data);
+        }
+
+        return result;
+    }
+
+    private static bool DetectPronounOrImplicitItemReference(string query)
+    {
+        string[] cues =
+        {
+            "그 ", "그거", "그게", "그 포션", "그 아이템", "저거", "이거", "저건", "그건",
+            "방금 ", "아까 ", "말한 ", "말했", "아까 말", "방금 말", "전에 말", "앞서 ", "조금 전"
+        };
+
+        foreach (var c in cues)
+        {
+            if (query.Contains(c, StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool QueryContainsPotionCategoryHint(string query) =>
+        query.Contains("포션", StringComparison.Ordinal);
+
+    private static void AppendItemDefinitionFacts(StringBuilder sb, string query, IReadOnlyList<ItemData> db)
+    {
+        var items = new List<ItemData>();
+        var reported = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var it in db.OrderByDescending(x => x.ItemName.Length))
+        {
+            if (string.IsNullOrWhiteSpace(it.ItemName))
+                continue;
+            if (!query.Contains(it.ItemName, StringComparison.Ordinal))
+                continue;
+            if (!reported.Add(it.ItemName))
+                continue;
+            items.Add(it);
+        }
+
+        if (items.Count == 0)
+            return;
+
+        AppendItemDefinitionBlockForItems(sb, items, null);
+    }
+
+    private static void AppendItemDefinitionBlockForItems(
+        StringBuilder sb,
+        IReadOnlyList<ItemData> items,
+        string? sourceNote)
+    {
+        sb.AppendLine("[Tool Result: Lookup_Item_Definition]");
+        sb.AppendLine("  (아래 Effects/Description은 ItemDatabase.json 확정값입니다. 수치·조건을 지어내지 마십시오.)");
+        if (!string.IsNullOrWhiteSpace(sourceNote))
+            sb.AppendLine($"  {sourceNote}");
+
+        foreach (var it in items.OrderByDescending(x => x.ItemName.Length))
+            AppendOneItemDefinition(sb, it);
+    }
+
+    private static void AppendOneItemDefinition(StringBuilder sb, ItemData it)
+    {
+        var uri = Uri.EscapeDataString(it.ItemName);
+        sb.AppendLine($"  - {it.ItemName}: resource://itemdb/{uri}");
+        sb.AppendLine($"      Type: {it.ItemType}, Rarity: {it.Rarity}, Value: {it.Value}");
+        if (!string.IsNullOrWhiteSpace(it.Effects))
+            sb.AppendLine($"      Effects (정의): {it.Effects.Trim()}");
+        else
+            sb.AppendLine("      Effects (정의): (없음)");
+        if (!string.IsNullOrWhiteSpace(it.Description))
+        {
+            var desc = it.Description.Trim();
+            if (desc.Length > 220)
+                desc = desc[..220] + "…";
+            sb.AppendLine($"      Description: {desc}");
         }
     }
 

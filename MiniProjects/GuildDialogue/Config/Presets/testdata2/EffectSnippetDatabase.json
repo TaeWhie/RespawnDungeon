@@ -1,0 +1,92 @@
+[
+  { "SnippetName": "전방제압·아군피해감소", "Scope": "skill", "EffectKind": "Custom", "Summary": "전방 적을 잠시 제압하고 아군이 받는 피해를 줄임" },
+  { "SnippetName": "단일대상·피해증폭", "Scope": "skill", "EffectKind": "Custom", "Summary": "한 적이 받는 피해를 잠시 늘림" },
+  {
+    "SnippetName": "아군단일·생명회복",
+    "Scope": "skill",
+    "EffectKind": "Custom",
+    "SummaryTemplate": "아군 한 명의 생명력을 {heal}만큼 회복",
+    "Parameters": [{ "Key": "heal", "Label": "회복량", "Unit": "HP" }]
+  },
+  { "SnippetName": "정화·마나보조", "Scope": "skill", "EffectKind": "Custom", "Summary": "해로운 효과를 하나 걷고 마나를 일부 회복" },
+  { "SnippetName": "매매·발견보조", "Scope": "skill", "EffectKind": "Custom", "Summary": "매매 이익과 희귀 발견에 도움" },
+  { "SnippetName": "함정탐지보조", "Scope": "skill", "EffectKind": "Custom", "Summary": "잠시 동안 함정을 더 잘 찾음" },
+  {
+    "SnippetName": "HP즉시회복",
+    "Scope": "item",
+    "EffectKind": "Custom",
+    "SummaryTemplate": "HP를 {amount}만큼 즉시 회복",
+    "Parameters": [{ "Key": "amount", "Label": "회복량", "Unit": "HP" }]
+  },
+  {
+    "SnippetName": "MP즉시회복",
+    "Scope": "item",
+    "EffectKind": "Custom",
+    "SummaryTemplate": "MP를 {amount}만큼 즉시 회복",
+    "Parameters": [{ "Key": "amount", "Label": "회복량", "Unit": "MP" }]
+  },
+  { "SnippetName": "판매전용유물", "Scope": "item", "EffectKind": "None", "Note": "전투 효과 없음 (판매 전용 유물)" },
+  {
+    "SnippetName": "물리공격보정",
+    "Scope": "item",
+    "EffectKind": "Custom",
+    "SummaryTemplate": "물리 공격력이 {atk}만큼 오름",
+    "Parameters": [{ "Key": "atk", "Label": "보정", "Unit": "ATK" }]
+  },
+  {
+    "SnippetName": "지팡이·마나효율",
+    "Scope": "item",
+    "EffectKind": "Custom",
+    "SummaryTemplate": "지능이 {intv}만큼 오르고 마나 소비가 {mpPct}%만큼 줄어듦",
+    "Parameters": [
+      { "Key": "intv", "Label": "지능", "Unit": "INT" },
+      { "Key": "mpPct", "Label": "MP소비 감소", "Unit": "%" }
+    ]
+  },
+  {
+    "SnippetName": "가죽방어구보정",
+    "Scope": "item",
+    "EffectKind": "Custom",
+    "SummaryTemplate": "방어가 {defUp}만큼 오르고 재주가 {dexDown}만큼 줄어듦",
+    "Parameters": [
+      { "Key": "defUp", "Label": "방어 증가", "Unit": "DEF" },
+      { "Key": "dexDown", "Label": "재주 감소", "Unit": "DEX" }
+    ]
+  },
+  { "SnippetName": "탐색지도보조", "Scope": "item", "EffectKind": "Custom", "Summary": "탐색이 조금 수월해짐" },
+  {
+    "SnippetName": "타격·속도보정",
+    "Scope": "item",
+    "EffectKind": "Custom",
+    "SummaryTemplate": "공격이 {atk}만큼 세지고 속도가 {spd}만큼 줄어듦",
+    "Parameters": [
+      { "Key": "atk", "Label": "공격 보정", "Unit": "ATK" },
+      { "Key": "spd", "Label": "속도 감소", "Unit": "SPD" }
+    ]
+  },
+  { "SnippetName": "슬라임재료", "Scope": "item", "EffectKind": "None", "Note": "전투 효과 없음 (제작 재료)" },
+  { "SnippetName": "뼈항아리용", "Scope": "item", "EffectKind": "None", "Note": "전투 효과 없음 (퀘스트·판매용)" },
+  { "SnippetName": "마력파편용", "Scope": "item", "EffectKind": "None", "Note": "전투 효과 없음 (제작·거래용)" },
+  {
+    "SnippetName": "청불꽃지팡이",
+    "Scope": "item",
+    "EffectKind": "Custom",
+    "SummaryTemplate": "지능이 {intv}만큼 오르고 화염 계열 스킬 위력이 {firePct}%만큼 오름",
+    "Parameters": [
+      { "Key": "intv", "Label": "지능", "Unit": "INT" },
+      { "Key": "firePct", "Label": "화염 위력", "Unit": "%" }
+    ]
+  },
+  {
+    "SnippetName": "지혜의비약효과",
+    "Scope": "item",
+    "EffectKind": "Custom",
+    "SummaryTemplate": "지능이 {intv}만큼 오르고(일시), 최대 MP가 {mpMax}만큼 늘어남(일시·1회)",
+    "Parameters": [
+      { "Key": "intv", "Label": "지능", "Unit": "INT" },
+      { "Key": "mpMax", "Label": "최대 MP", "Unit": "MP" }
+    ]
+  },
+  { "SnippetName": "용심장재료", "Scope": "item", "EffectKind": "None", "Note": "전투 효과 없음 (최상급 제작 재료)" },
+  { "SnippetName": "전설눈물재료", "Scope": "item", "EffectKind": "None", "Note": "전투 효과 없음 (퀘스트·전설 장비 재료)" }
+]

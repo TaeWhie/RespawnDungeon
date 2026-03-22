@@ -1,0 +1,70 @@
+[
+  {
+    "TraitName": "고통 면역",
+    "Description": "통증·고통 관련 효과에 둔감"
+  },
+  {
+    "TraitName": "물리 공격 위주",
+    "Description": "근접·물리 위주 패턴"
+  },
+  {
+    "TraitName": "중독 부여",
+    "Description": "독 상태 부여 가능"
+  },
+  {
+    "TraitName": "느린 이동속도",
+    "Description": "이동이 더딤"
+  },
+  {
+    "TraitName": "물리 저항",
+    "Description": "물리 피해에 강함"
+  },
+  {
+    "TraitName": "장비 부식",
+    "Description": "장비 내구·재질을 손상"
+  },
+  {
+    "TraitName": "속박(거미줄)",
+    "Description": "이동 제한·묶임"
+  },
+  {
+    "TraitName": "맹독 주입",
+    "Description": "강한 독 피해"
+  },
+  {
+    "TraitName": "화염 면역",
+    "Description": "화염 피해 무효 또는 대폭 경감"
+  },
+  {
+    "TraitName": "지속 화상 피해",
+    "Description": "시간 누적 화상"
+  },
+  {
+    "TraitName": "초고방어력",
+    "Description": "물리·마법 방어가 매우 높음"
+  },
+  {
+    "TraitName": "군중 제어 무시",
+    "Description": "일부 군중제어에 저항"
+  },
+  {
+    "TraitName": "공중 비행",
+    "Description": "지상 근접만으로는 어려울 수 있음"
+  },
+  {
+    "TraitName": "기습 공격",
+    "Description": "높은 선제·급습 위협"
+  },
+  {
+    "TraitName": "심연의 마력",
+    "Description": "암흑·심연 계열 마력"
+  },
+  {
+    "TraitName": "높은 지능",
+    "Description": "전술·마법 판단이 뛰어남"
+  },
+  {
+    "TraitName": "검술 숙련",
+    "Description": "근접 검술이 매우 강함"
+  }
+]

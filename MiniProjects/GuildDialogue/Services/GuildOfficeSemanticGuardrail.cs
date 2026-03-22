@@ -29,18 +29,24 @@ public sealed class GuildOfficeSemanticGuardrail
     public async Task WarmupAsync(
         OllamaEmbeddingClient client,
         SemanticGuardrailAnchorsRoot? anchorsFromFile = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        int embeddingMaxConcurrency = 4)
     {
         if (client == null) throw new ArgumentNullException(nameof(client));
 
+        var maxConc = Math.Clamp(embeddingMaxConcurrency, 1, 16);
         var builtIn = SemanticGuardrailAnchorsRoot.CreateBuiltInDefaults();
         var metaPhrases = PickAnchorPhrases(anchorsFromFile?.MetaAnchors, builtIn.MetaAnchors);
         var offPhrases = PickAnchorPhrases(anchorsFromFile?.OffWorldAnchors, builtIn.OffWorldAnchors);
         var expPhrases = PickAnchorPhrases(anchorsFromFile?.ExpeditionAnchors, builtIn.ExpeditionAnchors);
 
-        _metaEmbeddings = await EmbedAllAsync(client, metaPhrases, ct).ConfigureAwait(false);
-        _offWorldEmbeddings = await EmbedAllAsync(client, offPhrases, ct).ConfigureAwait(false);
-        _expeditionEmbeddings = await EmbedAllAsync(client, expPhrases, ct).ConfigureAwait(false);
+        var metaTask = EmbedAllAsync(client, metaPhrases, maxConc, ct);
+        var offTask = EmbedAllAsync(client, offPhrases, maxConc, ct);
+        var expTask = EmbedAllAsync(client, expPhrases, maxConc, ct);
+        await Task.WhenAll(metaTask, offTask, expTask).ConfigureAwait(false);
+        _metaEmbeddings = await metaTask.ConfigureAwait(false);
+        _offWorldEmbeddings = await offTask.ConfigureAwait(false);
+        _expeditionEmbeddings = await expTask.ConfigureAwait(false);
 
         if (_metaEmbeddings.Length == 0 || _offWorldEmbeddings.Length == 0 || _expeditionEmbeddings.Length == 0)
             throw new InvalidOperationException("의미 가드레일: 앵커 임베딩이 비었습니다.");
@@ -63,14 +69,31 @@ public sealed class GuildOfficeSemanticGuardrail
         return builtInFallback;
     }
 
-    private static async Task<float[][]> EmbedAllAsync(OllamaEmbeddingClient client, IReadOnlyList<string> phrases, CancellationToken ct)
+    private static async Task<float[][]> EmbedAllAsync(
+        OllamaEmbeddingClient client,
+        IReadOnlyList<string> phrases,
+        int maxConcurrency,
+        CancellationToken ct)
     {
+        if (phrases.Count == 0)
+            return Array.Empty<float[]>();
+
+        var maxConc = Math.Clamp(maxConcurrency, 1, 16);
+        var buf = new float[phrases.Count][];
+        await Parallel.ForEachAsync(
+            Enumerable.Range(0, phrases.Count),
+            new ParallelOptions { MaxDegreeOfParallelism = maxConc, CancellationToken = ct },
+            async (i, token) =>
+            {
+                token.ThrowIfCancellationRequested();
+                var v = await client.EmbedAsync(phrases[i], token).ConfigureAwait(false);
+                buf[i] = v is { Length: > 0 } ? v : Array.Empty<float>();
+            }).ConfigureAwait(false);
+
         var rows = new List<float[]>();
-        foreach (var p in phrases)
+        foreach (var v in buf)
         {
-            ct.ThrowIfCancellationRequested();
-            var v = await client.EmbedAsync(p, ct).ConfigureAwait(false);
-            if (v is { Length: > 0 })
+            if (v.Length > 0)
                 rows.Add(v);
         }
 

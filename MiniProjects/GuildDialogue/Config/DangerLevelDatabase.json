@@ -1,0 +1,6 @@
+[
+  { "LevelName": "Low", "Description": "초급·정찰 가능한 위험." },
+  { "LevelName": "Mid", "Description": "중간 난이도." },
+  { "LevelName": "High", "Description": "고난이도." },
+  { "LevelName": "Abyss", "Description": "심연·최상급 위협." }
+]

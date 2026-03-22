@@ -59,6 +59,11 @@
 
 ## 기록
 
+### 2026-03-21 — Hub·GuildDialogue: 세계관 프리셋, 워밍업, 파티 UI, 문서
+- **MiniProjects/Hub**: 길드 허브 UI(세계관 설정·프리셋·이 단계 저장 / 일괄 저장 및 재구축·Ollama 모델 워밍업 게이트·홈 세계관 소개 `/api/world/overview`·파티 편성 화면 개선·기능 카드 텍스트 색).
+- **GuildDialogue**: `GuildDialogueHubHost`(프리셋·월드 overview·warmup 등), Config Presets·마스터 DB JSON, `OllamaModelWarmup`, `WorldConfigConsistencyChecker`, 캐릭터 생성 성향 RNG, `_buildout` 로컬 폴더 gitignore.
+- **MiniProjects/Docs**: 06–13 문서 추가·README 등 정리.
+
 ### 2026-03-21 — GuildDialogue 직업·캐릭터 생성·Ollama 전제 정리
 - `JobDatabase.json`·`JobSkillRules`·프롬프트 직업 블록; 콘솔 캐릭터 생성(`CharacterCreationConsole` / `CharacterCreationLlmGenerator` / `CharacterCreationRng`), RAG는 임베딩만(키워드 RAG·오프라인 서사 제거), `Retrieval` 플래그 정리.
 - 시멘틱 가드레일 `--eval-guardrail` 러너·`SemanticGuardrailEval.json` 제거, 테스트용 캐릭터·임시 `build-*` 폴더·`_build_out`·README 정리.

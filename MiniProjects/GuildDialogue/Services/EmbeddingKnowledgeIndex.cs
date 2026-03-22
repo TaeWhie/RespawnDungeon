@@ -26,6 +26,7 @@ public sealed class EmbeddingKnowledgeIndex
         IReadOnlyList<SkillData> skills,
         IReadOnlyList<ItemData> items,
         IReadOnlyList<Character>? characters = null,
+        int embeddingMaxConcurrency = 4,
         CancellationToken ct = default)
     {
         _chunks.Clear();
@@ -41,11 +42,24 @@ public sealed class EmbeddingKnowledgeIndex
             _chunks.Add(new KnowledgeChunk(p.Category, p.Title, p.EmbeddingText, p.Metadata));
         }
 
-        foreach (var c in _chunks)
+        if (_chunks.Count == 0)
+            return false;
+
+        var maxConc = Math.Clamp(embeddingMaxConcurrency, 1, 16);
+        var buf = new float[_chunks.Count][];
+        await Parallel.ForEachAsync(
+            Enumerable.Range(0, _chunks.Count),
+            new ParallelOptions { MaxDegreeOfParallelism = maxConc, CancellationToken = ct },
+            async (i, token) =>
+            {
+                token.ThrowIfCancellationRequested();
+                var v = await embedder.EmbedAsync(_chunks[i].EmbeddingText, token).ConfigureAwait(false);
+                buf[i] = v ?? Array.Empty<float>();
+            }).ConfigureAwait(false);
+
+        foreach (var v in buf)
         {
-            ct.ThrowIfCancellationRequested();
-            var v = await embedder.EmbedAsync(c.EmbeddingText, ct).ConfigureAwait(false);
-            if (v == null || v.Length == 0)
+            if (v.Length == 0)
                 return false;
             _vectors.Add(v);
         }

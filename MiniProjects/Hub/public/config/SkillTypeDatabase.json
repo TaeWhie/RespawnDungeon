@@ -1,0 +1,4 @@
+[
+  { "TypeName": "Active", "Description": "전투 중 활성 사용(턴 소모·쿨다운 적용)." },
+  { "TypeName": "Passive", "Description": "항상 적용되는 패시브(통상 쿨다운 없음)." }
+]

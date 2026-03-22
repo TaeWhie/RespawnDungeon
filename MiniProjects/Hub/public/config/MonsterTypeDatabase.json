@@ -1,0 +1,9 @@
+[
+  { "TypeName": "Undead", "Description": "언데드·시체 기반." },
+  { "TypeName": "Elemental", "Description": "원소·젤리·정령 계열." },
+  { "TypeName": "Beast", "Description": "야수·거미 등." },
+  { "TypeName": "Spirit", "Description": "정령·무체만 유사." },
+  { "TypeName": "Construct", "Description": "골렘·인조 병기." },
+  { "TypeName": "Dragon", "Description": "용족·비룡 등." },
+  { "TypeName": "Undead/Dark", "Description": "언데드+암흑 복합." }
+]

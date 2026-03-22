@@ -1,0 +1,61 @@
+{
+  "TraitToToneKeywords": {
+    "Courage": "결단적, 단호한 말투",
+    "Aggression": "단호한 말투, 결단적",
+    "Caution": "신중, 효율 언급",
+    "Frugality": "신중, 효율 언급",
+    "Greed": "이득/손해, 루팅 언급",
+    "Orderliness": "순서, 기준 강조",
+    "Focus": "목표 강조",
+    "Impulsiveness": "즉흥, 되물음",
+    "Cooperation": "협력, 제안형",
+    "Adaptability": "입장 전환, 타협"
+  },
+  "Ollama": {
+    "BaseUrl": "http://localhost:11434",
+    "Model": "exaone3.5:7.8b",
+    "EmbeddingModel": "nomic-embed-text",
+    "TimeoutSeconds": 60,
+    "Temperature": 0.7,
+    "TopP": 0.9,
+    "NumPredict": 0,
+    "AnalysisStrategyMaxTokens": 0
+  },
+  "Retrieval": {
+    "MaxEpisodicCharsInQuery": 2800,
+    "ExcludeCurrencyLineFromLoreEmbedding": true,
+    "PrioritizeEpisodicMentionsInRag": true,
+    "RagSearchPoolSize": 12,
+    "RagIncludeSpeakerLoadout": true,
+    "LatestActionLogEntriesInPrompt": 28,
+    "UseActionLogNarrativeProse": true,
+    "ActionLogNarrativeMaxDungeonRuns": 8,
+    "ActionLogNarrativeMaxChars": 14000,
+    "UsePerspectiveMemoryInPrompt": true,
+    "PerspectiveMemoryMaxLinesPerCharacter": 24,
+    "PerspectiveMemoryExportPath": "Logs/CharacterPerspectiveMemory.json",
+    "PersistDialogueSessionsToActionLog": true,
+    "UseGuildOfficeSemanticGuardrail": true,
+    "GuildOfficeSemanticGuardrailThreshold": 0.78,
+    "GuildOfficeSemanticDisambiguationMargin": 0.06,
+    "GuildOfficeSemanticExpeditionDisambigMin": 0.58,
+    "GuildOfficeSemanticStrongAtypicalFloor": 0.88,
+    "GuildOfficeSemanticMetaOffEmbeddingTieEpsilon": 0.015,
+    "UseGuildOfficeObviousKeywordTieBreak": true,
+    "GuildOfficeExpeditionContextThreshold": 0.72,
+    "GuildOfficeExpeditionUseRelativeEmbeddingGate": true,
+    "GuildOfficeExpeditionDeepContextLead": 0.03,
+    "UseGuildOfficeLlmIntentRouter": false,
+    "UseAethelgardThreeLayerPrompt": true,
+    "UseMcpRuntimeToolFacts": true
+  },
+  "QualitativeAnalysis": {
+    "Enabled": false,
+    "LogToConsole": true,
+    "LogToFile": false,
+    "LogFilePath": "Logs/GuildDialogue-QualitativeAnalysis.log",
+    "IncludeRawLlmResponse": true,
+    "ConsoleMaxPromptChars": 8000,
+    "MaxRetrievalQueryPreviewChars": 1200
+  }
+}

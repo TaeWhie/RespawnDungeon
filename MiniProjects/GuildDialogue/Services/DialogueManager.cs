@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using GuildDialogue.Data;
@@ -12,6 +13,12 @@ namespace GuildDialogue.Services;
 
 public class DialogueManager
 {
+    private static readonly JsonSerializerOptions LooseJsonOptions = new()
+    {
+        AllowTrailingCommas = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+    };
+
     private readonly DialogueConfigLoader _loader;
     private readonly OllamaClient _ollama;
     private readonly MemoryManager _memory;
@@ -104,6 +111,7 @@ public class DialogueManager
         _embeddingIndex = new EmbeddingKnowledgeIndex();
         var items = _itemDb.Values.ToList();
         Console.WriteLine($"[시스템] 참조 지식 임베딩 인덱스 구축 중… (모델: {_embeddingClient.Model})");
+        var embedConc = Math.Clamp(_settings.Ollama.EmbeddingMaxConcurrency, 1, 16);
         var ok = await _embeddingIndex.BuildAsync(
             _embeddingClient,
             _worldLore,
@@ -112,6 +120,7 @@ public class DialogueManager
             _gameRefs.Skills,
             items,
             _characters,
+            embedConc,
             ct).ConfigureAwait(false);
         if (!ok)
             throw new InvalidOperationException(
@@ -125,7 +134,8 @@ public class DialogueManager
             {
                 _guildOfficeSemanticGuardrail = new GuildOfficeSemanticGuardrail();
                 var anchorDb = _loader.LoadSemanticGuardrailAnchors();
-                await _guildOfficeSemanticGuardrail.WarmupAsync(_embeddingClient, anchorDb, ct).ConfigureAwait(false);
+                await _guildOfficeSemanticGuardrail.WarmupAsync(_embeddingClient, anchorDb, ct, embedConc)
+                    .ConfigureAwait(false);
                 Console.WriteLine("[시스템] 길드 집무실 세만틱 가드레일(임베딩 앵커) 준비됨.");
             }
             catch (Exception ex)
@@ -293,107 +303,176 @@ public class DialogueManager
         _sessionDialogueForLog.Add(new DialogueTurn { Speaker = speaker, Line = line.Trim() });
     }
 
-    public async Task RunInteractiveSessionAsync(CancellationToken ct = default)
+    /// <summary>
+    /// 아지트에서 선택된 두 동료만 짧은 대화(관전). 구 메뉴 1의 6인 고정 흐름 대체.
+    /// <paramref name="utteranceCount"/>는 두 사람이 **번갈아** 말하는 **총 줄 수**(2~4). 홀수면 마지막 한 사람이 한 번 더 말함.
+    /// </summary>
+    public async Task RunBasePairDialogueAsync(
+        Character a,
+        Character b,
+        int utteranceCount,
+        string? worldStateOverride = null,
+        CancellationToken ct = default,
+        List<string>? transcriptSink = null,
+        bool writeConsole = true,
+        Func<string, Task>? onTranscriptLine = null)
     {
-        Console.WriteLine("========== RAG 기반 지능형 길드 대화 세션 ==========\n");
-        if (_characters.Count < 2)
+        async Task EmitAsync(string line)
         {
-            Console.WriteLine("캐릭터 데이터가 충분하지 않습니다.");
+            if (writeConsole)
+                Console.WriteLine(line);
+            transcriptSink?.Add(line);
+            if (onTranscriptLine != null)
+                await onTranscriptLine(line).ConfigureAwait(false);
+        }
+
+        if (a == null || b == null || string.Equals(a.Id, b.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            await EmitAsync("[오류] 대화 상대가 올바르지 않습니다.").ConfigureAwait(false);
             return;
         }
 
-        var kyle = _charMap.GetValueOrDefault("카일");
-        var rena = _charMap.GetValueOrDefault("리나");
-        var bram = _charMap.GetValueOrDefault("브람");
-
-        if (kyle == null || rena == null || bram == null)
-        {
-            Console.WriteLine("필수 캐릭터(카일, 리나, 브람)를 찾을 수 없습니다.");
-            return;
-        }
-
+        var totalLines = Math.Clamp(utteranceCount, 2, 4);
         _sessionDialogueForLog.Clear();
-        const string worldState = "장소: 길드 아지트 식당\n시간: 저녁\n함께 있는 동료: 카일, 리나, 브람\n상황: 던전 탐험을 무사히 마치고 식사하며 휴식 중입니다.";
-        
-        Console.WriteLine("[시스템] 최근 사건을 바탕으로 사회적 인상을 합성 중...");
+
+        var locA = string.IsNullOrWhiteSpace(a.CurrentLocationNote)
+            ? (a.CurrentLocationId ?? "아지트")
+            : $"{a.CurrentLocationId ?? "아지트"}({a.CurrentLocationNote})";
+        var locB = string.IsNullOrWhiteSpace(b.CurrentLocationNote)
+            ? (b.CurrentLocationId ?? "아지트")
+            : $"{b.CurrentLocationId ?? "아지트"}({b.CurrentLocationNote})";
+
+        var worldState = worldStateOverride ?? (
+            "장소: 길드 아지트\n" +
+            $"시간: 업무·휴식 시간대\n" +
+            $"상황: {a.Name}와(과) {b.Name}가(이) 같은 거점에서 잠시 마주쳐 짧게 이야기를 나눕니다.\n" +
+            $"(참고 위치: {a.Name} {locA}, {b.Name} {locB})\n" +
+            "\n" +
+            "[이번 장면 — 출연(고정)]\n" +
+            $"• 이 대화에 **실제로 등장하는 사람**은 **{a.Name}**와 **{b.Name}** 두 명뿐입니다. " +
+            "둘이 번갈아 한 줄씩 말합니다.\n" +
+            "• 파티에 다른 동료가 있어도, 그들이 **같은 자리에서 말을 걸거나 끼어드는** 것처럼 쓰지 마세요. " +
+            "과거 원정·로그에 다른 이름이 나오는 것은 가능합니다.");
+
+        await EmitAsync("[시스템] 최근 사건을 바탕으로 사회적 인상을 합성 중...").ConfigureAwait(false);
         _currentImpressions = await SynthesizeSocialImpressionsAsync(_memory.EpisodicBuffer, ct);
-        
-        var conversationFlow = new[]
-        {
-            (Speaker: kyle, Listener: rena),
-            (Speaker: rena, Listener: kyle),
-            (Speaker: bram, Listener: rena),
-            (Speaker: kyle, Listener: bram),
-            (Speaker: rena, Listener: bram),
-            (Speaker: bram, Listener: kyle)
-        };
 
-        bool isFirstTurn = true;
-        string? randomTopic = _memory.GetRandomPastEvent();
+        var randomTopic = _memory.GetRandomPastEvent();
+        var aSpeaksFirst = Random.Shared.Next(2) == 0;
 
-        foreach (var turn in conversationFlow)
+        const int maxJsonRetriesPerTurn = 3;
+        for (int i = 0; i < totalLines; i++)
         {
             if (ct.IsCancellationRequested) break;
 
-            Console.WriteLine($"[시스템] {turn.Speaker.Name}의 응답을 생성하는 중...");
-            
-            string workingMem = _memory.GetWorkingMemoryContext();
-            string archivalMem = _memory.RetrieveArchivalMemoryContext(workingMem);
+            bool speakerIsA = (i % 2 == 0);
+            if (!aSpeaksFirst) speakerIsA = !speakerIsA;
+            var speaker = speakerIsA ? a : b;
+            var listener = speakerIsA ? b : a;
 
-            int turnIndex = Array.IndexOf(conversationFlow, turn);
-            bool isFinalTurn = (turnIndex == conversationFlow.Length - 1);
-            string? lastLine = _lastLineByChar.GetValueOrDefault(turn.Speaker.Name);
-            string? currentImpression = _currentImpressions.GetValueOrDefault($"{turn.Speaker.Id}->{turn.Listener.Id}");
-
-            var latestLog = BuildLatestActionLogForPrompt();
-            var codeDef = CodeDefinitionInstructions.Build(_gameRefs);
-            var ragBlock = await ResolveReferenceKnowledgeRagAsync(workingMem, turn.Speaker, ct);
-
-            var partyRoster = PartyRosterResolver.ResolveForPrompt(_characters, turn.Speaker);
-            string sysPrompt = PromptBuilder.BuildSystemPrompt(
-                turn.Speaker,
-                turn.Listener,
-                worldState,
-                _memory.EpisodicBuffer,
-                archivalMem,
-                _settings,
-                partyRoster,
-                latestLog,
-                codeDef,
-                BuildPerspectiveMemoryForSpeaker(turn.Speaker),
-                lastLine,
-                currentImpression,
-                false,
-                ragBlock,
-                _gameRefs);
-            string userPrompt = PromptBuilder.BuildUserPrompt(workingMem, isFirstTurn ? randomTopic : null, isFinalTurn, turnIndex);
-            isFirstTurn = false;
-
-            string? responseText = await _ollama.GenerateResponseAsync(sysPrompt, userPrompt, ct);
-            
-            if (string.IsNullOrWhiteSpace(responseText)) break;
-
-            var cleanJson = CleanJsonResponse(responseText);
-
-            try {
-                using var doc = JsonDocument.Parse(cleanJson);
-                var root = doc.RootElement;
-                if (root.TryGetProperty("line", out var lineProp))
+            bool lineEmitted = false;
+            var userPromptForTurn = "";
+            for (int attempt = 0; attempt < maxJsonRetriesPerTurn && !lineEmitted; attempt++)
+            {
+                if (attempt > 0)
                 {
-                    string generatedLine = lineProp.GetString() ?? "";
-                    CharacterMoodUpdater.ApplyAfterSquadTurn(turn.Speaker, generatedLine);
-                    Console.WriteLine($"[{turn.Speaker.Name}] {generatedLine}\n");
-                    
-                    _memory.AddWorkingMemory(turn.Speaker.Name, generatedLine);
-                    _lastLineByChar[turn.Speaker.Name] = generatedLine;
-                    LogSessionLineForActionLog(turn.Speaker.Name, generatedLine);
+                    await EmitAsync($"[시스템] {speaker.Name} 응답 형식 오류 — 재시도 {attempt + 1}/{maxJsonRetriesPerTurn}…")
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    await EmitAsync($"[시스템] {speaker.Name}의 응답을 생성하는 중...").ConfigureAwait(false);
+                }
+
+                string workingMem = _memory.GetWorkingMemoryContext();
+                string archivalMem = _memory.RetrieveArchivalMemoryContext(workingMem);
+                bool isFirstTurn = i == 0;
+                bool isFinalTurn = i == totalLines - 1;
+                string? lastLine = _lastLineByChar.GetValueOrDefault(speaker.Name);
+                string? currentImpression = _currentImpressions.GetValueOrDefault($"{speaker.Id}->{listener.Id}");
+
+                var latestLog = BuildLatestActionLogForPrompt();
+                var codeDef = CodeDefinitionInstructions.Build(_gameRefs);
+                // 동료 2인 잡담: RAG 블록은 아이템·설정 문장을 과잉 유도하므로 넣지 않음(길드장 1:1과 구분).
+                var ragBlock = "";
+                var partyRoster = PartyRosterResolver.ResolveForPrompt(_characters, speaker);
+
+                string sysPrompt = PromptBuilder.BuildSystemPrompt(
+                    speaker,
+                    listener,
+                    worldState,
+                    _memory.EpisodicBuffer,
+                    archivalMem,
+                    _settings,
+                    partyRoster,
+                    latestLog,
+                    codeDef,
+                    BuildPerspectiveMemoryForSpeaker(speaker),
+                    lastLine,
+                    currentImpression,
+                    false,
+                    ragBlock,
+                    _gameRefs,
+                    allyPeerDialogueScene: true);
+                userPromptForTurn = PromptBuilder.BuildUserPrompt(
+                    workingMem,
+                    isFirstTurn ? randomTopic : null,
+                    isFinalTurn,
+                    i,
+                    allyPeerDialogue: true,
+                    peerListenerName: listener.Name,
+                    allyTotalUtterances: totalLines);
+
+                string? responseText = await _ollama.GenerateResponseAsync(sysPrompt, userPromptForTurn, ct);
+                if (string.IsNullOrWhiteSpace(responseText))
+                    continue;
+
+                if (TryParseAllyLineFromModelResponse(responseText, out var generatedLine) &&
+                    !string.IsNullOrWhiteSpace(generatedLine))
+                {
+                    CharacterMoodUpdater.ApplyAfterSquadTurn(speaker, generatedLine);
+                    await EmitAsync($"[{speaker.Name}] {generatedLine}\n").ConfigureAwait(false);
+
+                    _memory.AddWorkingMemory(speaker.Name, generatedLine);
+                    _lastLineByChar[speaker.Name] = generatedLine;
+                    LogSessionLineForActionLog(speaker.Name, generatedLine);
+                    lineEmitted = true;
                 }
             }
-            catch { }
+
+            if (!lineEmitted)
+            {
+                await EmitAsync($"[시스템] {speaker.Name} — 형식 파싱 실패. **대사 한 줄만** 직출력으로 재시도…")
+                    .ConfigureAwait(false);
+                string plainSys =
+                    $"당신은 {speaker.Name}입니다. {listener.Name}와 같은 자리에서 동료로 짧게 말합니다. " +
+                    "**응답은 대사 한 줄만** — JSON·마크다운 코드펜스·앞뒤 메타 설명 금지.";
+                string plainUser =
+                    userPromptForTurn +
+                    "\n\n[출력 규칙] 위 맥락에 맞춰 **한 문장**만 출력. 따옴표로 전체를 감싸지 말 것.";
+                string? plain = await _ollama.GenerateResponseAsync(plainSys, plainUser, ct);
+                var fallbackLine = ExtractAllyPlainFirstLine(plain);
+                if (!string.IsNullOrWhiteSpace(fallbackLine))
+                {
+                    CharacterMoodUpdater.ApplyAfterSquadTurn(speaker, fallbackLine);
+                    await EmitAsync($"[{speaker.Name}] {fallbackLine}\n").ConfigureAwait(false);
+                    _memory.AddWorkingMemory(speaker.Name, fallbackLine);
+                    _lastLineByChar[speaker.Name] = fallbackLine;
+                    LogSessionLineForActionLog(speaker.Name, fallbackLine);
+                    lineEmitted = true;
+                }
+            }
+
+            if (!lineEmitted)
+            {
+                await EmitAsync($"[시스템] {speaker.Name} 턴을 건너뜁니다(모델 응답 실패). 대화를 종료합니다.")
+                    .ConfigureAwait(false);
+                break;
+            }
         }
-        
-        Console.WriteLine("========== 대화 세션 종료 ==========");
-        PersistDialogueSessionToActionLogIfEnabled(worldState, "동료 간 자동 대화");
+
+        await EmitAsync("========== 동료 2인 대화 종료 ==========").ConfigureAwait(false);
+        PersistDialogueSessionToActionLogIfEnabled(worldState, "아지트 동료 대화(2인)");
         await UpdateSocialSettlementAsync(ct, null);
     }
 
@@ -614,6 +693,100 @@ public class DialogueManager
         }
     }
 
+    /// <summary>웹 허브: 길드장 집무실 세션 시작 시 세션 로그를 비웁니다(콘솔 <see cref="RunGuildMasterSessionAsync"/>와 동일).</summary>
+    public void BeginGuildMasterSession()
+    {
+        _sessionDialogueForLog.Clear();
+    }
+
+    /// <summary>웹 허브: 동료를 바꿀 때 워킹 메모리만 초기화합니다.</summary>
+    public void ResetGuildOfficeBuddyContext()
+    {
+        _memory.ClearWorkingMemory();
+    }
+
+    /// <summary>웹 허브: 집무실 종료 시 ActionLog·관계 정산(콘솔 종료 직전과 동일).</summary>
+    public async Task EndGuildMasterSessionAsync(CancellationToken ct = default)
+    {
+        const string baseWorldState =
+            "장소: 길드장 집무실\n상황: 던전 탐험을 마친 뒤 동료가 길드장에게 보고하거나 대화를 나누러 집무실을 찾아왔습니다.";
+        var settlementHistory = FormatDialogueTurnsForSettlement(_sessionDialogueForLog);
+        PersistDialogueSessionToActionLogIfEnabled(baseWorldState, "길드장 상호작용");
+        await UpdateSocialSettlementAsync(ct, settlementHistory).ConfigureAwait(false);
+    }
+
+    /// <summary>이름·Id로 캐릭터 조회.</summary>
+    public Character? ResolveCharacter(string buddyIdOrName)
+    {
+        if (string.IsNullOrWhiteSpace(buddyIdOrName)) return null;
+        return _charMap.GetValueOrDefault(buddyIdOrName.Trim());
+    }
+
+    /// <summary>웹 허브: 길드장 한 턴(콘솔 <see cref="RunGuildMasterSessionAsync"/> 루프와 동일 파이프라인).</summary>
+    public async Task<GuildOfficeLlmTurnResult> GuildMasterUserTurnAsync(
+        string buddyIdOrName,
+        string userInput,
+        CancellationToken ct = default)
+    {
+        var respondent = ResolveCharacter(buddyIdOrName);
+        if (respondent == null)
+        {
+            return new GuildOfficeLlmTurnResult(
+                null,
+                GuildMasterAtypicalInputKind.None,
+                false,
+                "동료를 찾을 수 없습니다.",
+                null,
+                0,
+                0,
+                0);
+        }
+
+        if (string.Equals(respondent.Id, "master", StringComparison.OrdinalIgnoreCase))
+        {
+            return new GuildOfficeLlmTurnResult(
+                null,
+                GuildMasterAtypicalInputKind.None,
+                false,
+                "길드장은 대화 상대로 선택할 수 없습니다.",
+                null,
+                0,
+                0,
+                0);
+        }
+
+        var masterChar = new Character { Id = "master", Name = "길드장", Role = "Guild Master" };
+        const string baseWorldState =
+            "장소: 길드장 집무실\n상황: 던전 탐험을 마친 뒤 동료가 길드장에게 보고하거나 대화를 나누러 집무실을 찾아왔습니다.";
+        var worldState =
+            $"{baseWorldState}\n현재: 길드장과 {respondent.Name}만 집무실에 있으며 1:1로 대화 중입니다.";
+
+        userInput = NormalizeConsoleInputLine(userInput);
+        if (string.IsNullOrWhiteSpace(userInput))
+        {
+            return new GuildOfficeLlmTurnResult(
+                null,
+                GuildMasterAtypicalInputKind.None,
+                false,
+                "빈 입력입니다.",
+                null,
+                0,
+                0,
+                0);
+        }
+
+        _memory.AddWorkingMemory("길드장", userInput);
+        LogSessionLineForActionLog("길드장", userInput);
+
+        return await GenerateGuildOfficeBuddyReplyAsync(
+            respondent,
+            masterChar,
+            worldState,
+            userInput,
+            persistBuddyLineToSession: true,
+            ct).ConfigureAwait(false);
+    }
+
     /// <summary>한 턴만 격리(워킹 메모리·상대 마지막 대사 초기화 후 LLM 호출). ActionLog 세션에는 남기지 않음.</summary>
     public async Task<GuildOfficeLlmTurnResult> RunIsolatedGuildOfficeLlmTurnAsync(
         Character respondent,
@@ -808,6 +981,87 @@ public class DialogueManager
             cleanJson = cleanJson.Substring(firstBrace, lastBrace - firstBrace + 1);
         }
         return cleanJson.Trim();
+    }
+
+    private static string AllyJsonTryStripTrailingCommas(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return json;
+        return Regex.Replace(json.Trim(), @",(\s*[}\]])", "$1");
+    }
+
+    /// <summary>동료 2인: 엄격 JSON 실패 시 느슨한 파싱·정규식으로 <c>line</c> 추출.</summary>
+    private bool TryParseAllyLineFromModelResponse(string? responseText, out string line)
+    {
+        line = "";
+        if (string.IsNullOrWhiteSpace(responseText)) return false;
+
+        var clean = AllyJsonTryStripTrailingCommas(CleanJsonResponse(responseText));
+
+        try
+        {
+            using var doc = JsonDocument.Parse(clean);
+            if (doc.RootElement.TryGetProperty("line", out var lineProp) &&
+                lineProp.ValueKind == JsonValueKind.String)
+            {
+                line = lineProp.GetString() ?? "";
+                return !string.IsNullOrWhiteSpace(line);
+            }
+        }
+        catch { }
+
+        try
+        {
+            var el = JsonSerializer.Deserialize<JsonElement>(clean, LooseJsonOptions);
+            if (el.ValueKind == JsonValueKind.Object &&
+                el.TryGetProperty("line", out var lp) &&
+                lp.ValueKind == JsonValueKind.String)
+            {
+                line = lp.GetString() ?? "";
+                return !string.IsNullOrWhiteSpace(line);
+            }
+        }
+        catch { }
+
+        try
+        {
+            var m = Regex.Match(
+                responseText,
+                @"""line""\s*:\s*(""(?:\\.|[^""\\])*"")",
+                RegexOptions.Singleline | RegexOptions.CultureInvariant);
+            if (m.Success)
+            {
+                line = JsonSerializer.Deserialize<string>(m.Groups[1].Value) ?? "";
+                return !string.IsNullOrWhiteSpace(line);
+            }
+        }
+        catch { }
+
+        return false;
+    }
+
+    private static string ExtractAllyPlainFirstLine(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return "";
+        var s = raw.Trim();
+        if (s.StartsWith("```", StringComparison.Ordinal))
+        {
+            var fence = s.IndexOf('\n');
+            if (fence > 0) s = s.Substring(fence + 1).Trim();
+            var close = s.LastIndexOf("```", StringComparison.Ordinal);
+            if (close >= 0) s = s.Substring(0, close).Trim();
+        }
+
+        foreach (var part in s.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var t = part.Trim();
+            if (t.Length == 0) continue;
+            if (t.StartsWith('{') && t.Contains("\"line\"", StringComparison.Ordinal))
+                continue;
+            if (t.Length > 400) t = t.Substring(0, 400).Trim();
+            return t;
+        }
+
+        return s.Length > 400 ? s.Substring(0, 400).Trim() : s;
     }
 
     private async Task<Dictionary<string, string>> SynthesizeSocialImpressionsAsync(string episodicBuffer, CancellationToken ct)

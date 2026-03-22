@@ -67,4 +67,23 @@ public static class CharacterCreationRng
             return null;
         return ReceptionNotes[rng.Next(ReceptionNotes.Length)];
     }
+
+    /// <summary>10축 성향(0~100). 각 축은 10~90 사이에서 독립 균등 — 완전 중립(전부 50) 고정을 피합니다.</summary>
+    public static PersonalityValues RollPersonality(Random rng)
+    {
+        int r() => rng.Next(10, 91);
+        return new PersonalityValues
+        {
+            Courage = r(),
+            Caution = r(),
+            Greed = r(),
+            Orderliness = r(),
+            Impulsiveness = r(),
+            Cooperation = r(),
+            Aggression = r(),
+            Focus = r(),
+            Adaptability = r(),
+            Frugality = r()
+        };
+    }
 }

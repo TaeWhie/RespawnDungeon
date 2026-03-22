@@ -138,7 +138,8 @@ public static class PromptBuilder
         string? guildOfficePersonaHijackCue = null,
         bool guildMasterDeepExpeditionTurn = false,
         bool guildMasterFrustrationStopTurn = false,
-        string? mcpRuntimeToolBlock = null)
+        string? mcpRuntimeToolBlock = null,
+        bool allyPeerDialogueScene = false)
     {
         var sb = new StringBuilder();
         var ret = settings.Retrieval;
@@ -149,12 +150,23 @@ public static class PromptBuilder
         else
             AppendMinimalSystemShell(sb, speaker.Name);
 
+        if (allyPeerDialogueScene)
+        {
+            sb.AppendLine("[장면 우선순위 — 동료 잡담]");
+            sb.AppendLine(
+                "• 이번 턴은 **길드장 집무실 보고가 아닙니다.** 위 [Identity Core]에 있는 **길드장 대응·보고체·인벤·표를 끌어다 쓰는 습관**은 **이번 장면에 적용하지 마십시오**. 팩트와 충돌할 때만 데이터를 짧게 참고하세요.");
+            sb.AppendLine();
+        }
+
         if (!string.IsNullOrWhiteSpace(mcpRuntimeToolBlock))
             AppendMcpRuntimeToolBlock(sb, mcpRuntimeToolBlock!);
 
         AppendDialogueSettingsCore(sb, settings);
 
         AppendPartyRosterContext(sb, speaker, partyRoster, gameRefs);
+
+        if (allyPeerDialogueScene)
+            AppendAllyPeerSceneBlock(sb, speaker, listener);
 
         if (guildMasterOneOnOneScene)
         {
@@ -203,9 +215,15 @@ public static class PromptBuilder
 
         AppendReferenceKnowledgeRag(sb, settings, referenceKnowledgeRag, useAethelgardThreeLayer);
 
-        AppendItemAndOwnershipGuideline(sb, speaker, partyRoster);
-
-        AppendCharacterHallucinationGuideline(sb, partyRoster);
+        if (allyPeerDialogueScene)
+        {
+            AppendAllyPeerDataRules(sb, speaker, partyRoster);
+        }
+        else
+        {
+            AppendItemAndOwnershipGuideline(sb, speaker, partyRoster);
+            AppendCharacterHallucinationGuideline(sb, partyRoster);
+        }
 
         AppendNarrativeStyleGuideline(sb);
 
@@ -275,6 +293,10 @@ public static class PromptBuilder
                     "분명한 한두 단어인데 이해 못 했다고 하지 마세요.");
             }
         }
+        else if (allyPeerDialogueScene)
+        {
+            AppendAllyPeerTurnStyle(sb, listener);
+        }
         else
         {
             sb.AppendLine("대화 마지막에 자연스럽게 반응하고, 최근 던전을 회상하거나 안도감을 표현하세요.");
@@ -305,7 +327,10 @@ public static class PromptBuilder
         sb.AppendLine("⚠️ 자기 반복 금지: 이전 발언을 답습하지 마세요.");
         sb.AppendLine();
 
-        AppendJsonOutputFooter(sb);
+        if (allyPeerDialogueScene)
+            AppendJsonOutputFooterAllyPeer(sb);
+        else
+            AppendJsonOutputFooter(sb);
 
         return sb.ToString();
     }
@@ -427,6 +452,41 @@ public static class PromptBuilder
             "• **균형**: **괄호 연출**이 **말하는 부분보다 길어지지 않게** 하십시오. 감정은 **말투·단어**로도 드러낼 수 있습니다.");
         sb.AppendLine(
             "• **예시**: (O) `(작게 한숨을 쉬며)` 그 이름은 명단에 없는데요. / (X) `그는 잠시 망설이다가 나에게 고개를 끄덕였다.`");
+        sb.AppendLine();
+    }
+
+    /// <summary>아지트 2인 대화 — 길드장 1:1과 구분되는 장면·톤 (보고·인벤 감사 금지).</summary>
+    private static void AppendAllyPeerSceneBlock(StringBuilder sb, Character speaker, Character listener)
+    {
+        sb.AppendLine("[장면(아지트) — 동료끼리]");
+        sb.AppendLine(
+            $"• **길드장은 없습니다.** 당신({speaker.Name})은 **{listener.Name}**와 둘이 쉬거나 잡담하는 자리입니다. **보고·승인·업무 요약**처럼 말하지 마십시오.");
+        sb.AppendLine(
+            "• **톤**: 말동무·동료의 말에 **반응**하세요. **짧은 한 줄**(대사+짧은 괄호 연출). **질문을 연달아 던지지** 마십시오(한 줄에 질문 하나 이하).");
+        sb.AppendLine(
+            "• **화제**: 원정·전리품·포션·재고·유물 이름을 **매 문장** 끌어오지 마세요. 상대가 직전에 꺼낸 말에 **먼저** 답하세요. 같은 고유명사(포션·조각 등)을 **여러 턴 반복**하면 안 됩니다.");
+        sb.AppendLine();
+    }
+
+    /// <summary>동료 대화용 — 인벤·길드장 검증 절차는 축약하고, 환각 방지만 유지.</summary>
+    private static void AppendAllyPeerDataRules(StringBuilder sb, Character speaker, IReadOnlyList<Character> partyRoster)
+    {
+        sb.AppendLine("[동료 대화 — 데이터(축약)]");
+        sb.AppendLine(
+            "• **표기**: [파티]·인벤에 **없는** 아이템·이름을 **지어내지 마십시오**. 다만 **대사에** 목록을 나열하거나 **감사·보고**하듯 말하지 마십시오.");
+        sb.AppendLine(
+            "• **아이템**: 상대가 먼저 꺼내거나, 직전에 같은 화제가 있을 때만 **짧게** 언급하세요. **운영·인벤 점검**처럼 들리면 실패입니다.");
+        sb.AppendLine();
+        AppendCharacterHallucinationGuideline(sb, partyRoster);
+    }
+
+    /// <summary>비대화형 스쿼드 분기 대체 — 동료 2인 전용.</summary>
+    private static void AppendAllyPeerTurnStyle(StringBuilder sb, Character? listener)
+    {
+        var who = listener?.Name ?? "동료";
+        sb.AppendLine($"당신의 상태: **{who}**와 둘이 쉬며 짧게 말을 주고받는 중입니다.");
+        sb.AppendLine(
+            "지시: **직전 한 줄의 뉘앙스**에 반응하세요. **‘그럼 ~해볼까요?’ 같은 제안으로 문장을 끝내는 습관**을 줄이세요. **한 줄이 한 화제**에 너무 오래 머물지 마세요.");
         sb.AppendLine();
     }
 
@@ -744,6 +804,20 @@ public static class PromptBuilder
 
         sb.AppendLine($"• 상대는 **{listener.Name}**. 위 [대화 상대: …]·관계 데이터와 호칭 규칙을 따른다.");
         sb.AppendLine();
+    }
+
+    /// <summary>아지트 2인 — 키를 줄여 모델·파서 실패율을 낮춤(<c>line</c>만 필수).</summary>
+    private static void AppendJsonOutputFooterAllyPeer(StringBuilder sb)
+    {
+        sb.AppendLine("[Output Constraint — 동료 잡담: JSON 한 객체 · line 필수]");
+        sb.AppendLine(
+            "• **응답은 파싱 가능한 JSON 한 덩어리만**: **`{\"line\": \"…\"}`** 형태의 **단일 객체**. **`line` 문자열 하나가 필수**입니다.");
+        sb.AppendLine(
+            "• **`tone`·`intent`는 생략 가능**(넣더라도 문자열). **앞뒤 설명·코드펜스·`JSON:` 접두어 금지**.");
+        sb.AppendLine(
+            "• **`line` 안의 따옴표**는 JSON 규칙대로 `\\\"`로 이스케이프하세요. **닫히지 않은 따옴표**로 끝나면 파싱이 깨집니다.");
+        sb.AppendLine(
+            "• 예: {\"line\": \"(웃으며) 오늘은 좀 쉬자.\"}");
     }
 
     private static void AppendJsonOutputFooter(StringBuilder sb)
@@ -1200,9 +1274,61 @@ public static class PromptBuilder
             _ => "일반"
         };
 
-    public static string BuildUserPrompt(string workingMemoryContext, string? randomTopic = null, bool isFinalTurn = false, int turnIndex = 0)
+    public static string BuildUserPrompt(
+        string workingMemoryContext,
+        string? randomTopic = null,
+        bool isFinalTurn = false,
+        int turnIndex = 0,
+        bool allyPeerDialogue = false,
+        string? peerListenerName = null,
+        int? allyTotalUtterances = null)
     {
         var sb = new StringBuilder();
+        var peer = string.IsNullOrWhiteSpace(peerListenerName) ? "동료" : peerListenerName.Trim();
+
+        if (allyPeerDialogue)
+        {
+            if (workingMemoryContext == "(이전 대화 없음)")
+            {
+                if (allyTotalUtterances is int sceneTotal && sceneTotal > 0)
+                {
+                    sb.AppendLine(
+                        $"**(장면 길이)** 총 **{sceneTotal}발화** 중 **지금은 1번째**입니다. " +
+                        (sceneTotal == 2
+                            ? "다음이 **상대의 마지막 한 줄**이면 이 장면은 **여기서 끝**납니다. 포문만 짧게 열고 길게 끌지 마세요."
+                            : "아직 몇 번 더 주고받습니다. 포문만 짧게 열어 주세요."));
+                }
+
+                sb.AppendLine(
+                    $"아직 아무도 말을 꺼내지 않았습니다. **{peer}**와 둘이 쉬는 중입니다. **짧은 한 줄**로 가볍게 말을 붙이세요(인사·농담·짧은 동정).");
+                sb.AppendLine(
+                    "**원정·전리품·포션·유물**을 **주제로 강요하지 마세요.** Episodic·ActionLog에 나온 일이 있어도 굳이 꺼내지 않아도 됩니다. JSON만 응답.");
+                return sb.ToString();
+            }
+
+            sb.AppendLine("[Working Memory (최근 대화 내역)]");
+            sb.AppendLine(workingMemoryContext);
+            sb.AppendLine();
+            sb.AppendLine("[동료 대화 지시]");
+            if (allyTotalUtterances is int totalU && totalU > 0)
+            {
+                sb.AppendLine(
+                    $"• **발화 진행:** 총 **{totalU}발화** 중 **{turnIndex + 1}번째**입니다.");
+            }
+
+            sb.AppendLine(
+                $"• 상대는 **{peer}**입니다. **직전 상대의 한 마디**에 먼저 반응하세요. 같은 고유명사(포션·조각 등)를 **이미 여러 번 썼다면** 다른 표현으로 바꾸거나 화제를 돌리세요.");
+            if (isFinalTurn)
+            {
+                sb.AppendLine(
+                    "⚠️ **지금이 이 장면의 마지막 한 줄입니다.** 새 화제·새 약속·「나중에 이야기하자」「다음에 더」로 **대화를 이어갈 제안은 금지**입니다. " +
+                    "직전 말에 **짧게** 받아주기(동의·농담·한마디 인사)로 **끝**내세요. JSON만 응답.");
+            }
+            else
+                sb.AppendLine("다음 대사 1문장 내외. JSON만 응답.");
+            return sb.ToString();
+        }
+
         if (workingMemoryContext == "(이전 대화 없음)")
         {
             if (string.IsNullOrEmpty(randomTopic))

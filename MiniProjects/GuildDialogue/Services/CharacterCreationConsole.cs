@@ -150,7 +150,7 @@ public static class CharacterCreationConsole
             SpeechStyle = speech,
             Mood = mood,
             RecentMemorableEvent = null,
-            Personality = CreateDefaultPersonality(),
+            Personality = CharacterCreationRng.RollPersonality(rng),
             Stats = new CharacterStats(),
             Inventory = new List<InventoryEntry>(),
             Equipment = new EquipmentSlots(),
@@ -166,17 +166,156 @@ public static class CharacterCreationConsole
         Console.WriteLine($"저장 완료: {character.Name} ({character.Id}), Role={character.Role}, 스킬: {string.Join(", ", character.Skills)}");
     }
 
-    private static PersonalityValues CreateDefaultPersonality() => new()
+    /// <summary>웹 허브: 직업·스킬 선택 후 Ollama로 서사 생성 후 DB 저장(콘솔 메뉴 5와 동일).</summary>
+    public static Task<CharacterCreationWebResult> CreateCharacterWebAsync(
+        DialogueConfigLoader loader,
+        int jobIndex1Based,
+        string skillSelectionMode,
+        int[]? skillIndices1Based,
+        CancellationToken ct = default) =>
+        CreateCharacterCoreAsync(loader, jobIndex1Based, skillSelectionMode, skillIndices1Based, persist: true, ct);
+
+    /// <summary>웹 허브: 미리보기만 — CharactersDatabase에 쓰지 않음.</summary>
+    public static Task<CharacterCreationWebResult> PreviewCharacterWebAsync(
+        DialogueConfigLoader loader,
+        int jobIndex1Based,
+        string skillSelectionMode,
+        int[]? skillIndices1Based,
+        CancellationToken ct = default) =>
+        CreateCharacterCoreAsync(loader, jobIndex1Based, skillSelectionMode, skillIndices1Based, persist: false, ct);
+
+    /// <summary>미리보기에서 받은 캐릭터를 DB에 반영.</summary>
+    public static CharacterCreationWebResult CommitCharacterWebAsync(DialogueConfigLoader loader, Character? incoming)
     {
-        Courage = 50,
-        Caution = 50,
-        Greed = 50,
-        Orderliness = 50,
-        Impulsiveness = 50,
-        Cooperation = 50,
-        Aggression = 50,
-        Focus = 50,
-        Adaptability = 50,
-        Frugality = 50
-    };
+        if (incoming == null || string.IsNullOrWhiteSpace(incoming.Id))
+            return new CharacterCreationWebResult(false, "캐릭터 데이터가 없습니다.", null);
+
+        var jobs = loader.LoadJobDatabase();
+        var roster = loader.LoadCharacters();
+        if (roster.Any(c => c.Id.Equals(incoming.Id.Trim(), StringComparison.OrdinalIgnoreCase)))
+            return new CharacterCreationWebResult(false, "이미 같은 Id의 동료가 등록되어 있습니다. 다른 동료를 찾아 보세요.", null);
+
+        incoming.Id = incoming.Id.Trim();
+        if (string.IsNullOrWhiteSpace(incoming.Name))
+            return new CharacterCreationWebResult(false, "이름이 비어 있습니다.", null);
+
+        incoming.Skills ??= new List<string>();
+        incoming.Inventory ??= new List<InventoryEntry>();
+        incoming.Relationships ??= new List<Relationship>();
+        incoming.Personality ??= CharacterCreationRng.RollPersonality(Random.Shared);
+        incoming.Stats ??= new CharacterStats();
+        incoming.Equipment ??= new EquipmentSlots();
+
+        JobSkillRules.EnforceForCharacter(incoming, jobs);
+        roster.Add(incoming);
+        loader.SaveCharactersDatabase(roster);
+        return new CharacterCreationWebResult(true, null, incoming);
+    }
+
+    private static async Task<CharacterCreationWebResult> CreateCharacterCoreAsync(
+        DialogueConfigLoader loader,
+        int jobIndex1Based,
+        string skillSelectionMode,
+        int[]? skillIndices1Based,
+        bool persist,
+        CancellationToken ct)
+    {
+        var jobs = loader.LoadJobDatabase();
+        if (jobs.Count == 0)
+            return new CharacterCreationWebResult(false, "JobDatabase.json에 직업이 없습니다.", null);
+
+        if (jobIndex1Based < 1 || jobIndex1Based > jobs.Count)
+            return new CharacterCreationWebResult(false, "직업 번호가 범위를 벗어났습니다.", null);
+
+        var job = jobs[jobIndex1Based - 1];
+        var allowed = job.AllowedSkillNames ?? new List<string>();
+        var pickedSkills = new List<string>();
+        var mode = (skillSelectionMode ?? "all").Trim().ToLowerInvariant();
+
+        if (allowed.Count > 0)
+        {
+            if (mode == "all")
+                pickedSkills.AddRange(allowed);
+            else if (mode == "none")
+            { }
+            else if (mode == "pick")
+            {
+                if (skillIndices1Based == null || skillIndices1Based.Length == 0)
+                    return new CharacterCreationWebResult(false, "pick 모드에서는 스킬 번호가 필요합니다.", null);
+                foreach (var n in skillIndices1Based)
+                {
+                    if (n < 1 || n > allowed.Count)
+                        return new CharacterCreationWebResult(false, $"잘못된 스킬 번호: {n}", null);
+                    var skillName = allowed[n - 1];
+                    if (!pickedSkills.Contains(skillName, StringComparer.Ordinal))
+                        pickedSkills.Add(skillName);
+                }
+            }
+            else
+                return new CharacterCreationWebResult(false, "skillSelectionMode는 all, none, pick 중 하나여야 합니다.", null);
+        }
+
+        var roster = loader.LoadCharacters();
+        var bases = loader.LoadBaseDatabase();
+        var rng = Random.Shared;
+
+        var age = CharacterCreationRng.RollAge(rng);
+        var career = CharacterCreationRng.RollCareerYears(age, rng);
+        var currentLocationId = CharacterCreationRng.ResolveReceptionLocationId(bases);
+        var currentLocationNote = CharacterCreationRng.RollReceptionLocationNote(rng);
+        var receptionFacility = bases.FirstOrDefault(b =>
+            string.Equals(b.BaseId?.Trim(), currentLocationId, StringComparison.OrdinalIgnoreCase));
+
+        var settings = loader.LoadSettings();
+        var ollama = new OllamaClient(settings);
+        var profile = await CharacterCreationLlmGenerator.TryGenerateAsync(
+            loader,
+            ollama,
+            job,
+            age,
+            career,
+            pickedSkills,
+            currentLocationId,
+            receptionFacility,
+            roster,
+            ct).ConfigureAwait(false);
+
+        if (profile == null)
+            return new CharacterCreationWebResult(false, "Ollama 서사 생성 실패. 모델·네트워크를 확인하세요.", null);
+
+        const string mood = "중립";
+        var character = new Character
+        {
+            Id = profile.Id,
+            Name = profile.Name,
+            Age = age,
+            Role = job.RoleId?.Trim() ?? "",
+            PartyId = null,
+            CurrentLocationId = currentLocationId,
+            CurrentLocationNote = currentLocationNote,
+            Career = career,
+            Background = profile.Background,
+            SpeechStyle = profile.SpeechStyle,
+            Mood = mood,
+            RecentMemorableEvent = null,
+            Personality = CharacterCreationRng.RollPersonality(rng),
+            Stats = new CharacterStats(),
+            Inventory = new List<InventoryEntry>(),
+            Equipment = new EquipmentSlots(),
+            Relationships = new List<Relationship>(),
+            Skills = pickedSkills
+        };
+
+        JobSkillRules.EnforceForCharacter(character, jobs);
+
+        if (persist)
+        {
+            roster.Add(character);
+            loader.SaveCharactersDatabase(roster);
+        }
+
+        return new CharacterCreationWebResult(true, null, character);
+    }
 }
+
+public sealed record CharacterCreationWebResult(bool Ok, string? Error, Character? Character);

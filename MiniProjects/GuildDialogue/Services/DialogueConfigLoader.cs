@@ -3,9 +3,18 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using GuildDialogue.Data;
 
 namespace GuildDialogue.Services;
+
+/// <summary>Config/Presets/manifest.json 한 줄.</summary>
+public sealed class WorldPresetInfo
+{
+    public string Id { get; set; } = "";
+    public string Label { get; set; } = "";
+    public string Description { get; set; } = "";
+}
 
 public class DialogueConfigLoader
 {
@@ -261,5 +270,137 @@ public class DialogueConfigLoader
         if (!string.IsNullOrEmpty(dir))
             Directory.CreateDirectory(dir);
         File.WriteAllText(path, JsonSerializer.Serialize(parties, WriteJsonOptions()));
+    }
+
+    /// <summary>허브 세계관 편집기에서 다루는 Config JSON (경로 조작 방지 — 파일명만 허용).</summary>
+    public static readonly HashSet<string> WorldConfigEditableFileNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "BaseDatabase.json",
+        "DangerLevelDatabase.json",
+        "DialogueSettings.json",
+        "EffectSnippetDatabase.json",
+        "EventTypeDatabase.json",
+        "GuildOfficeExploration.json",
+        "ItemDatabase.json",
+        "ItemTypeDatabase.json",
+        "JobDatabase.json",
+        "MonsterDatabase.json",
+        "MonsterTraitDatabase.json",
+        "MonsterTypeDatabase.json",
+        "RarityDatabase.json",
+        "SemanticGuardrailAnchors.json",
+        "SkillDatabase.json",
+        "SkillTypeDatabase.json",
+        "TagDatabase.json",
+        "TrapCategoryDatabase.json",
+        "TrapTypeDatabase.json",
+        "WorldLore.json",
+    };
+
+    /// <summary>세계관 편집용 텍스트 로드. 없으면 타입에 맞는 최소 JSON.</summary>
+    public string ReadWorldConfigText(string fileName)
+    {
+        var name = RequireWorldConfigFileName(fileName);
+        var path = Path.Combine(_configPath, name);
+        if (!File.Exists(path))
+            return DefaultWorldConfigJson(name);
+        return File.ReadAllText(path);
+    }
+
+    /// <summary>JSON 문법 검사 후 들여쓰기 저장.</summary>
+    public void WriteWorldConfigText(string fileName, string json)
+    {
+        var name = RequireWorldConfigFileName(fileName);
+        if (string.IsNullOrWhiteSpace(json))
+            throw new ArgumentException("JSON 내용이 비어 있습니다.", nameof(json));
+
+        using var doc = JsonDocument.Parse(
+            json,
+            new JsonDocumentOptions
+            {
+                CommentHandling = JsonCommentHandling.Skip,
+                AllowTrailingCommas = true
+            });
+
+        var path = Path.Combine(_configPath, name);
+        var dir = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(dir))
+            Directory.CreateDirectory(dir);
+
+        var pretty = JsonSerializer.Serialize(doc.RootElement, WriteJsonOptions());
+        File.WriteAllText(path, pretty);
+    }
+
+    private static readonly JsonSerializerOptions PresetManifestJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        ReadCommentHandling = JsonCommentHandling.Skip,
+        AllowTrailingCommas = true
+    };
+
+    /// <summary>Config/Presets/manifest.json</summary>
+    public IReadOnlyList<WorldPresetInfo> LoadWorldPresetsManifest()
+    {
+        var path = Path.Combine(_configPath, "Presets", "manifest.json");
+        if (!File.Exists(path))
+            return Array.Empty<WorldPresetInfo>();
+        var json = File.ReadAllText(path);
+        return JsonSerializer.Deserialize<List<WorldPresetInfo>>(json, PresetManifestJsonOptions) ?? new List<WorldPresetInfo>();
+    }
+
+    /// <summary>프리셋 폴더의 JSON을 읽고, 없으면 기본 Config로 폴백.</summary>
+    public string ReadPresetWorldConfigText(string presetId, string fileName)
+    {
+        var pid = RequirePresetId(presetId);
+        var name = RequireWorldConfigFileName(fileName);
+        var path = Path.Combine(_configPath, "Presets", pid, name);
+        if (File.Exists(path))
+            return File.ReadAllText(path);
+        return ReadWorldConfigText(name);
+    }
+
+    /// <summary>편집 가능한 세계관 파일 전부를 프리셋에서 로드.</summary>
+    public Dictionary<string, string> LoadWorldPresetFiles(string presetId)
+    {
+        _ = RequirePresetId(presetId);
+        var files = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var name in WorldConfigEditableFileNames.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+            files[name] = ReadPresetWorldConfigText(presetId, name);
+        return files;
+    }
+
+    private static string RequirePresetId(string presetId)
+    {
+        if (string.IsNullOrWhiteSpace(presetId))
+            throw new ArgumentException("프리셋 ID가 비어 있습니다.", nameof(presetId));
+        var id = presetId.Trim();
+        if (id.Length > 64 || !Regex.IsMatch(id, @"^[a-z0-9_-]+$", RegexOptions.IgnoreCase))
+            throw new ArgumentException("허용되지 않는 프리셋 ID입니다.", nameof(presetId));
+        return id;
+    }
+
+    private static string RequireWorldConfigFileName(string fileName)
+    {
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new ArgumentException("파일명이 비어 있습니다.", nameof(fileName));
+        var n = Path.GetFileName(fileName.Trim());
+        if (!string.Equals(n, fileName.Trim(), StringComparison.Ordinal) ||
+            n.Contains(Path.DirectorySeparatorChar) ||
+            n.Contains(Path.AltDirectorySeparatorChar))
+            throw new ArgumentException("허용되지 않는 경로입니다.", nameof(fileName));
+        if (!WorldConfigEditableFileNames.Contains(n))
+            throw new ArgumentException($"편집할 수 없는 파일입니다: {n}", nameof(fileName));
+        return n;
+    }
+
+    private static string DefaultWorldConfigJson(string fileName)
+    {
+        return fileName.Equals("WorldLore.json", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Equals("EventTypeDatabase.json", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Equals("DialogueSettings.json", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Equals("SemanticGuardrailAnchors.json", StringComparison.OrdinalIgnoreCase) ||
+               fileName.Equals("GuildOfficeExploration.json", StringComparison.OrdinalIgnoreCase)
+            ? "{}"
+            : "[]";
     }
 }

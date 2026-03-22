@@ -1,0 +1,93 @@
+{
+  "WorldName": "Aethelgard (에델가드)",
+  "WorldSummary": "오래전 마법 문명이 몰락한 후, 세계 곳곳에 고대 유적(던전)이 솟아오른 중세 판타지 세계입니다.",
+  "GuildInfo": "유저가 운영하는 '레스폰 던전(Respawn Dungeon)' 길드. 던전에서 전멸해도 아지트에서 부활할 수 있는 유일한 곳입니다.",
+  "DungeonSystem": "던전은 살아있는 유기체와 같으며, 심핵(Core)을 파괴해야 정화됩니다.",
+  "BaseCamp": "안개 숲(Mist Forest) 입구. 루미니스 시티 인근.",
+  "CurrencyAndLoot": "화폐: 골드(G), 주요 루팅: 마력 파편, 고대 룬, 장비 설계도.",
+  "Locations": [
+    {
+      "Name": "루미니스 시티 (Luminis City)",
+      "Description": "대륙 최대의 상업 도시이자 마법 공학의 중심지. 거대한 마력 가로등이 특징입니다.",
+      "Type": "City"
+    },
+    {
+      "Name": "침묵의 안개 호수 (Silent Mist Lake)",
+      "Description": "요정의 거처라 불리는 비현실적으로 고요한 호수. 환각을 본다는 소문이 있습니다.",
+      "Type": "Landmark"
+    },
+    {
+      "Name": "철벽 산맥 (Iron Wall Mountains)",
+      "Description": "험준한 산맥이자 고대 드워프 광산 유적이 있는 전략적 요충지입니다.",
+      "Type": "Landmark"
+    }
+  ],
+  "Dungeons": [
+    {
+      "Name": "잊힌 묘지 (Forgotten Cemetery)",
+      "Description": "언데드가 출몰하는 초보자용 공동묘지 유적.",
+      "Difficulty": "Low",
+      "TypicalMonsters": ["스켈레톤", "좀비"],
+      "KnownRewards": ["잊혀진 룬", "낡은 철퇴"]
+    },
+    {
+      "Name": "습지 동굴 (Wetland Cave)",
+      "Description": "슬라임이 서식하는 축축한 훈련용 동굴.",
+      "Difficulty": "Low",
+      "TypicalMonsters": ["슬라임"],
+      "KnownRewards": ["슬라임 점액", "회복 포션"]
+    },
+    {
+      "Name": "검은 가시 무덤 (Black Thorn Catacombs)",
+      "Description": "거대 가시 거미와 언데드가 있는 중급 유적.",
+      "Difficulty": "Mid",
+      "TypicalMonsters": ["스켈레톤", "거대 가시 거미"],
+      "KnownRewards": ["희귀한 뼈 항아리", "마력 파편"]
+    },
+    {
+      "Name": "푸른 화염의 탑 (Tower of Blue Flame)",
+      "Description": "정령과 골렘이 수호하는 신비로운 마탑.",
+      "Difficulty": "Mid",
+      "TypicalMonsters": ["불의 정령", "청동 골렘"],
+      "KnownRewards": ["푸른 불꽃 지팡이", "지혜의 비약"]
+    },
+    {
+      "Name": "심연의 둥지 (Abyss Nest)",
+      "Description": "고룡의 후예가 잠든 최정상급 던전.",
+      "Difficulty": "Abyss",
+      "TypicalMonsters": ["와이번", "심연의 기사"],
+      "KnownRewards": ["용의 심장 조각", "에델가드의 눈물"]
+    }
+  ],
+  "Organizations": [
+    {
+      "Name": "왕국 기사단 (Kingdom Knights)",
+      "Description": "대륙의 질서를 수호하는 정예 군사 조직. 현재는 국경 분쟁으로 전력이 분산되어 있습니다.",
+      "Type": "Military"
+    },
+    {
+      "Name": "루미나스 수도원 (Luminas Monastery)",
+      "Description": "고대부터 내려온 치유 마법과 성스러운 지식을 보존하는 종교 단체.",
+      "Type": "Religion"
+    },
+    {
+      "Name": "쉐도우 핑거 (Shadow Finger)",
+      "Description": "암시장과 정보 거래를 주도하는 베일에 싸인 비밀 결사.",
+      "Type": "Secret"
+    },
+    {
+      "Name": "붉은 늑대 용병단 (Red Wolf Mercenaries)",
+      "Description": "실력 위주의 거친 용병 집단. 돈만 되면 위험한 임무도 마다하지 않습니다.",
+      "Type": "Mercenary"
+    },
+    {
+      "Name": "왕립 마법 아카데미 (Royal Magic Academy)",
+      "Description": "최고의 마법사를 양성하는 교육 기관.",
+      "Type": "Education"
+    }
+  ],
+  "Lore": [
+    "부활의 아티팩트 '이터널 앙코르'는 길드장의 피로만 작동합니다.",
+    "던전에 오래 머물면 '마력 오염'이 진행되어 환청을 들을 수 있습니다."
+  ]
+}

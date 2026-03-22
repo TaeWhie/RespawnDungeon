@@ -29,6 +29,12 @@ class Program
             return;
         }
 
+        if (args.Length > 0 && string.Equals(args[0], "--hub-api", StringComparison.OrdinalIgnoreCase))
+        {
+            await GuildDialogue.GuildDialogueHubHost.RunAsync(args);
+            return;
+        }
+
         if (args.Length > 0 && string.Equals(args[0], "--gen-actionlog", StringComparison.OrdinalIgnoreCase))
         {
             var noSyncChars = args.Any(a => string.Equals(a, "--no-sync-chars", StringComparison.OrdinalIgnoreCase));
@@ -85,6 +91,7 @@ class Program
             var mergeNote = replaceActionLog ? " [ActionLog 덮어쓰기]" : $" [ActionLog 병합→전체 {totalEntries}건]";
             Console.WriteLine(
                 $"ActionLog 시뮬레이션 저장: {outPath} (이번 시뮬 {sim.Timeline.ActionLog.Count}건){mergeNote}{seedNote}{partyNote}{syncNote}");
+            CompanionDialoguePendingFile.SetPostDungeonPending(loader.ConfigDirectory);
             return;
         }
 
@@ -94,7 +101,7 @@ class Program
             Console.WriteLine(
                 $"[Config] {DialogueConfigLoader.ResolveDefaultConfigDirectory()}  ← 원정·파티·로그 저장 위치");
             Console.WriteLine("실행 모드를 선택하세요:");
-            Console.WriteLine("1. 동료 간 관전 모드 (자동 대화)");
+            Console.WriteLine("1. 아지트 현황 (베이스 활동 배정 · 동료 2인 대화)");
             Console.WriteLine("2. 길드장 직접 참여 모드 (사용자 입력)");
             Console.WriteLine("3. 파티 편성 (목록·생성·수정·삭제)");
             Console.WriteLine("4. 원정 보내기 (던전 시뮬 → ActionLog·캐릭터 반영)");
@@ -125,15 +132,23 @@ class Program
                 continue;
             }
 
-            var manager = new DialogueManager();
-            await manager.InitializeAsync();
+            if (choice == "1")
+            {
+                var hubManager = new DialogueManager();
+                await hubManager.InitializeAsync();
+                await BaseHubScreen.RunAsync(hubManager);
+                return;
+            }
 
             if (choice == "2")
+            {
+                var manager = new DialogueManager();
+                await manager.InitializeAsync();
                 await manager.RunGuildMasterSessionAsync();
-            else
-                await manager.RunInteractiveSessionAsync();
+                return;
+            }
 
-            return;
+            Console.WriteLine("잘못된 선택입니다.");
         }
     }
 }
