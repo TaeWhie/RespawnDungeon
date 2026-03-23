@@ -1144,6 +1144,67 @@ body {
   background: rgba(99, 102, 241, 0.25);
 }
 
+/* 원정: 던전·층 선택 */
+.hub-expedition-targets {
+  margin: 0.75rem 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+}
+
+.hub-expedition-targets-title {
+  margin: 0 0 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.hub-expedition-targets-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .hub-expedition-targets-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.hub-expedition-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.hub-expedition-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  letter-spacing: 0.02em;
+}
+
+.hub-expedition-select {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.65);
+  color: #e2e8f0;
+  font-size: 0.85rem;
+}
+
+.hub-expedition-options-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.hub-expedition-progress-hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
 /* 파티 편성: 멤버 선택용 간소 카드 */
 .hub-party-pick-grid {
   display: grid;

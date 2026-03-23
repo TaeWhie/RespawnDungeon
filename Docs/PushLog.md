@@ -59,6 +59,10 @@
 
 ## 기록
 
+### 2026-03-21 — Hub 원정 던전·층 선택 + 동료 미리보기 중복 방지
+- **MiniProjects/Hub**: 원정 패널에서 던전·층 선택, `/api/expedition/options`로 클리어 기반 층 해금 표시; 동료 미리보기는 슬롯 인덱스 선택·미리보기 API에 `excludeIds`/`excludeNames` 전달.
+- **MiniProjects/GuildDialogue**: `ExpeditionDungeonProgress`, `DungeonSimulationInputs` 던전·층 오버라이드, `RunExpeditionForParty`/Hub `GET/POST /api/expedition`, `CharacterCreationLlmGenerator` 예약 Id·이름·재시도.
+
 ### 2026-03-21 — Hub·GuildDialogue: 세계관 프리셋, 워밍업, 파티 UI, 문서
 - **MiniProjects/Hub**: 길드 허브 UI(세계관 설정·프리셋·이 단계 저장 / 일괄 저장 및 재구축·Ollama 모델 워밍업 게이트·홈 세계관 소개 `/api/world/overview`·파티 편성 화면 개선·기능 카드 텍스트 색).
 - **GuildDialogue**: `GuildDialogueHubHost`(프리셋·월드 overview·warmup 등), Config Presets·마스터 DB JSON, `OllamaModelWarmup`, `WorldConfigConsistencyChecker`, 캐릭터 생성 성향 RNG, `_buildout` 로컬 폴더 gitignore.

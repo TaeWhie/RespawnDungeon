@@ -518,6 +518,52 @@ public static class GuildDialogueHubHost
             }
         });
 
+        app.MapGet("/api/expedition/options", () =>
+        {
+            try
+            {
+                var lore = loader.LoadWorldLore();
+                var log = loader.LoadTimelineData()?.ActionLog ?? new List<ActionLogEntry>();
+                var list = new List<object>();
+                if (lore?.Dungeons != null)
+                {
+                    foreach (var d in lore.Dungeons)
+                    {
+                        if (string.IsNullOrWhiteSpace(d.Name)) continue;
+                        var maxSel = ExpeditionDungeonProgress.GetMaxSelectableOrdinal(log, d);
+                        var maxCleared = ExpeditionDungeonProgress.GetMaxClearedOrdinal(log, d);
+                        var cap = ExpeditionDungeonProgress.MaxFloorCap(d);
+                        var floors = new List<object>();
+                        for (var o = 1; o <= maxSel; o++)
+                        {
+                            floors.Add(new
+                            {
+                                ordinal = o,
+                                label = ExpeditionDungeonProgress.FloorOrdinalToLabel(d, o)
+                            });
+                        }
+
+                        list.Add(new
+                        {
+                            name = d.Name,
+                            difficulty = d.Difficulty ?? "",
+                            maxClearedOrdinal = maxCleared,
+                            maxSelectableOrdinal = maxSel,
+                            floorCap = cap,
+                            isAbyssStyle = ExpeditionDungeonProgress.IsAbyssStyle(d),
+                            floors
+                        });
+                    }
+                }
+
+                return Results.Json(new { dungeons = list });
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new { error = ex.Message }, statusCode: 500);
+            }
+        });
+
         app.MapPost("/api/expedition", (ExpeditionRequestDto dto) =>
         {
             try
@@ -527,7 +573,9 @@ public static class GuildDialogueHubHost
                     dto.PartyId,
                     dto.Seed,
                     dto.SyncChars,
-                    dto.ReplaceActionLog);
+                    dto.ReplaceActionLog,
+                    dto.DungeonName,
+                    dto.FloorOrdinal);
                 if (!r.Ok)
                     return Results.Json(new { ok = false, error = r.Error }, statusCode: 400);
                 /* RunExpeditionForParty 내부에서 CompanionDialoguePendingFile 기록 */
@@ -580,6 +628,8 @@ public static class GuildDialogueHubHost
                     dto.JobIndex,
                     mode,
                     dto.SkillIndices,
+                    dto.ExcludeIds,
+                    dto.ExcludeNames,
                     ct).ConfigureAwait(false);
                 if (!r.Ok)
                     return Results.Json(new { ok = false, error = r.Error }, statusCode: 400);
@@ -637,9 +687,22 @@ public static class GuildDialogueHubHost
 
     private sealed record UpdatePartyDto(string? Name, string? Callsign, string? Description, string[]? MemberIds);
 
-    private sealed record ExpeditionRequestDto(string PartyId, int? Seed, bool SyncChars, bool ReplaceActionLog);
+    private sealed class ExpeditionRequestDto
+    {
+        public string PartyId { get; set; } = "";
+        public int? Seed { get; set; }
+        public bool SyncChars { get; set; }
+        public bool ReplaceActionLog { get; set; }
+        public string? DungeonName { get; set; }
+        public int? FloorOrdinal { get; set; }
+    }
 
-    private sealed record CreateCharacterDto(int JobIndex, string SkillMode, int[]? SkillIndices);
+    private sealed record CreateCharacterDto(
+        int JobIndex,
+        string SkillMode,
+        int[]? SkillIndices,
+        string[]? ExcludeIds,
+        string[]? ExcludeNames);
 
     private sealed record CommitCharacterDto(Character? Character);
 }

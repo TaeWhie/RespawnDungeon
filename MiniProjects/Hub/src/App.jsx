@@ -1082,8 +1082,48 @@ function ExpeditionPanel({ onBack, parties, showToast, refreshState }) {
   const [partyId, setPartyId] = useState('');
   const [expeditionBusy, setExpeditionBusy] = useState(false);
   const [simLines, setSimLines] = useState([]);
+  const [expDungeons, setExpDungeons] = useState([]);
+  const [dungeonName, setDungeonName] = useState('');
+  const [floorOrdinal, setFloorOrdinal] = useState(1);
+  const [expOptionsLoading, setExpOptionsLoading] = useState(false);
   const replayTimersRef = useRef([]);
   const mountedRef = useRef(true);
+
+  const loadExpeditionOptions = useCallback(async () => {
+    setExpOptionsLoading(true);
+    try {
+      const data = await apiGet('/api/expedition/options');
+      const dungs = data.dungeons ?? data.Dungeons ?? [];
+      setExpDungeons(dungs);
+      if (dungs.length) {
+        setDungeonName((prev) => {
+          if (prev && dungs.some((d) => (d.name || d.Name) === prev)) return prev;
+          return dungs[0].name || dungs[0].Name || '';
+        });
+      }
+    } catch {
+      setExpDungeons([]);
+    } finally {
+      setExpOptionsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadExpeditionOptions();
+  }, [loadExpeditionOptions]);
+
+  useEffect(() => {
+    if (!dungeonName || !expDungeons.length) return;
+    const d = expDungeons.find((x) => (x.name || x.Name) === dungeonName);
+    if (!d) return;
+    const floors = d.floors || d.Floors || [];
+    if (!floors.length) return;
+    setFloorOrdinal((fo) => {
+      const ordinals = floors.map((f) => f.ordinal ?? f.Ordinal).filter((n) => n != null);
+      if (ordinals.includes(fo)) return fo;
+      return ordinals[0] ?? 1;
+    });
+  }, [dungeonName, expDungeons]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -1113,6 +1153,7 @@ function ExpeditionPanel({ onBack, parties, showToast, refreshState }) {
         seed: null,
         syncChars: true,
         replaceActionLog: false,
+        ...(dungeonName && expDungeons.length > 0 ? { dungeonName, floorOrdinal } : {}),
       });
       const lines = Array.isArray(r.simLogLines)
         ? r.simLogLines
@@ -1132,6 +1173,7 @@ function ExpeditionPanel({ onBack, parties, showToast, refreshState }) {
           /* ignore */
         }
         refreshState();
+        loadExpeditionOptions();
         setExpeditionBusy(false);
       };
 
@@ -1176,8 +1218,89 @@ function ExpeditionPanel({ onBack, parties, showToast, refreshState }) {
       </button>
       <h2 className="title-text">3 · 원정 보내기</h2>
       <p className="hub-muted">
-        던전 시뮬 → ActionLog는 기존 뒤에 병합 · 캐릭터 DB 반영 · 시드는 매번 무작위.
+        던전·층을 고른 뒤 원정합니다. 층은 ActionLog에서 해당 던전을 클리어한 기록이 있을 때만 한 층씩
+        해금됩니다. 시드는 매번 무작위.
       </p>
+
+      {expOptionsLoading ? (
+        <p className="hub-muted hub-expedition-options-hint">
+          <Loader2 size={14} className="spin" aria-hidden /> 던전 목록 불러오는 중…
+        </p>
+      ) : expDungeons.length > 0 ? (
+        <section className="hub-expedition-targets glass-panel" aria-labelledby="exp-dungeon-heading">
+          <h3 id="exp-dungeon-heading" className="hub-expedition-targets-title">
+            던전·층
+          </h3>
+          <div className="hub-expedition-targets-grid">
+            <label className="hub-expedition-field">
+              <span className="hub-expedition-label">던전</span>
+              <select
+                className="hub-expedition-select"
+                value={dungeonName}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDungeonName(v);
+                  const d = expDungeons.find((x) => (x.name || x.Name) === v);
+                  const floors = d?.floors || d?.Floors || [];
+                  setFloorOrdinal(floors[0]?.ordinal ?? floors[0]?.Ordinal ?? 1);
+                }}
+              >
+                {expDungeons.map((d) => {
+                  const n = d.name || d.Name;
+                  const diff = d.difficulty || d.Difficulty || '';
+                  return (
+                    <option key={n} value={n}>
+                      {diff ? `${n} (${diff})` : n}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+            <label className="hub-expedition-field">
+              <span className="hub-expedition-label">층</span>
+              <select
+                className="hub-expedition-select"
+                value={String(floorOrdinal)}
+                onChange={(e) => setFloorOrdinal(Number(e.target.value))}
+                disabled={!dungeonName}
+              >
+                {(expDungeons.find((x) => (x.name || x.Name) === dungeonName)?.floors ||
+                  expDungeons.find((x) => (x.name || x.Name) === dungeonName)?.Floors ||
+                  []
+                ).map((f) => {
+                  const ord = f.ordinal ?? f.Ordinal;
+                  const lab = f.label ?? f.Label ?? String(ord);
+                  return (
+                    <option key={ord} value={String(ord)}>
+                      {lab} ({ord}단계)
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+          </div>
+          {dungeonName ? (
+            <p className="hub-muted hub-expedition-progress-hint">
+              {(() => {
+                const d = expDungeons.find((x) => (x.name || x.Name) === dungeonName);
+                if (!d) return null;
+                const cleared = d.maxClearedOrdinal ?? d.MaxClearedOrdinal ?? 0;
+                const maxSel = d.maxSelectableOrdinal ?? d.MaxSelectableOrdinal ?? 1;
+                const cap = d.floorCap ?? d.FloorCap ?? '—';
+                return (
+                  <>
+                    이 던전 클리어 기록: {cleared}층까지 · 이번에 선택 가능: {maxSel}층까지 (상한 {cap}층)
+                  </>
+                );
+              })()}
+            </p>
+          ) : null}
+        </section>
+      ) : (
+        <p className="hub-muted hub-expedition-options-hint">
+          WorldLore.json에 던전이 없습니다. 던전·층 지정 없이 무작위로 진행합니다.
+        </p>
+      )}
 
       <p className="hub-muted">파티 선택</p>
       <div className="hub-party-pick-grid" role="group" aria-label="원정 파티">
@@ -1322,7 +1445,7 @@ function charIdKey(c) {
 
 function CreateCharacterPanel({ onBack, jobs, parties, showToast, refreshState }) {
   const [candidates, setCandidates] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [finding, setFinding] = useState(false);
   const [findingStep, setFindingStep] = useState(0);
   const [committing, setCommitting] = useState(false);
@@ -1338,21 +1461,31 @@ function CreateCharacterPanel({ onBack, jobs, parties, showToast, refreshState }
     setFinding(true);
     setFindingStep(0);
     setCandidates([]);
-    setSelectedId(null);
+    setSelectedIndex(0);
     try {
       const batch = [];
+      const excludeIds = [];
+      const excludeNames = [];
       for (let i = 0; i < RECRUIT_PREVIEW_COUNT; i++) {
         setFindingStep(i + 1);
         const r = await apiPost('/api/character/preview', {
           jobIndex: pickRandomJobIndex(),
           skillMode: 'all',
           skillIndices: null,
+          excludeIds: [...excludeIds],
+          excludeNames: [...excludeNames],
         });
         const c = r.character ?? r.Character;
-        if (c) batch.push(c);
+        if (c) {
+          batch.push(c);
+          const id = charIdKey(c);
+          const nm = String(c.name ?? c.Name ?? '').trim();
+          if (id) excludeIds.push(id);
+          if (nm) excludeNames.push(nm);
+        }
       }
       setCandidates(batch);
-      if (batch.length > 0) setSelectedId(charIdKey(batch[0]));
+      if (batch.length > 0) setSelectedIndex(0);
     } catch (e) {
       showToast(e.message, true);
     } finally {
@@ -1361,8 +1494,9 @@ function CreateCharacterPanel({ onBack, jobs, parties, showToast, refreshState }
     }
   };
 
-  const selected =
-    candidates.length > 0 ? candidates.find((c) => charIdKey(c) === selectedId) ?? candidates[0] : null;
+  const safeSelectedIndex =
+    candidates.length > 0 ? Math.min(Math.max(0, selectedIndex), candidates.length - 1) : 0;
+  const selected = candidates.length > 0 ? candidates[safeSelectedIndex] : null;
 
   const commitRecruit = async () => {
     if (!selected) return;
@@ -1373,7 +1507,7 @@ function CreateCharacterPanel({ onBack, jobs, parties, showToast, refreshState }
       const id = r.character?.id ?? r.character?.Id ?? '';
       showToast(`영입 완료: ${name} (${id})`);
       setCandidates([]);
-      setSelectedId(null);
+      setSelectedIndex(0);
       refreshState();
     } catch (e) {
       showToast(e.message, true);
@@ -1384,7 +1518,7 @@ function CreateCharacterPanel({ onBack, jobs, parties, showToast, refreshState }
 
   const discardAndFindAnother = () => {
     setCandidates([]);
-    setSelectedId(null);
+    setSelectedIndex(0);
   };
 
   const skills = selected ? selected.skills ?? selected.Skills ?? [] : [];
@@ -1454,21 +1588,21 @@ function CreateCharacterPanel({ onBack, jobs, parties, showToast, refreshState }
               </div>
             </header>
             <div className="hub-recruit-candidate-row" role="listbox" aria-label="동료 후보">
-              {candidates.map((c) => {
+              {candidates.map((c, index) => {
                 const id = charIdKey(c);
                 const name = c.name ?? c.Name ?? id;
                 const role = c.role ?? c.Role ?? '';
                 const age = c.age ?? c.Age;
                 const initial = String(name).charAt(0) || '?';
-                const isSel = selectedId === id;
+                const isSel = safeSelectedIndex === index;
                 return (
                   <button
-                    key={id}
+                    key={`recruit-slot-${index}`}
                     type="button"
                     role="option"
                     aria-selected={isSel}
                     className={`hub-recruit-candidate-card ${isSel ? 'hub-recruit-candidate-card--selected' : ''}`}
-                    onClick={() => setSelectedId(id)}
+                    onClick={() => setSelectedIndex(index)}
                   >
                     <div className="hub-recruit-candidate-avatar" aria-hidden>
                       {initial}

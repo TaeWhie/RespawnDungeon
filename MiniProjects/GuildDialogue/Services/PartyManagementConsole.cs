@@ -368,12 +368,16 @@ public static class PartyManagementConsole
     }
 
     /// <summary>웹 허브: 파티 ID로 원정 실행(콘솔 메뉴 4와 동일 로직).</summary>
+    /// <param name="dungeonName">월드 던전 이름(부분 일치). null이면 무작위 던전·층.</param>
+    /// <param name="floorOrdinal">1부터 시작하는 층 서수. null이면 1층으로 간주.</param>
     public static ExpeditionResult RunExpeditionForParty(
         DialogueConfigLoader loader,
         string partyId,
         int? seed,
         bool syncChars,
-        bool replaceActionLog)
+        bool replaceActionLog,
+        string? dungeonName = null,
+        int? floorOrdinal = null)
     {
         var parties = loader.LoadPartyDatabase();
         var party = parties.FirstOrDefault(p =>
@@ -384,7 +388,37 @@ public static class PartyManagementConsole
         if (party.MemberIds.Count == 0)
             return new ExpeditionResult(false, "멤버가 비어 있습니다. 먼저 파티를 편성하세요.", null, null, 0, 0, 0, null, null);
 
-        var inputs = loader.LoadSimulationInputs(party.PartyId);
+        string? dungeonOverride = null;
+        string? floorLabelOverride = null;
+        if (!string.IsNullOrWhiteSpace(dungeonName))
+        {
+            var lore = loader.LoadWorldLore();
+            var d = ExpeditionDungeonProgress.FindDungeon(lore, dungeonName.Trim());
+            if (d == null)
+                return new ExpeditionResult(false, "던전을 찾을 수 없습니다. WorldLore.json 던전 목록을 확인하세요.", null, null, 0, 0, 0, null, null);
+
+            var log = loader.LoadTimelineData()?.ActionLog ?? new List<ActionLogEntry>();
+            var maxSel = ExpeditionDungeonProgress.GetMaxSelectableOrdinal(log, d);
+            var ord = floorOrdinal ?? 1;
+            if (ord < 1 || ord > maxSel)
+            {
+                return new ExpeditionResult(
+                    false,
+                    $"선택한 층은 아직 해금되지 않았습니다. (이 던전은 현재 {maxSel}층까지 선택 가능)",
+                    null,
+                    null,
+                    0,
+                    0,
+                    0,
+                    null,
+                    null);
+            }
+
+            dungeonOverride = d.Name;
+            floorLabelOverride = ExpeditionDungeonProgress.FloorOrdinalToLabel(d, ord);
+        }
+
+        var inputs = loader.LoadSimulationInputs(party.PartyId, dungeonOverride, floorLabelOverride);
         var sim = DungeonRunSimulator.Generate(inputs, seed);
 
         CharacterMoodUpdater.ApplyAfterDungeonRun(

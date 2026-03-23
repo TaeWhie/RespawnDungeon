@@ -84,8 +84,17 @@ public static class DungeonRunSimulator
         var reception = ResolveBaseId(bases, "reception", "reception", "접수");
 
         var dungeonPick = PickDungeon(data.Lore, rnd);
+        if (!string.IsNullOrWhiteSpace(data.DungeonNameOverride))
+        {
+            var found = ExpeditionDungeonProgress.FindDungeon(data.Lore, data.DungeonNameOverride);
+            if (found != null)
+                dungeonPick = found;
+        }
+
         var dungeonName = dungeonPick?.Name ?? "미지의 유적 (기록 미상)";
-        var floor = FloorForDifficulty(dungeonPick?.Difficulty, rnd);
+        var floor = !string.IsNullOrWhiteSpace(data.FloorLabelOverride)
+            ? data.FloorLabelOverride.Trim()
+            : FloorForDifficulty(dungeonPick?.Difficulty, rnd);
 
         var monsterPool = BuildMonsterPool(data.Monsters, dungeonPick);
         var traps = data.Traps.Count > 0 ? data.Traps.ToList() : new List<TrapTypeData>();

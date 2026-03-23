@@ -10,10 +10,10 @@
     "Career": 0,
     "Background": "28세의 미라, 안개 숲 가장자리에서 태어난 그녀는 어릴 적부터 치유의 힘을 지녔습니다. 에델가드의 고대 유적 탐사 도중 부상당한 동료들을 치료하며 경험을 쌓아왔습니다. 현재는 에델가드 길드의 지원 전문가로 활동하며, '치유 기도'와 '정화의 손길'로 아군을 보호하고 전투 중인 동료들에게 희망을 전합니다.",
     "SpeechStyle": "말투는 간결하면서도 따뜻합니다. 상황에 따라 깊이 생각한 후 간단하게 조언을 던지곤 합니다.",
-    "Mood": "안도",
+    "Mood": "차분",
     "Likes": null,
     "Dislikes": null,
-    "RecentMemorableEvent": "심연의 둥지 (Abyss Nest)(B1) 원정, 결과 클리어. 심층 제단에서 심연의 기사와 맞섰다.",
+    "RecentMemorableEvent": "잊힌 묘지 (Forgotten Cemetery)(2) 원정, 결과 클리어. 유물 잊혀진 룬을(를) 손에 넣었다.",
     "Personality": {
       "Courage": 19,
       "Caution": 60,
@@ -27,9 +27,9 @@
       "Frugality": 64
     },
     "Stats": {
-      "CurrentHP": 63,
+      "CurrentHP": 34,
       "MaxHP": 100,
-      "CurrentMP": 10,
+      "CurrentMP": 0,
       "MaxMP": 50,
       "Atk": 10,
       "Def": 5,
@@ -41,6 +41,21 @@
     "Inventory": [
       {
         "ItemName": "용의 심장 조각",
+        "ItemType": "Etc",
+        "Count": 1
+      },
+      {
+        "ItemName": "낡은 철퇴",
+        "ItemType": "Weapon",
+        "Count": 1
+      },
+      {
+        "ItemName": "회복 포션",
+        "ItemType": "Etc",
+        "Count": 3
+      },
+      {
+        "ItemName": "잊혀진 룬",
         "ItemType": "Etc",
         "Count": 1
       }

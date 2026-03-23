@@ -106,7 +106,9 @@ public static class CharacterCreationConsole
             currentLocationId,
             receptionFacility,
             roster,
-            ct);
+            ct,
+            null,
+            null);
 
         if (profile == null)
         {
@@ -173,16 +175,28 @@ public static class CharacterCreationConsole
         string skillSelectionMode,
         int[]? skillIndices1Based,
         CancellationToken ct = default) =>
-        CreateCharacterCoreAsync(loader, jobIndex1Based, skillSelectionMode, skillIndices1Based, persist: true, ct);
+        CreateCharacterCoreAsync(loader, jobIndex1Based, skillSelectionMode, skillIndices1Based, persist: true, null, null, ct);
 
     /// <summary>웹 허브: 미리보기만 — CharactersDatabase에 쓰지 않음.</summary>
+    /// <param name="excludeIds">같은 미리보기 배치에서 이미 뽑힌 Id (중복 카드 방지).</param>
+    /// <param name="excludeNames">같은 배치에서 이미 뽑힌 표시 이름.</param>
     public static Task<CharacterCreationWebResult> PreviewCharacterWebAsync(
         DialogueConfigLoader loader,
         int jobIndex1Based,
         string skillSelectionMode,
         int[]? skillIndices1Based,
+        IReadOnlyList<string>? excludeIds = null,
+        IReadOnlyList<string>? excludeNames = null,
         CancellationToken ct = default) =>
-        CreateCharacterCoreAsync(loader, jobIndex1Based, skillSelectionMode, skillIndices1Based, persist: false, ct);
+        CreateCharacterCoreAsync(
+            loader,
+            jobIndex1Based,
+            skillSelectionMode,
+            skillIndices1Based,
+            persist: false,
+            excludeIds,
+            excludeNames,
+            ct);
 
     /// <summary>미리보기에서 받은 캐릭터를 DB에 반영.</summary>
     public static CharacterCreationWebResult CommitCharacterWebAsync(DialogueConfigLoader loader, Character? incoming)
@@ -218,6 +232,8 @@ public static class CharacterCreationConsole
         string skillSelectionMode,
         int[]? skillIndices1Based,
         bool persist,
+        IReadOnlyList<string>? previewExcludeIds,
+        IReadOnlyList<string>? previewExcludeNames,
         CancellationToken ct)
     {
         var jobs = loader.LoadJobDatabase();
@@ -268,17 +284,29 @@ public static class CharacterCreationConsole
 
         var settings = loader.LoadSettings();
         var ollama = new OllamaClient(settings);
-        var profile = await CharacterCreationLlmGenerator.TryGenerateAsync(
-            loader,
-            ollama,
-            job,
-            age,
-            career,
-            pickedSkills,
-            currentLocationId,
-            receptionFacility,
-            roster,
-            ct).ConfigureAwait(false);
+
+        CharacterCreationLlmGenerator.Profile? profile = null;
+        var hasPreviewExcludes = (previewExcludeIds != null && previewExcludeIds.Count > 0) ||
+                                 (previewExcludeNames != null && previewExcludeNames.Count > 0);
+        var maxAttempts = !persist && hasPreviewExcludes ? 4 : 1;
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
+        {
+            profile = await CharacterCreationLlmGenerator.TryGenerateAsync(
+                loader,
+                ollama,
+                job,
+                age,
+                career,
+                pickedSkills,
+                currentLocationId,
+                receptionFacility,
+                roster,
+                ct,
+                previewExcludeIds,
+                previewExcludeNames).ConfigureAwait(false);
+            if (profile != null)
+                break;
+        }
 
         if (profile == null)
             return new CharacterCreationWebResult(false, "Ollama 서사 생성 실패. 모델·네트워크를 확인하세요.", null);

@@ -245,7 +245,10 @@ public class DialogueConfigLoader
     }
 
     /// <summary>던전 런 시뮬레이터용 입력 묶음.</summary>
-    public DungeonSimulationInputs LoadSimulationInputs(string? simulationPartyId = null) => new()
+    public DungeonSimulationInputs LoadSimulationInputs(
+        string? simulationPartyId = null,
+        string? dungeonNameOverride = null,
+        string? floorLabelOverride = null) => new()
     {
         Characters = LoadCharactersWithJobSkillFilter(),
         Monsters = LoadMonsterDatabase(),
@@ -253,7 +256,9 @@ public class DialogueConfigLoader
         Items = LoadItemDatabase(),
         Bases = LoadBaseDatabase(),
         Lore = LoadWorldLore(),
-        SimulationPartyId = simulationPartyId
+        SimulationPartyId = simulationPartyId,
+        DungeonNameOverride = dungeonNameOverride,
+        FloorLabelOverride = floorLabelOverride
     };
 
     public List<PartyData> LoadPartyDatabase()

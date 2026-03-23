@@ -33,7 +33,9 @@ public static class CharacterCreationLlmGenerator
         string currentLocationId,
         BaseFacilityData? receptionFacility,
         IReadOnlyList<Character> roster,
-        CancellationToken ct)
+        CancellationToken ct,
+        IReadOnlyList<string>? additionalReservedIds = null,
+        IReadOnlyList<string>? additionalReservedNames = null)
     {
         var rng = Random.Shared;
         var lore = loader.LoadWorldLore();
@@ -55,10 +57,32 @@ public static class CharacterCreationLlmGenerator
             ? $"시설명: {receptionFacility.Name}\nBaseId: {receptionFacility.BaseId}\n설명: {receptionFacility.Description}\n서비스: {receptionFacility.AvailableServices}"
             : $"현재 위치 BaseId: {currentLocationId}";
 
-        var usedIds = string.Join(", ",
-            roster.Select(c => c.Id).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.OrdinalIgnoreCase));
-        var usedNames = string.Join(", ",
-            roster.Select(c => c.Name).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct());
+        var idSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var s in roster.Select(c => c.Id).Where(s => !string.IsNullOrWhiteSpace(s)))
+            idSet.Add(s.Trim());
+        if (additionalReservedIds != null)
+        {
+            foreach (var s in additionalReservedIds)
+            {
+                if (!string.IsNullOrWhiteSpace(s))
+                    idSet.Add(s.Trim());
+            }
+        }
+
+        var nameSet = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var s in roster.Select(c => c.Name).Where(s => !string.IsNullOrWhiteSpace(s)))
+            nameSet.Add(s.Trim());
+        if (additionalReservedNames != null)
+        {
+            foreach (var s in additionalReservedNames)
+            {
+                if (!string.IsNullOrWhiteSpace(s))
+                    nameSet.Add(s.Trim());
+            }
+        }
+
+        var usedIds = string.Join(", ", idSet.OrderBy(s => s, StringComparer.OrdinalIgnoreCase));
+        var usedNames = string.Join(", ", nameSet.OrderBy(s => s, StringComparer.Ordinal));
 
         var skillLine = skills.Count > 0 ? string.Join(", ", skills) : "(없음)";
 
@@ -156,15 +180,21 @@ public static class CharacterCreationLlmGenerator
             return null;
         }
 
-        if (roster.Any(c => c.Id.Equals(id, StringComparison.OrdinalIgnoreCase)))
+        if (idSet.Contains(id))
         {
-            Console.WriteLine("[캐릭터 LLM] id가 기존 캐릭터와 중복됩니다.");
+            if (roster.Any(c => c.Id.Equals(id, StringComparison.OrdinalIgnoreCase)))
+                Console.WriteLine("[캐릭터 LLM] id가 기존 캐릭터와 중복됩니다.");
+            else
+                Console.WriteLine("[캐릭터 LLM] id가 이번 세션 예약 목록과 중복됩니다.");
             return null;
         }
 
-        if (roster.Any(c => string.Equals(c.Name?.Trim(), name, StringComparison.Ordinal)))
+        if (nameSet.Contains(name))
         {
-            Console.WriteLine("[캐릭터 LLM] 이름이 기존 캐릭터와 중복됩니다.");
+            if (roster.Any(c => string.Equals(c.Name?.Trim(), name, StringComparison.Ordinal)))
+                Console.WriteLine("[캐릭터 LLM] 이름이 기존 캐릭터와 중복됩니다.");
+            else
+                Console.WriteLine("[캐릭터 LLM] 이름이 이번 세션 예약 목록과 중복됩니다.");
             return null;
         }
 
