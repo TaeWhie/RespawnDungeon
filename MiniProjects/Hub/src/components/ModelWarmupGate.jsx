@@ -7,12 +7,15 @@ import { apiPost } from '../api';
  * Hub 최초 표시 전 Ollama 모델(대화·임베딩) 워밍업 — 첫 로드 시 GPU/VRAM 준비 시간을 여기서 소비합니다.
  */
 export default function ModelWarmupGate({ children }) {
+  const EARLY_RELEASE_MS = 8000;
   const [phase, setPhase] = useState('loading'); // loading | done | ready | error
   const [detail, setDetail] = useState(null);
   const [phases, setPhases] = useState([]);
   const [totalMs, setTotalMs] = useState(null);
   const ranRef = useRef(false);
   const doneTimerRef = useRef(null);
+  const releaseTimerRef = useRef(null);
+  const releasedEarlyRef = useRef(false);
 
   const runWarmup = useCallback(async () => {
     if (doneTimerRef.current) {
@@ -23,8 +26,21 @@ export default function ModelWarmupGate({ children }) {
     setDetail(null);
     setPhases([]);
     setTotalMs(null);
+    releasedEarlyRef.current = false;
+    releaseTimerRef.current = window.setTimeout(() => {
+      releasedEarlyRef.current = true;
+      setPhase('ready');
+    }, EARLY_RELEASE_MS);
     try {
-      const data = await apiPost('/api/model/warmup');
+      const data = await apiPost('/api/model/warmup', {
+        fastStart: true,
+        backgroundEmbed: true,
+      });
+      if (releaseTimerRef.current) {
+        clearTimeout(releaseTimerRef.current);
+        releaseTimerRef.current = null;
+      }
+      if (releasedEarlyRef.current) return;
       const list = data.phases ?? data.Phases ?? [];
       setPhases(Array.isArray(list) ? list : []);
       const ms = data.totalMs ?? data.TotalMs;
@@ -40,6 +56,11 @@ export default function ModelWarmupGate({ children }) {
         doneTimerRef.current = null;
       }, 1400);
     } catch (e) {
+      if (releaseTimerRef.current) {
+        clearTimeout(releaseTimerRef.current);
+        releaseTimerRef.current = null;
+      }
+      if (releasedEarlyRef.current) return;
       setDetail(e.message || String(e));
       setPhase('error');
     }
@@ -51,6 +72,7 @@ export default function ModelWarmupGate({ children }) {
     void runWarmup();
     return () => {
       if (doneTimerRef.current) clearTimeout(doneTimerRef.current);
+      if (releaseTimerRef.current) clearTimeout(releaseTimerRef.current);
     };
   }, [runWarmup]);
 
@@ -82,7 +104,7 @@ export default function ModelWarmupGate({ children }) {
           <p className="hub-model-warmup-lead">
             {phase === 'done'
               ? '잠시 후 길드 허브로 이동합니다.'
-              : 'Ollama가 대화·임베딩 모델을 메모리에 올리는 중입니다. 첫 실행은 GPU·VRAM에 따라 수십 초~수분 걸릴 수 있습니다.'}
+              : '대화 모델 우선 워밍업 후 메인으로 진입합니다. 임베딩 모델은 백그라운드에서 이어서 로딩됩니다.'}
           </p>
           {phase === 'done' && totalMs != null && (
             <p className="hub-model-warmup-total">
@@ -91,8 +113,7 @@ export default function ModelWarmupGate({ children }) {
           )}
           {phase === 'loading' && (
             <p className="hub-model-warmup-hint">
-              <Cpu size={16} aria-hidden /> DialogueSettings.json의 <code>Ollama.Model</code>·
-              <code>EmbeddingModel</code> 기준으로 워밍업합니다.
+              <Cpu size={16} aria-hidden /> 먼저 <code>Ollama.Model</code>을 올리고, <code>EmbeddingModel</code>은 백그라운드로 준비합니다.
             </p>
           )}
           {phases.length > 0 && (

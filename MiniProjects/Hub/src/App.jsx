@@ -220,6 +220,15 @@ function HubApp() {
     setAgitTranscript([]);
   }, []);
 
+  const invalidateAgitAfterRecruit = useCallback(() => {
+    try {
+      localStorage.removeItem(AGIT_CACHE_KEY);
+      localStorage.setItem(AGIT_INVALIDATE_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const selectable = (characters || []).filter(
     (c) => c.id && !String(c.id).toLowerCase().includes('master')
   );
@@ -532,6 +541,7 @@ function HubApp() {
               parties={parties}
               showToast={showToast}
               refreshState={refreshState}
+              invalidateAgitAfterRecruit={invalidateAgitAfterRecruit}
             />
           )}
           {mode === 'guildReset' && (
@@ -1443,7 +1453,7 @@ function charIdKey(c) {
   return String(c?.id ?? c?.Id ?? '');
 }
 
-function CreateCharacterPanel({ onBack, jobs, parties, showToast, refreshState }) {
+function CreateCharacterPanel({ onBack, jobs, parties, showToast, refreshState, invalidateAgitAfterRecruit }) {
   const [candidates, setCandidates] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [finding, setFinding] = useState(false);
@@ -1508,6 +1518,7 @@ function CreateCharacterPanel({ onBack, jobs, parties, showToast, refreshState }
       showToast(`영입 완료: ${name} (${id})`);
       setCandidates([]);
       setSelectedIndex(0);
+      invalidateAgitAfterRecruit?.();
       refreshState();
     } catch (e) {
       showToast(e.message, true);

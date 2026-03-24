@@ -59,6 +59,11 @@
 
 ## 기록
 
+### 2026-03-24 — WSL Ollama GPU 전환·Hub 워밍업 단축·아지트 캐시 무효화
+- **Ollama 운영 전환**: `start-ollama-wsl-gpu.ps1`, `stop-windows-ollama.ps1`, `run-hub.bat` 안내를 정리해 Windows Ollama 충돌 없이 WSL2+GPU 경로를 기본화.
+- **Hub 초기 진입 개선**: `/api/model/warmup`에 fast start(채팅 우선)·백그라운드 임베딩 로드·`keep_alive`를 적용하고, 게이트는 지연 시 조기 진입하도록 조정.
+- **아지트 표시 안정화**: 동료 영입 직후 홈 복귀 시 아지트 캐시/무효화 키를 갱신해 이전 오류 문구가 재사용되지 않게 수정.
+
 ### 2026-03-21 — Hub 원정 던전·층 선택 + 동료 미리보기 중복 방지
 - **MiniProjects/Hub**: 원정 패널에서 던전·층 선택, `/api/expedition/options`로 클리어 기반 층 해금 표시; 동료 미리보기는 슬롯 인덱스 선택·미리보기 API에 `excludeIds`/`excludeNames` 전달.
 - **MiniProjects/GuildDialogue**: `ExpeditionDungeonProgress`, `DungeonSimulationInputs` 던전·층 오버라이드, `RunExpeditionForParty`/Hub `GET/POST /api/expedition`, `CharacterCreationLlmGenerator` 예약 Id·이름·재시도.

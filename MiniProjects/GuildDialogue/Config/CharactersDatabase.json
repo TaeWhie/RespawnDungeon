@@ -1,35 +1,35 @@
 [
   {
-    "Id": "support_mira",
-    "Name": "미라",
-    "Age": 28,
-    "Role": "Support",
-    "PartyId": "party_0217d4c7",
+    "Id": "vanguard_guardian",
+    "Name": "강태훈",
+    "Age": 40,
+    "Role": "Vanguard",
+    "PartyId": "party_0b927e76",
     "CurrentLocationId": "main_hall",
     "CurrentLocationNote": null,
     "Career": 0,
-    "Background": "28세의 미라, 안개 숲 가장자리에서 태어난 그녀는 어릴 적부터 치유의 힘을 지녔습니다. 에델가드의 고대 유적 탐사 도중 부상당한 동료들을 치료하며 경험을 쌓아왔습니다. 현재는 에델가드 길드의 지원 전문가로 활동하며, '치유 기도'와 '정화의 손길'로 아군을 보호하고 전투 중인 동료들에게 희망을 전합니다.",
-    "SpeechStyle": "말투는 간결하면서도 따뜻합니다. 상황에 따라 깊이 생각한 후 간단하게 조언을 던지곤 합니다.",
-    "Mood": "차분",
+    "Background": "40세의 강태훈은 에델가드의 혹독한 전투에서 살아남은 베테랑 벤처입니다. 오랜 세월 동안 전방에서 적의 공격을 막아왔으며, 특히 방패 올려치기와 약점 간파 스킬로 동료들을 효과적으로 보호해왔습니다. 그의 경험은 안개 숲의 위협들에 대항하는 데 큰 힘이 됩니다.",
+    "SpeechStyle": "필요한 조치를 명확하게 지시하며, 상황에 따라 냉철하게 조언합니다. '지금 바로 그 방향으로 이동하세요'와 같이 간결하고 직접적인 말투를 선호합니다.",
+    "Mood": "여유",
     "Likes": null,
     "Dislikes": null,
-    "RecentMemorableEvent": "잊힌 묘지 (Forgotten Cemetery)(2) 원정, 결과 클리어. 유물 잊혀진 룬을(를) 손에 넣었다.",
+    "RecentMemorableEvent": "잊힌 묘지 (Forgotten Cemetery)(1) 원정, 결과 클리어. 마나 포션을(를) 동료에게 넘겼다.",
     "Personality": {
-      "Courage": 19,
-      "Caution": 60,
-      "Greed": 31,
-      "Orderliness": 39,
-      "Impulsiveness": 80,
-      "Cooperation": 67,
-      "Aggression": 12,
-      "Focus": 75,
-      "Adaptability": 81,
-      "Frugality": 64
+      "Courage": 45,
+      "Caution": 41,
+      "Greed": 40,
+      "Orderliness": 35,
+      "Impulsiveness": 89,
+      "Cooperation": 15,
+      "Aggression": 33,
+      "Focus": 52,
+      "Adaptability": 64,
+      "Frugality": 88
     },
     "Stats": {
-      "CurrentHP": 34,
+      "CurrentHP": 64,
       "MaxHP": 100,
-      "CurrentMP": 0,
+      "CurrentMP": 2,
       "MaxMP": 50,
       "Atk": 10,
       "Def": 5,
@@ -40,19 +40,9 @@
     },
     "Inventory": [
       {
-        "ItemName": "용의 심장 조각",
+        "ItemName": "마나 포션",
         "ItemType": "Etc",
-        "Count": 1
-      },
-      {
-        "ItemName": "낡은 철퇴",
-        "ItemType": "Weapon",
-        "Count": 1
-      },
-      {
-        "ItemName": "회복 포션",
-        "ItemType": "Etc",
-        "Count": 3
+        "Count": 2
       },
       {
         "ItemName": "잊혀진 룬",
@@ -70,8 +60,73 @@
     },
     "Relationships": [],
     "Skills": [
-      "치유 기도",
-      "정화의 손길"
+      "방패 올려치기",
+      "약점 간파"
+    ]
+  },
+  {
+    "Id": "frontline_shield",
+    "Name": "미르나",
+    "Age": 25,
+    "Role": "Vanguard",
+    "PartyId": "party_0b927e76",
+    "CurrentLocationId": "main_hall",
+    "CurrentLocationNote": null,
+    "Career": 6,
+    "Background": "25세의 미르나는 에델가드 안개 숲에서 6년간 전방 방패 역할을 맡아왔습니다. 그녀의 스킬 '방패 올려치기'와 '약점 간파'는 적의 공격을 효과적으로 저지하는 데 필수적입니다. 언제나 아군의 안전을 최우선으로 생각하며, 전투 중에는 빠르게 상황을 판단하고 움직이는 데 능숙합니다.",
+    "SpeechStyle": "짧고 명확하게 지시하며, 긴박한 상황에서는 더욱 간결해집니다. '이제 왼쪽으로 이동!', '약점 확인 완료.'",
+    "Mood": "뿌듯",
+    "Likes": null,
+    "Dislikes": null,
+    "RecentMemorableEvent": "잊힌 묘지 (Forgotten Cemetery)(1) 원정, 결과 클리어. 짐을 정리했다.",
+    "Personality": {
+      "Courage": 51,
+      "Caution": 36,
+      "Greed": 13,
+      "Orderliness": 29,
+      "Impulsiveness": 64,
+      "Cooperation": 41,
+      "Aggression": 53,
+      "Focus": 86,
+      "Adaptability": 11,
+      "Frugality": 16
+    },
+    "Stats": {
+      "CurrentHP": 84,
+      "MaxHP": 100,
+      "CurrentMP": 31,
+      "MaxMP": 50,
+      "Atk": 10,
+      "Def": 5,
+      "Str": 8,
+      "Dex": 12,
+      "Int": 6,
+      "StatPoints": 0
+    },
+    "Inventory": [
+      {
+        "ItemName": "낡은 철퇴",
+        "ItemType": "Weapon",
+        "Count": 2
+      },
+      {
+        "ItemName": "마나 포션",
+        "ItemType": "Etc",
+        "Count": 1
+      }
+    ],
+    "Equipment": {
+      "Weapon": null,
+      "Helmet": null,
+      "Armor": null,
+      "Gloves": null,
+      "Boots": null,
+      "Accessory": null
+    },
+    "Relationships": [],
+    "Skills": [
+      "방패 올려치기",
+      "약점 간파"
     ]
   }
 ]
