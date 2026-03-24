@@ -7,6 +7,8 @@ public class Character
 {
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
+    /// <summary>성별. 예: 남성, 여성, 논바이너리, 미정</summary>
+    public string Gender { get; set; } = "미정";
     public int Age { get; set; } = 0;
     public string Role { get; set; } = "";
     /// <summary>

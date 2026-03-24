@@ -16,6 +16,8 @@ namespace GuildDialogue;
 public static class GuildDialogueHubHost
 {
     private static DialogueManager? _manager;
+    private static HubImageGenerationService? _imageService;
+    private static HubImagePromptTranslator? _imagePromptTranslator;
     private static readonly object EmbedWarmupLock = new();
     private static Task<OllamaModelWarmup.WarmupPhase>? _embedWarmupTask;
 
@@ -75,6 +77,8 @@ public static class GuildDialogueHubHost
         app.UseCors();
 
         var loader = new DialogueConfigLoader();
+        _imageService ??= new HubImageGenerationService(loader.ConfigDirectory);
+        _imagePromptTranslator ??= new HubImagePromptTranslator(loader.LoadSettings());
 
         app.MapGet("/api/health", () => Results.Json(new { ok = true, service = "GuildDialogueHub" }));
 
@@ -183,6 +187,11 @@ public static class GuildDialogueHubHost
                     worldName = lore.WorldName ?? "",
                     worldSummary = lore.WorldSummary ?? "",
                     guildInfo = lore.GuildInfo ?? "",
+                    dungeonSystem = lore.DungeonSystem ?? "",
+                    baseCamp = lore.BaseCamp ?? "",
+                    currencyAndLoot = lore.CurrencyAndLoot ?? "",
+                    locations = lore.Locations ?? new List<LocationData>(),
+                    dungeons = lore.Dungeons ?? new List<DungeonData>(),
                     teaserLines = teasers
                 });
             }
@@ -190,6 +199,58 @@ public static class GuildDialogueHubHost
             {
                 return Results.Json(new { error = ex.Message }, statusCode: 500);
             }
+        });
+
+        app.MapPost("/api/images/resolve", async (HubImageResolveDto dto, CancellationToken ct) =>
+        {
+            try
+            {
+                if (_imageService == null)
+                    return Results.Json(new { error = "image service not initialized" }, statusCode: 500);
+                var r = await _imageService.ResolveOrGenerateNowAsync(new HubImageGenerationService.HubImageResolveRequest(
+                    dto.Scope ?? "generic",
+                    dto.EntityKey ?? "default",
+                    dto.Prompt ?? "",
+                    dto.ThemeId ?? "guildhub-2d-v1",
+                    dto.Width ?? 768,
+                    dto.Height ?? 768), ct).ConfigureAwait(false);
+                return Results.Json(new
+                {
+                    status = r.Status,
+                    cacheKey = r.CacheKey,
+                    imageUrl = r.ImageUrl,
+                    error = r.Error,
+                    themeId = r.ThemeId
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new { status = "error", error = ex.Message }, statusCode: 500);
+            }
+        });
+
+        app.MapPost("/api/images/translate", async (HubImageTranslateDto dto, CancellationToken ct) =>
+        {
+            try
+            {
+                if (_imagePromptTranslator == null)
+                    return Results.Json(new { error = "image prompt translator not initialized" }, statusCode: 500);
+                var translated = await _imagePromptTranslator.TranslateToEnglishAsync(dto.Prompt ?? "", ct).ConfigureAwait(false);
+                return Results.Json(new { translatedPrompt = translated });
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new { error = ex.Message }, statusCode: 500);
+            }
+        });
+
+        app.MapGet("/api/images/file/{cacheKey}", (string cacheKey) =>
+        {
+            if (_imageService == null)
+                return Results.Json(new { error = "image service not initialized" }, statusCode: 500);
+            if (!_imageService.TryGetFilePath(cacheKey, out var path))
+                return Results.NotFound();
+            return Results.File(path, "image/png");
         });
 
         app.MapGet("/api/state", () =>
@@ -768,6 +829,15 @@ public static class GuildDialogueHubHost
     private sealed record CommitCharacterDto(Character? Character);
 
     private sealed record WarmupRequestDto(bool FastStart = false, bool BackgroundEmbed = false);
+    private sealed record HubImageResolveDto(
+        string? Scope,
+        string? EntityKey,
+        string? Prompt,
+        string? ThemeId,
+        int? Width,
+        int? Height);
+
+    private sealed record HubImageTranslateDto(string? Prompt);
 }
 
 /// <summary>Hub 세계관 검증 — 편집 중인 JSON을 디스크 내용과 합쳐 검사합니다.</summary>

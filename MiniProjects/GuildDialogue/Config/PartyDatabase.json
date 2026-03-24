@@ -1,13 +1,1 @@
-[
-  {
-    "PartyId": "party_0b927e76",
-    "Name": "1정찰대",
-    "Callsign": null,
-    "Description": "",
-    "MemberIds": [
-      "vanguard_guardian",
-      "frontline_shield"
-    ],
-    "Notes": "Hub에서 편성됨."
-  }
-]
+[]

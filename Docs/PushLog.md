@@ -59,6 +59,11 @@
 
 ## 기록
 
+### 2026-03-24 — Hub 이미지 파이프라인(FLUX/HF) 정비 및 프로필·월드 연출 개선
+- Hub/GuildDialogue에 HF FLUX 기반 이미지 생성/번역 연동과 캐시 경로를 정리하고, 캐릭터/월드/로그 이미지 생성 흐름을 통합했습니다.
+- 세계관 첫 진입 연출(전경·중경·원경, 톤 분기)과 프로필 이미지 표시 크기 확대를 포함해 UI 시각 일관성을 강화했습니다.
+- 실행 스크립트·설정(.gitignore 포함)과 데이터 모델(성별 필드 등) 보강을 반영해 허브 운영/재기동 절차를 단순화했습니다.
+
 ### 2026-03-24 — WSL Ollama GPU 전환·Hub 워밍업 단축·아지트 캐시 무효화
 - **Ollama 운영 전환**: `start-ollama-wsl-gpu.ps1`, `stop-windows-ollama.ps1`, `run-hub.bat` 안내를 정리해 Windows Ollama 충돌 없이 WSL2+GPU 경로를 기본화.
 - **Hub 초기 진입 개선**: `/api/model/warmup`에 fast start(채팅 우선)·백그라운드 임베딩 로드·`keep_alive`를 적용하고, 게이트는 지연 시 조기 진입하도록 조정.

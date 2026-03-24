@@ -13,12 +13,13 @@ namespace GuildDialogue.Services;
 /// <summary>Ollama로 캐릭터 Id·이름·배경·말투를 JSON으로 생성합니다.</summary>
 public static class CharacterCreationLlmGenerator
 {
-    public sealed record Profile(string Id, string Name, string Background, string SpeechStyle);
+    public sealed record Profile(string Id, string Name, string Gender, string Background, string SpeechStyle);
 
     private sealed class DraftDto
     {
         [JsonPropertyName("id")] public string? Id { get; set; }
         [JsonPropertyName("name")] public string? Name { get; set; }
+        [JsonPropertyName("gender")] public string? Gender { get; set; }
         [JsonPropertyName("background")] public string? Background { get; set; }
         [JsonPropertyName("speechStyle")] public string? SpeechStyle { get; set; }
     }
@@ -89,10 +90,11 @@ public static class CharacterCreationLlmGenerator
         var systemPrompt =
             "당신은 판타지 길드 RPG의 **모험가 등록 카드**를 채우는 작가입니다.\n" +
             "출력은 **JSON 객체 하나만** 하세요. 코드펜스·주석·설명 문장 금지.\n" +
-            "키(영문, camelCase): id, name, background, speechStyle\n" +
+            "키(영문, camelCase): id, name, gender, background, speechStyle\n" +
             "규칙:\n" +
             "- id: 소문자 영문·숫자·밑줄(_)·하이픈(-)만. 길이 3~28. `master` 금지. 기존 Id와 겹치면 안 됨.\n" +
             "- name: 한국어 표기 이름. 2~8자 내외. 기존 이름과 겹치면 안 됨.\n" +
+            "- gender: 한국어 라벨 1개(남성/여성/논바이너리/미정 중 하나 권장).\n" +
             "- background: 한국어 2~4문장. 직업·나이·경력·보유 스킬·접수 시설 맥락과 모순 없게. 에델가드 길드 세계관에 맞출 것.\n" +
             "- speechStyle: 한국어 1~2문장. **말투·어조·말버릇 규칙**만 서술(대사 예시는 넣지 말 것).\n" +
             "  **말투 다양성(중요)**: 직업과 말투를 억지로 맞추지 마세요. " +
@@ -152,6 +154,7 @@ public static class CharacterCreationLlmGenerator
 
         var id = (dto.Id ?? "").Trim();
         var name = (dto.Name ?? "").Trim();
+        var gender = (dto.Gender ?? "").Trim();
         var background = (dto.Background ?? "").Trim();
         var speech = (dto.SpeechStyle ?? "").Trim();
 
@@ -180,6 +183,9 @@ public static class CharacterCreationLlmGenerator
             return null;
         }
 
+        if (string.IsNullOrWhiteSpace(gender))
+            gender = "미정";
+
         if (idSet.Contains(id))
         {
             if (roster.Any(c => c.Id.Equals(id, StringComparison.OrdinalIgnoreCase)))
@@ -198,7 +204,7 @@ public static class CharacterCreationLlmGenerator
             return null;
         }
 
-        return new Profile(id.ToLowerInvariant(), name, background, speech);
+        return new Profile(id.ToLowerInvariant(), name, gender, background, speech);
     }
 
     /// <summary>LLM이 말투를 직업 스테레오타입에 고정하지 않도록 매 요청 다른 힌트를 붙입니다.</summary>
