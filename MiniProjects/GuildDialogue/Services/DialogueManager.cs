@@ -495,7 +495,7 @@ public class DialogueManager
         }
 
         _sessionDialogueForLog.Clear();
-        var masterChar = new Character { Id = "master", Name = "길드장", Role = "Guild Master" };
+        var masterChar = new Character { Id = "master", Name = "길드장", Gender = "미정", Role = "Guild Master" };
         const string baseWorldState =
             "장소: 길드장 집무실\n상황: 던전 탐험을 마친 뒤 동료가 길드장에게 보고하거나 대화를 나누러 집무실을 찾아왔습니다.";
 
@@ -755,7 +755,7 @@ public class DialogueManager
                 0);
         }
 
-        var masterChar = new Character { Id = "master", Name = "길드장", Role = "Guild Master" };
+        var masterChar = new Character { Id = "master", Name = "길드장", Gender = "미정", Role = "Guild Master" };
         const string baseWorldState =
             "장소: 길드장 집무실\n상황: 던전 탐험을 마친 뒤 동료가 길드장에게 보고하거나 대화를 나누러 집무실을 찾아왔습니다.";
         var worldState =
@@ -799,7 +799,7 @@ public class DialogueManager
             _lastLineByChar.Remove(respondent.Name);
         _memory.AddWorkingMemory("길드장", userUtterance);
 
-        var masterChar = new Character { Id = "master", Name = "길드장", Role = "Guild Master" };
+        var masterChar = new Character { Id = "master", Name = "길드장", Gender = "미정", Role = "Guild Master" };
         string worldState =
             $"{baseWorldState}\n현재: 길드장과 {respondent.Name}만 집무실에 있으며 1:1로 대화 중입니다.";
 

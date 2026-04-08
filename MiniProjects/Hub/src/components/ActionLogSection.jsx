@@ -1,5 +1,7 @@
 import React from 'react';
 import { ScrollText } from 'lucide-react';
+import useHubGeneratedImage from './useHubGeneratedImage';
+import { HUB_IMAGE_THEME_ID, buildDungeonLogPrompt } from './hubImageTheme';
 
 function field(e, ...keys) {
   for (const k of keys) {
@@ -26,6 +28,7 @@ export default function ActionLogSection({ logs, maxItems = 24 }) {
       <table className="hub-actionlog-table">
         <thead>
           <tr>
+            <th>Scene</th>
             <th>Order</th>
             <th>Type</th>
             <th>Event</th>
@@ -51,6 +54,14 @@ export default function ActionLogSection({ logs, maxItems = 24 }) {
             return (
               <tr key={`${order}-${i}`}>
                 <td>
+                  <DungeonLogImage
+                    order={order}
+                    eventType={ev}
+                    dungeonName={dungeon}
+                    summary={summary}
+                  />
+                </td>
+                <td>
                   <code>{order}</code>
                 </td>
                 <td>{type || '—'}</td>
@@ -67,4 +78,18 @@ export default function ActionLogSection({ logs, maxItems = 24 }) {
       </p>
     </div>
   );
+}
+
+function DungeonLogImage({ order, eventType, dungeonName, summary }) {
+  const key = `${order || 'na'}-${eventType || 'event'}`;
+  const { imageUrl, loading } = useHubGeneratedImage({
+    scope: 'dungeon-log',
+    entityKey: key,
+    prompt: buildDungeonLogPrompt({ eventType, dungeonName, summary }),
+    width: 640,
+    height: 512,
+    themeId: HUB_IMAGE_THEME_ID,
+  });
+  if (imageUrl) return <img src={imageUrl} alt="Dungeon scene" className="hub-log-scene-img" loading="lazy" />;
+  return <div className="hub-log-scene-placeholder">{loading ? <div className="hub-image-spinner" aria-hidden /> : '—'}</div>;
 }

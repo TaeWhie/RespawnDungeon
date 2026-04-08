@@ -63,3 +63,4 @@ MiniProjects/GuildDialogue/_compile_check*/
 MiniProjects/GuildDialogue/_build_verify/
 MiniProjects/GuildDialogue/build-*/
 MiniProjects/GuildDialogue/stress-out-utf8.txt
+MiniProjects/Hub/tools/hf_token.local.txt

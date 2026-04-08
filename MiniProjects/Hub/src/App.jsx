@@ -23,6 +23,8 @@ import CharacterCardsSection from './components/CharacterCardsSection';
 import ActionLogSection from './components/ActionLogSection';
 import WorldSettingsPanel from './components/WorldSettingsPanel';
 import ModelWarmupGate from './components/ModelWarmupGate';
+import useHubGeneratedImage from './components/useHubGeneratedImage';
+import { HUB_IMAGE_THEME_ID, buildWorldPrompt } from './components/hubImageTheme';
 import './index.css';
 
 const HUB_DEBUG_STORAGE_KEY = 'guildDialogueHubDebug';
@@ -159,6 +161,7 @@ function HubApp() {
   const [agitError, setAgitError] = useState(null);
   const agitRunKey = useRef(0);
   const [worldOverview, setWorldOverview] = useState(null);
+  const [worldImageRegenerateNonce, setWorldImageRegenerateNonce] = useState(0);
   const [hubDebug, setHubDebug] = useState(() => {
     try {
       return localStorage.getItem(HUB_DEBUG_STORAGE_KEY) === '1';
@@ -220,6 +223,15 @@ function HubApp() {
     setAgitTranscript([]);
   }, []);
 
+  const invalidateAgitAfterRecruit = useCallback(() => {
+    try {
+      localStorage.removeItem(AGIT_CACHE_KEY);
+      localStorage.setItem(AGIT_INVALIDATE_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   const selectable = (characters || []).filter(
     (c) => c.id && !String(c.id).toLowerCase().includes('master')
   );
@@ -227,12 +239,36 @@ function HubApp() {
   const worldName = worldOverview?.worldName ?? worldOverview?.WorldName ?? '';
   const worldSummary = worldOverview?.worldSummary ?? worldOverview?.WorldSummary ?? '';
   const guildInfoBlurb = worldOverview?.guildInfo ?? worldOverview?.GuildInfo ?? '';
+  const dungeonSystem = worldOverview?.dungeonSystem ?? worldOverview?.DungeonSystem ?? '';
+  const baseCamp = worldOverview?.baseCamp ?? worldOverview?.BaseCamp ?? '';
+  const currencyAndLoot = worldOverview?.currencyAndLoot ?? worldOverview?.CurrencyAndLoot ?? '';
+  const locations = worldOverview?.locations ?? worldOverview?.Locations ?? [];
+  const dungeons = worldOverview?.dungeons ?? worldOverview?.Dungeons ?? [];
+  const lore = worldOverview?.lore ?? worldOverview?.Lore ?? [];
   const loreTeasers = worldOverview?.teaserLines ?? worldOverview?.TeaserLines ?? [];
   const hasWorldLoreContent =
     Boolean(String(worldName).trim()) ||
     Boolean(String(worldSummary).trim()) ||
     Boolean(String(guildInfoBlurb).trim()) ||
     (Array.isArray(loreTeasers) && loreTeasers.length > 0);
+  const worldImage = useHubGeneratedImage({
+    scope: 'world-top',
+    entityKey: `${String(worldName || 'default')}::${worldImageRegenerateNonce}`,
+    prompt: buildWorldPrompt({
+      worldName,
+      worldSummary,
+      guildInfo: guildInfoBlurb,
+      dungeonSystem,
+      baseCamp,
+      currencyAndLoot,
+      locations,
+      dungeons,
+      lore,
+    }),
+    width: 768,
+    height: 512,
+    themeId: HUB_IMAGE_THEME_ID,
+  });
 
   /**
    * 홈: 캐시가 있고 던전 직후 플래그가 없으면 init/스트림 생략.
@@ -391,6 +427,24 @@ function HubApp() {
                 </div>
                 {hasWorldLoreContent ? (
                   <div className="hub-world-lore-content">
+                    <div className="hub-world-hero-image-wrap">
+                      <button
+                        type="button"
+                        className="hub-world-regen-btn"
+                        onClick={() => setWorldImageRegenerateNonce((v) => v + 1)}
+                        title="세계관 이미지 다시 생성"
+                        aria-label="세계관 이미지 다시 생성"
+                      >
+                        <RefreshCw size={14} aria-hidden />
+                      </button>
+                      {worldImage.imageUrl ? (
+                        <img src={worldImage.imageUrl} alt="World overview art" className="hub-world-hero-image" />
+                      ) : (
+                        <div className="hub-world-hero-placeholder">
+                          {worldImage.loading ? <div className="hub-image-spinner" aria-hidden /> : <span>세계관 이미지 없음</span>}
+                        </div>
+                      )}
+                    </div>
                     {String(worldName).trim() ? (
                       <h2 className="hub-world-lore-name title-text">{worldName.trim()}</h2>
                     ) : null}
@@ -532,6 +586,7 @@ function HubApp() {
               parties={parties}
               showToast={showToast}
               refreshState={refreshState}
+              invalidateAgitAfterRecruit={invalidateAgitAfterRecruit}
             />
           )}
           {mode === 'guildReset' && (
@@ -1443,7 +1498,7 @@ function charIdKey(c) {
   return String(c?.id ?? c?.Id ?? '');
 }
 
-function CreateCharacterPanel({ onBack, jobs, parties, showToast, refreshState }) {
+function CreateCharacterPanel({ onBack, jobs, parties, showToast, refreshState, invalidateAgitAfterRecruit }) {
   const [candidates, setCandidates] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [finding, setFinding] = useState(false);
@@ -1508,6 +1563,7 @@ function CreateCharacterPanel({ onBack, jobs, parties, showToast, refreshState }
       showToast(`영입 완료: ${name} (${id})`);
       setCandidates([]);
       setSelectedIndex(0);
+      invalidateAgitAfterRecruit?.();
       refreshState();
     } catch (e) {
       showToast(e.message, true);

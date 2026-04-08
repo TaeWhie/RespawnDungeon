@@ -1,10 +1,13 @@
 import React, { useMemo } from 'react';
 import { MapPin, Heart, Zap, Users, Sparkles, Package } from 'lucide-react';
+import useHubGeneratedImage from './useHubGeneratedImage';
+import { HUB_IMAGE_THEME_ID, buildCharacterPortraitPrompt } from './hubImageTheme';
 
 function pickChar(c, key) {
   if (key === 'id') return c.id ?? c.Id ?? '';
   if (key === 'name') return c.name ?? c.Name ?? '';
   if (key === 'role') return c.role ?? c.Role ?? '';
+  if (key === 'gender') return c.gender ?? c.Gender ?? '';
   if (key === 'age') return c.age ?? c.Age;
   if (key === 'partyId') return c.partyId ?? c.PartyId ?? '';
   if (key === 'loc') return c.currentLocationId ?? c.CurrentLocationId ?? '';
@@ -31,6 +34,43 @@ function topPersonalityTraits(personality) {
   );
   entries.sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0));
   return entries.slice(0, 3);
+}
+
+function topTraitText(personality) {
+  const top = topPersonalityTraits(personality);
+  if (!top.length) return '';
+  return top.map(([k, v]) => `${k} ${v}`).join(', ');
+}
+
+function compactSkills(c) {
+  const skills = c.skills ?? c.Skills ?? [];
+  if (!Array.isArray(skills) || skills.length === 0) return '';
+  return skills.slice(0, 6).join(', ');
+}
+
+function compactEquipment(c) {
+  const eq = c.equipment ?? c.Equipment ?? {};
+  const values = [
+    eq.weapon ?? eq.Weapon,
+    eq.helmet ?? eq.Helmet,
+    eq.armor ?? eq.Armor,
+    eq.gloves ?? eq.Gloves,
+    eq.boots ?? eq.Boots,
+    eq.accessory ?? eq.Accessory,
+  ]
+    .filter(Boolean)
+    .map((x) => String(x).trim())
+    .filter(Boolean);
+  return values.slice(0, 6).join(', ');
+}
+
+function compactStatSummary(c) {
+  const s = c.stats ?? c.Stats ?? {};
+  const hp = s.maxHP ?? s.MaxHP;
+  const mp = s.maxMP ?? s.MaxMP;
+  const atk = s.atk ?? s.Atk;
+  const def = s.def ?? s.Def;
+  return [`HP ${hp ?? '?'}`, `MP ${mp ?? '?'}`, `ATK ${atk ?? '?'}`, `DEF ${def ?? '?'}`].join(', ');
 }
 
 export default function CharacterCardsSection({ characters, parties, backgroundMaxChars = 220 }) {
@@ -67,14 +107,10 @@ export default function CharacterCardsSection({ characters, parties, backgroundM
         const locNote = pickChar(c, 'locNote');
         const inv = c.inventory ?? c.Inventory ?? [];
         const traits = topPersonalityTraits(c.personality ?? c.Personality);
-        const initial = String(name).charAt(0) || '?';
-
         return (
           <article key={id} className="hub-char-card glass-panel">
             <div className="hub-char-card-head">
-              <div className="hub-char-avatar" aria-hidden>
-                {initial}
-              </div>
+              <CharacterPortraitImage c={c} name={name} id={id} />
               <div className="hub-char-titles">
                 <h4 className="hub-char-name">{name}</h4>
                 <span className="hub-char-id">
@@ -91,6 +127,12 @@ export default function CharacterCardsSection({ characters, parties, backgroundM
                 <div className="hub-char-meta-row">
                   <dt>나이</dt>
                   <dd>{pickChar(c, 'age')}</dd>
+                </div>
+              )}
+              {pickChar(c, 'gender') && (
+                <div className="hub-char-meta-row">
+                  <dt>성별</dt>
+                  <dd>{pickChar(c, 'gender')}</dd>
                 </div>
               )}
               {partyName && (
@@ -189,6 +231,50 @@ export default function CharacterCardsSection({ characters, parties, backgroundM
           </article>
         );
       })}
+    </div>
+  );
+}
+
+function CharacterPortraitImage({ c, name, id }) {
+  const role = pickChar(c, 'role');
+  const gender = pickChar(c, 'gender');
+  const age = pickChar(c, 'age');
+  const mood = pickChar(c, 'mood');
+  const bg = pickChar(c, 'bg');
+  const recentEvent = pickChar(c, 'recent');
+  const topTraits = topTraitText(c.personality ?? c.Personality);
+  const skills = compactSkills(c);
+  const equipment = compactEquipment(c);
+  const stats = compactStatSummary(c);
+  const { imageUrl, loading } = useHubGeneratedImage({
+    scope: 'character-card',
+    entityKey: id,
+    prompt: buildCharacterPortraitPrompt({
+      name,
+      role,
+      gender,
+      age,
+      mood,
+      background: bg,
+      recentEvent,
+      topTraits,
+      skills,
+      equipment,
+      stats,
+    }),
+    width: 640,
+    height: 640,
+    themeId: HUB_IMAGE_THEME_ID,
+  });
+  return (
+    <div className="hub-char-portrait-wrap" aria-label={`${name} portrait`}>
+      {imageUrl ? (
+        <img src={imageUrl} alt={`${name} portrait`} className="hub-char-portrait-img" loading="lazy" />
+      ) : (
+        <div className="hub-char-portrait-placeholder">
+          {loading ? <div className="hub-image-spinner" aria-hidden /> : <span>{String(name).charAt(0) || '?'}</span>}
+        </div>
+      )}
     </div>
   );
 }

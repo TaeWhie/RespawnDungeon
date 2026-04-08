@@ -6,6 +6,12 @@ cd /d "%~dp0"
 echo ========================================
 echo  GuildDialogue Hub — 한 번에 실행
 echo ========================================
+echo Ollama는 WSL2+GPU 권장. 순서 예시 (PowerShell):
+echo   1^) MiniProjects\stop-windows-ollama.ps1
+echo   2^) MiniProjects\start-ollama-wsl-gpu.ps1
+echo   또는 한 번에: start-ollama-wsl-gpu.ps1 -StopWindowsFirst
+echo Windows용 Ollama와 동시에 11434 포트를 쓰면 충돌합니다.
+echo.
 echo [1] Hub API  (dotnet --hub-api, 포트 5050)
 echo [2] 웹 UI    (npm run dev, 보통 5173)
 echo.

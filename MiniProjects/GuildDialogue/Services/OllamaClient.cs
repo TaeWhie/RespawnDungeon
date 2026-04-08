@@ -45,6 +45,7 @@ public class OllamaClient
             ["model"] = _modelName,
             ["prompt"] = finalPrompt,
             ["stream"] = false,
+            ["keep_alive"] = "30m",
             ["options"] = options
         };
 

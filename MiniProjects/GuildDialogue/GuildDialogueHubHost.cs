@@ -16,6 +16,10 @@ namespace GuildDialogue;
 public static class GuildDialogueHubHost
 {
     private static DialogueManager? _manager;
+    private static HubImageGenerationService? _imageService;
+    private static HubImagePromptTranslator? _imagePromptTranslator;
+    private static readonly object EmbedWarmupLock = new();
+    private static Task<OllamaModelWarmup.WarmupPhase>? _embedWarmupTask;
 
     /// <summary>다음 스펙테이터(홈) 요청에서 동료 2인 LLM 대화를 돌릴지 — 초기화 직후 첫 방문.</summary>
     private static bool _pendingCompanionDialogueAfterInit;
@@ -73,16 +77,66 @@ public static class GuildDialogueHubHost
         app.UseCors();
 
         var loader = new DialogueConfigLoader();
+        _imageService ??= new HubImageGenerationService(loader.ConfigDirectory);
+        _imagePromptTranslator ??= new HubImagePromptTranslator(loader.LoadSettings());
 
         app.MapGet("/api/health", () => Results.Json(new { ok = true, service = "GuildDialogueHub" }));
 
         /// <summary>Ollama에 대화·임베딩 모델을 미리 올립니다(첫 로드 시 GPU 로딩 시간).</summary>
-        app.MapPost("/api/model/warmup", async (CancellationToken ct) =>
+        app.MapPost("/api/model/warmup", async (HttpRequest req, CancellationToken ct) =>
         {
             try
             {
+                WarmupRequestDto? dto = null;
+                if ((req.ContentLength ?? 0) > 0)
+                {
+                    dto = await JsonSerializer.DeserializeAsync<WarmupRequestDto>(
+                            req.Body,
+                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true },
+                            ct)
+                        .ConfigureAwait(false);
+                }
                 var settings = loader.LoadSettings();
-                var r = await OllamaModelWarmup.RunAsync(settings, ct).ConfigureAwait(false);
+                var fastStart = dto?.FastStart ?? false;
+                var backgroundEmbed = dto?.BackgroundEmbed ?? fastStart;
+                OllamaModelWarmup.WarmupResult r;
+                if (!fastStart)
+                {
+                    r = await OllamaModelWarmup.RunAsync(settings, ct).ConfigureAwait(false);
+                }
+                else
+                {
+                    var phases = new List<OllamaModelWarmup.WarmupPhase>();
+                    var chat = await OllamaModelWarmup.WarmupChatAsync(settings, ct).ConfigureAwait(false);
+                    phases.Add(chat);
+                    if (!chat.Ok)
+                    {
+                        r = new OllamaModelWarmup.WarmupResult(false, chat.Detail, phases, chat.Ms);
+                    }
+                    else if (backgroundEmbed)
+                    {
+                        EnsureBackgroundEmbedWarmup(settings);
+                        phases.Add(new OllamaModelWarmup.WarmupPhase(
+                            "embed",
+                            OllamaModelWarmup.ResolveEmbedModel(settings),
+                            true,
+                            0,
+                            "백그라운드 로딩 중 — 메인 화면 먼저 진입",
+                            true));
+                        r = new OllamaModelWarmup.WarmupResult(true, null, phases, chat.Ms);
+                    }
+                    else
+                    {
+                        var embed = await OllamaModelWarmup.WarmupEmbedAsync(settings, ct).ConfigureAwait(false);
+                        phases.Add(embed);
+                        var ok = embed.Ok || embed.Skipped;
+                        r = new OllamaModelWarmup.WarmupResult(
+                            ok,
+                            ok ? null : embed.Detail,
+                            phases,
+                            chat.Ms + embed.Ms);
+                    }
+                }
                 return Results.Json(new
                 {
                     ok = r.Ok,
@@ -133,6 +187,11 @@ public static class GuildDialogueHubHost
                     worldName = lore.WorldName ?? "",
                     worldSummary = lore.WorldSummary ?? "",
                     guildInfo = lore.GuildInfo ?? "",
+                    dungeonSystem = lore.DungeonSystem ?? "",
+                    baseCamp = lore.BaseCamp ?? "",
+                    currencyAndLoot = lore.CurrencyAndLoot ?? "",
+                    locations = lore.Locations ?? new List<LocationData>(),
+                    dungeons = lore.Dungeons ?? new List<DungeonData>(),
                     teaserLines = teasers
                 });
             }
@@ -140,6 +199,58 @@ public static class GuildDialogueHubHost
             {
                 return Results.Json(new { error = ex.Message }, statusCode: 500);
             }
+        });
+
+        app.MapPost("/api/images/resolve", async (HubImageResolveDto dto, CancellationToken ct) =>
+        {
+            try
+            {
+                if (_imageService == null)
+                    return Results.Json(new { error = "image service not initialized" }, statusCode: 500);
+                var r = await _imageService.ResolveOrGenerateNowAsync(new HubImageGenerationService.HubImageResolveRequest(
+                    dto.Scope ?? "generic",
+                    dto.EntityKey ?? "default",
+                    dto.Prompt ?? "",
+                    dto.ThemeId ?? "guildhub-2d-v1",
+                    dto.Width ?? 768,
+                    dto.Height ?? 768), ct).ConfigureAwait(false);
+                return Results.Json(new
+                {
+                    status = r.Status,
+                    cacheKey = r.CacheKey,
+                    imageUrl = r.ImageUrl,
+                    error = r.Error,
+                    themeId = r.ThemeId
+                });
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new { status = "error", error = ex.Message }, statusCode: 500);
+            }
+        });
+
+        app.MapPost("/api/images/translate", async (HubImageTranslateDto dto, CancellationToken ct) =>
+        {
+            try
+            {
+                if (_imagePromptTranslator == null)
+                    return Results.Json(new { error = "image prompt translator not initialized" }, statusCode: 500);
+                var translated = await _imagePromptTranslator.TranslateToEnglishAsync(dto.Prompt ?? "", ct).ConfigureAwait(false);
+                return Results.Json(new { translatedPrompt = translated });
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new { error = ex.Message }, statusCode: 500);
+            }
+        });
+
+        app.MapGet("/api/images/file/{cacheKey}", (string cacheKey) =>
+        {
+            if (_imageService == null)
+                return Results.Json(new { error = "image service not initialized" }, statusCode: 500);
+            if (!_imageService.TryGetFilePath(cacheKey, out var path))
+                return Results.NotFound();
+            return Results.File(path, "image/png");
         });
 
         app.MapGet("/api/state", () =>
@@ -660,6 +771,17 @@ public static class GuildDialogueHubHost
         await app.RunAsync($"http://127.0.0.1:{port}").ConfigureAwait(false);
     }
 
+    private static void EnsureBackgroundEmbedWarmup(DialogueSettings settings)
+    {
+        lock (EmbedWarmupLock)
+        {
+            if (_embedWarmupTask is { IsCompleted: false })
+                return;
+            _embedWarmupTask = Task.Run(async () =>
+                await OllamaModelWarmup.WarmupEmbedAsync(settings, CancellationToken.None).ConfigureAwait(false));
+        }
+    }
+
     private sealed record HubStateDto(
         string ConfigDirectory,
         List<Character> Characters,
@@ -705,6 +827,17 @@ public static class GuildDialogueHubHost
         string[]? ExcludeNames);
 
     private sealed record CommitCharacterDto(Character? Character);
+
+    private sealed record WarmupRequestDto(bool FastStart = false, bool BackgroundEmbed = false);
+    private sealed record HubImageResolveDto(
+        string? Scope,
+        string? EntityKey,
+        string? Prompt,
+        string? ThemeId,
+        int? Width,
+        int? Height);
+
+    private sealed record HubImageTranslateDto(string? Prompt);
 }
 
 /// <summary>Hub 세계관 검증 — 편집 중인 JSON을 디스크 내용과 합쳐 검사합니다.</summary>

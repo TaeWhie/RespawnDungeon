@@ -44,6 +44,14 @@ export async function apiDelete(path) {
   return data;
 }
 
+export async function apiResolveHubImage(body) {
+  return apiPost('/api/images/resolve', body);
+}
+
+export async function apiTranslateHubImagePrompt(prompt) {
+  return apiPost('/api/images/translate', { prompt });
+}
+
 /**
  * 아지트 관전 NDJSON 스트림 — 서버가 한 줄 만들 때마다 `onLine` 호출, 끝나면 resolve.
  * `application/x-ndjson`: `{"line":"…"}` 반복 후 `{"done":true}` 또는 `{"error":"…"}`

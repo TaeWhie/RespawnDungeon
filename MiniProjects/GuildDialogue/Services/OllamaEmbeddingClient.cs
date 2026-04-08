@@ -36,7 +36,7 @@ public sealed class OllamaEmbeddingClient : IDisposable
         {
             for (var attempt = 0; attempt < 2; attempt++)
             {
-                var body = JsonSerializer.Serialize(new { model = _model, prompt = prompt.Trim() });
+                var body = JsonSerializer.Serialize(new { model = _model, prompt = prompt.Trim(), keep_alive = "30m" });
                 using var content = new StringContent(body, Encoding.UTF8, "application/json");
                 using var response = await _http.PostAsync(url, content, ct).ConfigureAwait(false);
                 if (response.IsSuccessStatusCode)

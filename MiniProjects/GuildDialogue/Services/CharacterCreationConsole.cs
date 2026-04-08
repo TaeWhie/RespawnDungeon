@@ -119,6 +119,7 @@ public static class CharacterCreationConsole
 
         var id = profile.Id;
         var name = profile.Name;
+        var gender = profile.Gender;
         var background = profile.Background;
         var speech = profile.SpeechStyle;
 
@@ -129,6 +130,7 @@ public static class CharacterCreationConsole
         Console.WriteLine($"  서사 출처: Ollama LLM");
         Console.WriteLine($"  Id: {id}");
         Console.WriteLine($"  이름: {name}");
+        Console.WriteLine($"  성별: {gender}");
         Console.WriteLine($"  나이: {age} (16~50 무작위)");
         Console.WriteLine($"  경력: {career}년 (0~20, 나이 상한·낮은 값 가중)");
         Console.WriteLine($"  Mood: {mood} (생성 시 고정)");
@@ -142,6 +144,7 @@ public static class CharacterCreationConsole
         {
             Id = id,
             Name = name,
+            Gender = gender,
             Age = age,
             Role = job.RoleId?.Trim() ?? "",
             PartyId = null,
@@ -212,6 +215,7 @@ public static class CharacterCreationConsole
         incoming.Id = incoming.Id.Trim();
         if (string.IsNullOrWhiteSpace(incoming.Name))
             return new CharacterCreationWebResult(false, "이름이 비어 있습니다.", null);
+        incoming.Gender = string.IsNullOrWhiteSpace(incoming.Gender) ? "미정" : incoming.Gender.Trim();
 
         incoming.Skills ??= new List<string>();
         incoming.Inventory ??= new List<InventoryEntry>();
@@ -316,6 +320,7 @@ public static class CharacterCreationConsole
         {
             Id = profile.Id,
             Name = profile.Name,
+            Gender = profile.Gender,
             Age = age,
             Role = job.RoleId?.Trim() ?? "",
             PartyId = null,
